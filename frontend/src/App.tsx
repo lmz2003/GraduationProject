@@ -5,9 +5,16 @@ import { vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import Editor from '@uiw/react-markdown-editor'
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
+import Login from './components/Login'
+import HomePage from './components/HomePage'
 import './App.css'
 
 function App() {
+  // Check if user is logged in
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
+    const token = localStorage.getItem('token');
+    return !!token;
+  });
   // 从本地存储加载初始内容
   const [markdown, setMarkdown] = useState<string>(() => {
     const saved = localStorage.getItem('markdown-content')
@@ -72,6 +79,7 @@ function App() {
       setMarkdown('')
     }
   }
+
 
   // 导出内容功能
   const handleExport = () => {
@@ -201,81 +209,92 @@ function App() {
 
   return (
     <div className="app-container">
-      <header className="app-header">
-        <h1>Markdown 编辑器</h1>
-        <div className="header-actions">
-          <button onClick={handleClear} className="btn-clear">
-            清除内容
-          </button>
-          <button onClick={handleExport} className="btn-export">
-            导出 MD
-          </button>
-          <button onClick={() => setShowPdfSettings(true)} className="btn-pdf">
-            PDF 导出设置
-          </button>
-        </div>
-      </header>
-      
-      <main className="editor-container">
-        <div className="editor-layout">
-          {/* 编辑区域 */}
-          <div className="editor-section">
-            <div className="section-header">
-              <h2>编辑区域</h2>
-            </div>
-            <Editor
-              value={markdown}
-              onChange={(value) => setMarkdown(value || '')}
-              style={{
-                border: '1px solid #d9d9d9',
-                borderRadius: '8px'
-              }}
-            />
+      {!isLoggedIn ? (
+        <HomePage />
+      ) : (
+        <>        <header className="app-header">
+          <h1>Markdown 编辑器</h1>
+          <div className="header-actions">
+            <button onClick={handleClear} className="btn-clear">
+              清除内容
+            </button>
+            <button onClick={handleExport} className="btn-export">
+              导出 MD
+            </button>
+            <button onClick={() => setShowPdfSettings(true)} className="btn-pdf">
+              PDF 导出设置
+            </button>
+            <button onClick={() => {
+              localStorage.removeItem('token');
+              setIsLoggedIn(false);
+            }} className="btn-logout">
+              退出登录
+            </button>
           </div>
-          
-          {/* 预览区域 */}
-          <div className="preview-section">
-            <div className="section-header">
-              <h2>预览区域</h2>
+        </header>
+        
+        <main className="editor-container">
+          <div className="editor-layout">
+            {/* 编辑区域 */}
+            <div className="editor-section">
+              <div className="section-header">
+                <h2>编辑区域</h2>
+              </div>
+              <Editor
+                value={markdown}
+                onChange={(value) => setMarkdown(value || '')}
+                style={{
+                  border: '1px solid #d9d9d9',
+                  borderRadius: '8px'
+                }}
+              />
             </div>
-            <div className="markdown-preview" ref={previewRef}>
-              <ReactMarkdown
-                  components={{
-                    code(props) {
-                      const { className, children } = props
-                      const match = /language-(\w+)/.exec(className || '')
-                      if (match) {
+            
+            {/* 预览区域 */}
+            <div className="preview-section">
+              <div className="section-header">
+                <h2>预览区域</h2>
+              </div>
+              <div className="markdown-preview" ref={previewRef}>
+                <ReactMarkdown
+                    components={{
+                      code(props) {
+                        const { className, children } = props
+                        const match = /language-(\w+)/.exec(className || '')
+                        if (match) {
+                          return (
+                            <SyntaxHighlighter
+                              style={vs2015}
+                              language={match[1]}
+                              customStyle={{
+                                margin: '1em 0',
+                                borderRadius: '4px'
+                              }}
+                            >
+                              {String(children).replace(/\n$/, '')}
+                            </SyntaxHighlighter>
+                          )
+                        }
                         return (
-                          <SyntaxHighlighter
-                            style={vs2015}
-                            language={match[1]}
-                            customStyle={{
-                              margin: '1em 0',
-                              borderRadius: '4px'
-                            }}
-                          >
-                            {String(children).replace(/\n$/, '')}
-                          </SyntaxHighlighter>
+                          <code className={className}>
+                            {children}
+                          </code>
                         )
                       }
-                      return (
-                        <code className={className}>
-                          {children}
-                        </code>
-                      )
-                    }
-                  }}
-                >
-                  {markdown || '# 开始编辑您的 Markdown 内容'}
-                </ReactMarkdown>
+                    }}
+                  >
+                    {markdown || '# 开始编辑您的 Markdown 内容'}
+                  </ReactMarkdown>
+              </div>
             </div>
           </div>
-        </div>
-      </main>
-      
-      <footer className="app-footer">
-        <p>💡 提示：您的内容会自动保存到浏览器本地存储中</p>
-      </footer>
+        </main>
+        
+        <footer className="app-footer">
+          <p>💡 提示：您的内容会自动保存到浏览器本地存储中</p>
+        </footer>        
+      </>
+      )}
 
       {/* PDF导出设置对话框 */}
       {showPdfSettings && (
