@@ -1,24 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 
+// Theme type definition
+type ThemeType = 'light' | 'dark' | 'system';
+
+const lightTheme = {
+  background: '#f5f5f5',
+  surface: '#ffffff',
+  textPrimary: '#333333',
+  textSecondary: '#666666',
+  primary: '#667eea',
+  primaryHover: '#5568d3',
+  border: '#e0e0e0',
+  error: '#e74c3c',
+  success: '#27ae60',
+  shadow: '0 2px 8px rgba(0, 0, 0, 0.1)'
+};
+
+const darkTheme = {
+  background: '#121212',
+  surface: '#2a2a2a', // 稍微亮一点的背景色，提高可读性
+  textPrimary: '#ffffff',
+  textSecondary: '#b0b0b0',
+  primary: '#7986cb',
+  primaryHover: '#5c6bc0',
+  border: '#424242',
+  error: '#ef5350',
+  success: '#66bb6a',
+  shadow: '0 2px 8px rgba(0, 0, 0, 0.5)'
+};
+
 // Styled Components
-const LoginContainer = styled.div`
-  min-height: 100vh;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 20px;
+const LoginContainer = styled.div<{ theme: typeof lightTheme }>`
+  width: 100%;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: ${props => props.theme.textPrimary};
 `;
 
-const LoginForm = styled.div`
-  background: white;
-  padding: 40px;
-  border-radius: 15px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+const LoginForm = styled.div<{ theme: typeof lightTheme }>`
+  background: ${props => props.theme.surface};
+  padding: 0 40px 40px;
+  border-radius: 0;
   width: 100%;
-  max-width: 400px;
   animation: fadeIn 0.5s ease-out;
 
   @keyframes fadeIn {
@@ -27,12 +50,12 @@ const LoginForm = styled.div`
   }
 `;
 
-const Logo = styled.div`
+const Logo = styled.div<{ theme: typeof lightTheme }>`
   text-align: center;
   margin-bottom: 30px;
   font-size: 2rem;
   font-weight: 700;
-  color: #667eea;
+  color: ${props => props.theme.primary};
 `;
 
 const InputGroup = styled.div`
@@ -40,29 +63,54 @@ const InputGroup = styled.div`
   position: relative;
 `;
 
-const InputLabel = styled.label`
+const RememberMeContainer = styled.div<{ theme: typeof lightTheme }>`
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  margin-top: -15px;
+`;
+
+const RememberMeCheckbox = styled.input`
+  margin-right: 8px;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+`;
+
+const RememberMeLabel = styled.label<{ theme: typeof lightTheme }>`
+  cursor: pointer;
+  color: ${props => props.theme.textSecondary};
+  font-size: 14px;
+`;
+
+const InputLabel = styled.label<{ theme: typeof lightTheme }>`
   display: block;
   margin-bottom: 8px;
   font-weight: 600;
-  color: #333;
+  color: ${props => props.theme.textPrimary};
 `;
 
-const InputField = styled.input`
+const InputField = styled.input<{ theme: typeof lightTheme }>`
   width: 100%;
   padding: 12px 15px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid ${props => props.theme.border};
   border-radius: 8px;
   font-size: 16px;
   transition: all 0.3s ease;
+  background: ${props => props.theme.surface};
+  color: ${props => props.theme.textPrimary};
 
   &:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: ${props => props.theme.primary};
+    box-shadow: ${props => props.theme.background === '#121212' 
+      ? `0 0 0 3px rgba(121, 134, 203, 0.2)`
+      : `0 0 0 3px rgba(102, 126, 234, 0.1)`
+    };
   }
 
   &.error {
-    border-color: #e74c3c;
+    border-color: ${props => props.theme.error};
   }
 `;
 
@@ -71,20 +119,20 @@ const PhoneInputWrapper = styled.div`
   gap: 10px;
 `;
 
-const PhonePrefix = styled.div`
+const PhonePrefix = styled.div<{ theme: typeof lightTheme }>`
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 0 15px;
-  border: 2px solid #e0e0e0;
+  border: 2px solid ${props => props.theme.border};
   border-radius: 8px;
-  background-color: #f5f5f5;
+  background-color: ${props => props.theme.background};
   font-weight: 600;
-  color: #666;
+  color: ${props => props.theme.textSecondary};
   transition: border-color 0.3s ease;
 
   &:focus-within {
-    border-color: #667eea;
+    border-color: ${props => props.theme.primary};
   }
 `;
 
@@ -93,7 +141,7 @@ const VerificationCodeWrapper = styled.div`
   gap: 10px;
 `;
 
-const SendCodeButton = styled.button<{ $isDisabled: boolean; $isCounting: boolean }>`
+const SendCodeButton = styled.button<{ $isDisabled: boolean; $isCounting: boolean; theme: typeof lightTheme }>`
   padding: 12px 20px;
   border: none;
   border-radius: 8px;
@@ -104,24 +152,24 @@ const SendCodeButton = styled.button<{ $isDisabled: boolean; $isCounting: boolea
   min-width: 120px;
 
   ${props => props.$isCounting ? `
-    background-color: #bdc3c7;
-    color: white;
+    background-color: ${props.theme.border};
+    color: ${props.theme.textSecondary};
     cursor: not-allowed;
   ` : props.$isDisabled ? `
-    background-color: #bdc3c7;
-    color: white;
+    background-color: ${props.theme.border};
+    color: ${props.theme.textSecondary};
     cursor: not-allowed;
   ` : `
-    background-color: #667eea;
+    background-color: ${props.theme.primary};
     color: white;
   `}
 
   &:hover:not(:disabled):not(${props => props.$isCounting && '&'}) {
-    background-color: #5568d3;
+    background-color: ${props => props.theme.primaryHover};
   }
 `;
 
-const LoginButton = styled.button<{ $isLoading: boolean }>`
+const LoginButton = styled.button<{ $isLoading: boolean; theme: typeof lightTheme }>`
   width: 100%;
   padding: 15px;
   border: none;
@@ -130,17 +178,17 @@ const LoginButton = styled.button<{ $isLoading: boolean }>`
   font-weight: 700;
   cursor: pointer;
   transition: all 0.3s ease;
-  background-color: #667eea;
+  background-color: ${props => props.theme.primary};
   color: white;
   margin-top: 10px;
 
   ${props => props.$isLoading && `
-    background-color: #5568d3;
+    background-color: ${props.theme.primaryHover};
     cursor: not-allowed;
   `}
 
   &:hover:not(:disabled) {
-    background-color: #5568d3;
+    background-color: ${props => props.theme.primaryHover};
     transform: translateY(-2px);
   }
 
@@ -149,8 +197,8 @@ const LoginButton = styled.button<{ $isLoading: boolean }>`
   }
 `;
 
-const ErrorMessage = styled.div`
-  color: #e74c3c;
+const ErrorMessage = styled.div<{ theme: typeof lightTheme }>`
+  color: ${props => props.theme.error};
   margin-top: 15px;
   text-align: center;
   font-size: 14px;
@@ -163,16 +211,28 @@ const ErrorMessage = styled.div`
   }
 `;
 
-const SuccessMessage = styled.div`
-  color: #27ae60;
+const SuccessMessage = styled.div<{ theme: typeof lightTheme }>`
+  color: ${props => props.theme.success};
   margin-top: 15px;
   text-align: center;
   font-size: 14px;
   animation: fadeIn 0.5s;
 `;
 
-// Login Component
-const Login: React.FC = () => {
+// Helper function to get theme from localStorage or system preference
+const getTheme = (theme: string | undefined) => {
+  if (theme === 'light' || theme === 'dark') {
+    return theme === 'light' ? lightTheme : darkTheme;
+  }
+  // Default to system preference
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  return prefersDark ? darkTheme : lightTheme;
+};
+
+// Login Component with theme prop
+const Login: React.FC<{ theme?: ThemeType }> = ({ theme: propTheme }) => {
+  // Use provided theme or fall back to function
+  const theme = getTheme(propTheme);
   const [phoneNumber, setPhoneNumber] = useState<string>('');
   const [verificationCode, setVerificationCode] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -182,6 +242,16 @@ const Login: React.FC = () => {
   const [successMessage, setSuccessMessage] = useState<string>('');
   const [phoneNumberValid, setPhoneNumberValid] = useState<boolean>(true);
   const [codeValid, setCodeValid] = useState<boolean>(true);
+  const [rememberMe, setRememberMe] = useState<boolean>(false);
+
+  // Load remembered phone number on component mount
+  useEffect(() => {
+    const savedPhoneNumber = localStorage.getItem('rememberedPhoneNumber');
+    if (savedPhoneNumber) {
+      setPhoneNumber(savedPhoneNumber);
+      setRememberMe(true);
+    }
+  }, [])
 
   // Countdown timer
   useEffect(() => {
@@ -285,6 +355,15 @@ const Login: React.FC = () => {
         setSuccessMessage('Login successful!');
         // Save token to localStorage
         localStorage.setItem('token', data.token);
+        
+        // Save phone number if remember me is checked
+        if (rememberMe) {
+          localStorage.setItem('rememberedPhoneNumber', phoneNumber);
+        } else {
+          // Remove saved phone number if remember me is unchecked
+          localStorage.removeItem('rememberedPhoneNumber');
+        }
+        
         // Let parent component handle login state change
         window.location.reload();
       } else {
@@ -299,14 +378,14 @@ const Login: React.FC = () => {
   };
 
   return (
-    <LoginContainer>
-      <LoginForm>
-        <Logo>Login</Logo>
+    <LoginContainer theme={theme}>
+      <LoginForm theme={theme}>
+        <Logo theme={theme}>Login</Logo>
 
         <InputGroup>
-          <InputLabel>Phone Number</InputLabel>
+          <InputLabel theme={theme}>Phone Number</InputLabel>
           <PhoneInputWrapper>
-            <PhonePrefix>+86</PhonePrefix>
+            <PhonePrefix theme={theme}>+86</PhonePrefix>
             <InputField
               type="tel"
               value={phoneNumber}
@@ -320,7 +399,7 @@ const Login: React.FC = () => {
         </InputGroup>
 
         <InputGroup>
-          <InputLabel>Verification Code</InputLabel>
+          <InputLabel theme={theme}>Verification Code</InputLabel>
           <VerificationCodeWrapper>
             <InputField
               type="tel"
@@ -336,19 +415,34 @@ const Login: React.FC = () => {
           $isCounting={countdown > 0}
           onClick={handleSendCode}
           disabled={isLoading}
+          theme={theme}
         >
               {countdown > 0 ? `${countdown}s` : 'Get Code'}
             </SendCodeButton>
           </VerificationCodeWrapper>
         </InputGroup>
 
-        {errorMessage && <ErrorMessage>{errorMessage}</ErrorMessage>}
-        {successMessage && <SuccessMessage>{successMessage}</SuccessMessage>}
+        <RememberMeContainer theme={theme}>
+          <RememberMeCheckbox
+            type="checkbox"
+            id="remember-me"
+            checked={rememberMe}
+            onChange={(e) => setRememberMe(e.target.checked)}
+            disabled={isLoading}
+          />
+          <RememberMeLabel theme={theme} htmlFor="remember-me">
+            Remember me
+          </RememberMeLabel>
+        </RememberMeContainer>
+
+        {errorMessage && <ErrorMessage theme={theme}>{errorMessage}</ErrorMessage>}
+        {successMessage && <SuccessMessage theme={theme}>{successMessage}</SuccessMessage>}
 
         <LoginButton
           $isLoading={isLoading}
           onClick={handleLogin}
           disabled={isLoading}
+          theme={theme}
         >
           {isLoading ? 'Logging in...' : 'Login'}
         </LoginButton>

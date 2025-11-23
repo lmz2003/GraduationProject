@@ -20,15 +20,15 @@ const lightTheme = {
 };
 
 const darkTheme = {
-  background: '#1a1a2e',
-  surface: '#16213e',
+  background: '#121212',
+  surface: '#1e1e1e',
   textPrimary: '#ffffff',
-  textSecondary: '#a0a0a0',
-  primary: '#667eea',
-  primaryHover: '#5568d3',
-  secondary: '#764ba2',
-  border: '#3a3a4e',
-  shadow: '0 4px 6px rgba(0, 0, 0, 0.3)',
+  textSecondary: '#b0b0b0',
+  primary: '#7986cb',
+  primaryHover: '#6573c3',
+  secondary: '#8e24aa',
+  border: '#424242',
+  shadow: '0 4px 6px rgba(0, 0, 0, 0.5)',
 };
 
 // 国际化文本
@@ -171,7 +171,6 @@ const i18n = {
 
 // 容器组件
 const Container = styled.div<{ theme: typeof lightTheme }>`
-  min-height: 100vh;
   background: ${props => props.theme.background};
   color: ${props => props.theme.textPrimary};
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -195,10 +194,10 @@ const Navbar = styled.nav<{ theme: typeof lightTheme }>`
   }
 `;
 
-const Logo = styled.div`
+const Logo = styled.div<{ theme: typeof lightTheme }>`
   font-size: 24px;
   font-weight: 700;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, ${props => props.theme.primary} 0%, ${props => props.theme.secondary} 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -213,7 +212,7 @@ const NavLinks = styled.div`
   }
 `;
 
-const NavLink = styled.a`
+const NavLink = styled.a<{ theme: typeof lightTheme }>`
   text-decoration: none;
   color: ${props => props.theme.textSecondary};
   font-weight: 500;
@@ -243,7 +242,7 @@ const ControlButton = styled.button<{ theme: typeof lightTheme }>`
   &:hover {
     background: ${props => props.theme.primaryHover};
     transform: translateY(-2px);
-    box-shadow: 0 6px 12px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 6px 12px rgba(121, 134, 203, 0.4);
   }
 
   &:active {
@@ -295,11 +294,11 @@ const HeroSection = styled.section<{ theme: typeof lightTheme }>`
   }
 `;
 
-const HeroTitle = styled.h1`
+const HeroTitle = styled.h1<{ theme: typeof lightTheme }>`
   font-size: 48px;
   font-weight: 700;
   margin-bottom: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, ${props => props.theme.primary} 0%, ${props => props.theme.secondary} 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -309,7 +308,7 @@ const HeroTitle = styled.h1`
   }
 `;
 
-const HeroSubtitle = styled.p`
+const HeroSubtitle = styled.p<{ theme: typeof lightTheme }>`
   font-size: 18px;
   color: ${props => props.theme.textSecondary};
   max-width: 700px;
@@ -328,7 +327,7 @@ const FeaturesSection = styled.section`
   }
 `;
 
-const FeaturesTitle = styled.h2`
+const FeaturesTitle = styled.h2<{ theme: typeof lightTheme }>`
   font-size: 36px;
   font-weight: 700;
   text-align: center;
@@ -361,7 +360,7 @@ const FeatureCard = styled.div<{ theme: typeof lightTheme }>`
 
   &:hover {
     transform: translateY(-10px);
-    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
   }
 
   &:nth-child(1) { animation-delay: 0.1s; }
@@ -381,14 +380,14 @@ const FeatureIcon = styled.div`
   margin-bottom: 20px;
 `;
 
-const FeatureTitle = styled.h3`
+const FeatureTitle = styled.h3<{ theme: typeof lightTheme }>`
   font-size: 24px;
   font-weight: 600;
   margin-bottom: 15px;
   color: ${props => props.theme.textPrimary};
 `;
 
-const FeatureDescription = styled.p`
+const FeatureDescription = styled.p<{ theme: typeof lightTheme }>`
   font-size: 16px;
   color: ${props => props.theme.textSecondary};
   margin-bottom: 25px;
@@ -408,7 +407,7 @@ const FeatureButton = styled.button<{ theme: typeof lightTheme }>`
   &:hover {
     background: ${props => props.theme.primaryHover};
     transform: translateY(-2px);
-    box-shadow: 0 8px 16px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 8px 16px rgba(121, 134, 203, 0.4);
   }
 `;
 
@@ -430,7 +429,7 @@ const LoginSection = styled.section<{ theme: typeof lightTheme }>`
   }
 `;
 
-const LoginTitle = styled.h2`
+const LoginTitle = styled.h2<{ theme: typeof lightTheme }>`
   font-size: 32px;
   font-weight: 700;
   margin-bottom: 20px;
@@ -441,7 +440,7 @@ const LoginTitle = styled.h2`
   }
 `;
 
-const LoginSubtitle = styled.p`
+const LoginSubtitle = styled.p<{ theme: typeof lightTheme }>`
   font-size: 16px;
   color: ${props => props.theme.textSecondary};
   margin-bottom: 30px;
@@ -471,7 +470,7 @@ const FooterLinks = styled.div`
   flex-wrap: wrap;
 `;
 
-const FooterLink = styled.a`
+const FooterLink = styled.a<{ theme: typeof lightTheme }>`
   color: ${props => props.theme.textSecondary};
   text-decoration: none;
   font-size: 14px;
@@ -506,12 +505,14 @@ const ModalOverlay = styled.div`
   }
 `;
 
-const ModalContent = styled.div`
-  background: white;
+const ModalContent = styled.div<{ theme: typeof lightTheme }>`
+  background: ${props => props.theme.surface};
   border-radius: 15px;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
   width: 90%;
   max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
   animation: slideUp 0.3s ease;
 
   @keyframes slideUp {
@@ -520,47 +521,32 @@ const ModalContent = styled.div`
   }
 `;
 
-const ModalHeader = styled.div`
+const ModalHeader = styled.div<{ theme: typeof lightTheme }>`
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 20px;
-  border-bottom: 1px solid #e0e0e0;
+  background: ${props => props.theme.surface};
+  border-top-left-radius: 15px;
+  border-top-right-radius: 15px;
 `;
 
-const ModalTitle = styled.h3`
-  margin: 0;
-  font-size: 20px;
-  color: #333;
-`;
 
-const ReturnButton = styled.button`
-  background: #f5f5f5;
-  border: 1px solid #e0e0e0;
+const ReturnButton = styled.button<{ theme: typeof lightTheme }>`
+  background: ${props => props.theme.primary};
+  border: 1px solid ${props => props.theme.primary};
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 14px;
-  color: #333;
+  color: white;
   cursor: pointer;
   transition: all 0.3s ease;
 
   &:hover {
-    background: #e0e0e0;
+    background: ${props => props.theme.primaryHover};
   }
 `;
 
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  color: #666;
-  cursor: pointer;
-  padding: 0;
-
-  &:hover {
-    color: #333;
-  }
-`;
 
 const ModalBody = styled.div`
   padding: 20px;
@@ -589,7 +575,7 @@ const HomePage: React.FC = () => {
       <Container theme={getCurrentTheme()}>
         {/* 导航栏 */}
         <Navbar theme={getCurrentTheme()}>
-          <Logo>AI面试官系统</Logo>
+          <Logo theme={getCurrentTheme()}>AI面试官系统</Logo>
           <NavLinks>
             {Object.entries(t.nav).map(([key, value]) => (
               <NavLink key={key} href={`#${key}`}>{value}</NavLink>
@@ -622,8 +608,8 @@ const HomePage: React.FC = () => {
 
         {/* Hero Section */}
         <HeroSection theme={getCurrentTheme()}>
-          <HeroTitle>{t.hero.title}</HeroTitle>
-          <HeroSubtitle>{t.hero.subtitle}</HeroSubtitle>
+          <HeroTitle theme={getCurrentTheme()}>{t.hero.title}</HeroTitle>
+          <HeroSubtitle theme={getCurrentTheme()}>{t.hero.subtitle}</HeroSubtitle>
           <ControlButton
             theme={getCurrentTheme()}
             onClick={() => setShowLogin(true)}
@@ -634,13 +620,13 @@ const HomePage: React.FC = () => {
 
         {/* Features Section */}
         <FeaturesSection id="features">
-          <FeaturesTitle>{t.features.title}</FeaturesTitle>
+          <FeaturesTitle theme={getCurrentTheme()}>{t.features.title}</FeaturesTitle>
           <FeaturesGrid>
             {t.features.cards.map((card, index) => (
               <FeatureCard key={index} theme={getCurrentTheme()}>
                 <FeatureIcon>{card.icon}</FeatureIcon>
-                <FeatureTitle>{card.title}</FeatureTitle>
-                <FeatureDescription>{card.description}</FeatureDescription>
+                <FeatureTitle theme={getCurrentTheme()}>{card.title}</FeatureTitle>
+                <FeatureDescription theme={getCurrentTheme()}>{card.description}</FeatureDescription>
                 <FeatureButton theme={getCurrentTheme()}>{card.button}</FeatureButton>
               </FeatureCard>
             ))}
@@ -649,8 +635,8 @@ const HomePage: React.FC = () => {
 
         {/* Login Section */}
         <LoginSection theme={getCurrentTheme()}>
-          <LoginTitle>{t.login.prompt}</LoginTitle>
-          <LoginSubtitle>加入AI面试官系统，提升您的面试技巧</LoginSubtitle>
+          <LoginTitle theme={getCurrentTheme()}>{t.login.prompt}</LoginTitle>
+          <LoginSubtitle theme={getCurrentTheme()}>加入AI面试官系统，提升您的面试技巧</LoginSubtitle>
           <ControlButton
             theme={getCurrentTheme()}
             onClick={() => setShowLogin(true)}
@@ -679,11 +665,9 @@ const HomePage: React.FC = () => {
                 <ReturnButton onClick={() => setShowLogin(false)}>
                   返回
                 </ReturnButton>
-                <ModalTitle>登录</ModalTitle>
-                <CloseButton onClick={() => setShowLogin(false)}>×</CloseButton>
               </ModalHeader>
               <ModalBody>
-                <Login />
+                <Login theme={theme}/>
               </ModalBody>
             </ModalContent>
           </ModalOverlay>
