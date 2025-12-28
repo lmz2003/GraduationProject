@@ -5,6 +5,7 @@ import cors from 'cors';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggerInterceptor } from './common/interceptors/logger.interceptor';
 import { ValidationPipe } from '@nestjs/common';
+import * as bodyParser from 'body-parser';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -12,6 +13,10 @@ async function bootstrap() {
   
   // 配置CORS
   app.use(cors());
+  
+  // 增加body-parser请求体大小限制，解决头像上传问题
+  app.use(bodyParser.json({ limit: '5mb' })); // 增加JSON请求体大小限制到5MB
+  app.use(bodyParser.urlencoded({ limit: '5mb', extended: true })); // 增加URL编码请求体大小限制到5MB
   
   // 设置全局前缀
   app.setGlobalPrefix('api');
@@ -28,7 +33,7 @@ async function bootstrap() {
   // 获取端口配置
   const port = configService.get<number>('PORT') || 3001;
   
-  await app.listen(port);
-  console.log(`Server is running on http://localhost:${port}`);
+  await app.listen(3001);
+  console.log(`Server is running on http://localhost:3001`);
 }
 bootstrap();

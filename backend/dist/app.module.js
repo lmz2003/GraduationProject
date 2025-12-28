@@ -10,7 +10,10 @@ exports.AppModule = void 0;
 const common_1 = require("@nestjs/common");
 const config_1 = require("@nestjs/config");
 const throttler_1 = require("@nestjs/throttler");
+const typeorm_1 = require("@nestjs/typeorm");
 const auth_module_1 = require("./auth/auth.module");
+const notes_module_1 = require("./notes/notes.module");
+const users_module_1 = require("./users/users.module");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -25,7 +28,19 @@ exports.AppModule = AppModule = __decorate([
                     ttl: 15 * 60 * 1000, // 15 minutes
                     limit: process.env.MAX_REQUESTS_PER_15MIN ? parseInt(process.env.MAX_REQUESTS_PER_15MIN) : 5,
                 }]),
+            typeorm_1.TypeOrmModule.forRoot({
+                type: 'postgres',
+                host: process.env.DB_HOST || 'localhost',
+                port: parseInt(process.env.DB_PORT || '5432'),
+                username: process.env.DB_USERNAME || 'postgres',
+                password: process.env.DB_PASSWORD || '201966',
+                database: process.env.DB_NAME || 'notes',
+                autoLoadEntities: true,
+                synchronize: true, // Only use in development
+            }),
             auth_module_1.AuthModule,
+            notes_module_1.NotesModule,
+            users_module_1.UsersModule,
         ],
         controllers: [],
         providers: [],
