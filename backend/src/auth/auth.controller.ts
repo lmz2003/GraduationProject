@@ -31,10 +31,11 @@ export class AuthController {
   @Post('login')
   async login(@Body() loginDto: LoginDto) {
     try {
-      const tokenResponse = await this.authService.verifyLogin(loginDto.phoneNumber, loginDto.code);
+      const { token, isFirstLogin } = await this.authService.verifyLogin(loginDto.phoneNumber, loginDto.code);
       return {
         success: true,
-        token: tokenResponse.token,
+        token,
+        isFirstLogin,
       };
     } catch (error) {
       if (error instanceof Error) {

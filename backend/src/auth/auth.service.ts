@@ -1,12 +1,16 @@
 import { Injectable } from '@nestjs/common';
 import { VerificationCodeService } from './services/verification-code.service';
 import { JwtAuthService } from './services/jwt-auth.service';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { User } from '../users/entities/user.entity';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly verificationCodeService: VerificationCodeService,
     private readonly jwtAuthService: JwtAuthService,
+    @InjectRepository(User) private userRepository: Repository<User>,
   ) {}
 
   /**
@@ -36,7 +40,7 @@ export class AuthService {
    * @param code 验证码
    * @returns 包含JWT token的对象
    */
-  async verifyLogin(phoneNumber: string, code: string): Promise<{ token: string }> {
+  async verifyLogin(phoneNumber: string, code: string): Promise<{ token: string; isFirstLogin: boolean }> {
     // 验证手机号格式
     const phoneRegex = /^1[3-9]\d{9}$/;
     if (!phoneRegex.test(phoneNumber)) {
@@ -52,9 +56,20 @@ export class AuthService {
     // 删除已使用的验证码
     this.verificationCodeService.removeVerificationCode(phoneNumber);
 
-    // 生成JWT token
-    const token = this.jwtAuthService.generateToken({ phoneNumber });
+    // 检查用户是否存在
+    let user = await this.userRepository.findOneBy({ phoneNumber });
+    let isFirstLogin = false;
 
-    return { token };
+    // 如果用户不存在，创建新用户
+    if (!user) {
+      user = this.userRepository.create({ phoneNumber });
+      await this.userRepository.save(user);
+      isFirstLogin = true;
+    }
+
+    // 生成JWT token
+    const token = this.jwtAuthService.generateToken({ phoneNumber, userId: user.id });
+
+    return { token, isFirstLogin };
   }
 }

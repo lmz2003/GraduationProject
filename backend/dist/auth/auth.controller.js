@@ -51,10 +51,11 @@ let AuthController = class AuthController {
     login(loginDto) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const tokenResponse = yield this.authService.verifyLogin(loginDto.phoneNumber, loginDto.code);
+                const { token, isFirstLogin } = yield this.authService.verifyLogin(loginDto.phoneNumber, loginDto.code);
                 return {
                     success: true,
-                    token: tokenResponse.token,
+                    token,
+                    isFirstLogin,
                 };
             }
             catch (error) {
