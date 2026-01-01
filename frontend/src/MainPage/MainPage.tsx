@@ -41,6 +41,22 @@ const Header: React.FC<{
 const MainPageLayout: React.FC = () => {
   const [activeModule, setActiveModule] = useState<string>('notes');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
+  const { isOpen: isAssistantOpen } = useAIAssistant();
+
+  // Initialize sidebar state based on screen width
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth <= 900) {
+        setIsSidebarCollapsed(true);
+      } else {
+        setIsSidebarCollapsed(false);
+      }
+    };
+    
+    handleResize();
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // User data state
   const [userData, setUserData] = useState<{
@@ -85,6 +101,9 @@ const MainPageLayout: React.FC = () => {
   // Handle navigation item click
   const handleNavClick = (module: string) => {
     setActiveModule(module);
+    if (window.innerWidth <= 900) {
+      setIsSidebarCollapsed(true);
+    }
   };
 
   // Toggle sidebar collapse
@@ -105,7 +124,12 @@ const MainPageLayout: React.FC = () => {
   };
 
   return (
-    <div className={styles.layoutContainer}>
+    <div className={`${styles.layoutContainer} ${!isAssistantOpen ? styles.aiClosed : ''}`}>
+      {/* Mobile Overlay for Left Sidebar */}
+      {!isSidebarCollapsed && (
+        <div className={styles.sidebarOverlay} onClick={() => setIsSidebarCollapsed(true)} />
+      )}
+
       {/* Sidebar (Aside) */}
       <aside className={`${styles.sidebar} ${isSidebarCollapsed ? styles.collapsed : ''}`}>
         <div className={styles.sidebarHeader}>
@@ -193,7 +217,7 @@ const MainPageLayout: React.FC = () => {
         </div>
       </aside>
 
-      {/* Main Content Area */}
+      {/* Center Column */}
       <div className={styles.mainWrapper}>
         <Header activeModule={activeModule} userData={userData} />
 
@@ -206,8 +230,10 @@ const MainPageLayout: React.FC = () => {
         </main>
       </div>
 
-      {/* AI Assistant Drawer */}
-      <AIAssistant />
+      {/* Right Sidebar */}
+      <aside className={`${styles.rightSidebar} ${!isAssistantOpen ? styles.aiHidden : ''}`}>
+        <AIAssistant />
+      </aside>
     </div>
   );
 };
