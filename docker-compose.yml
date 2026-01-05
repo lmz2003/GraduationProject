@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  # PostgreSQL 数据库
+  postgres:
+    image: postgres:15-alpine
+    container_name: graduation_postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: 201966
+      POSTGRES_DB: notes
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - graduation_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Milvus 向量数据库
+  milvus:
+    image: milvusdb/milvus:latest
+    container_name: graduation_milvus
+    environment:
+      COMMON_STORAGETYPE: local
+      ETCD_ENDPOINTS: etcd:2379
+      MINIO_ADDRESS: minio:9000
+    ports:
+      - "19530:19530"  # gRPC 端口
+      - "9091:9091"    # HTTP 端口
+    volumes:
+      - milvus_data:/var/lib/milvus
+    networks:
+      - graduation_network
+    depends_on:
+      - etcd
+      - minio
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9091/healthz || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # etcd - Milvus 依赖
+  etcd:
+    image: quay.io/coreos/etcd:v3.5.5
+    container_name: graduation_etcd
+    environment:
+      - ETCD_AUTO_COMPACTION_MODE=revision
+      - ETCD_AUTO_COMPACTION_RETENTION=1000
+      - ETCD_QUOTA_BACKEND_BYTES=4294967296
+      - ETCD_SNAPSHOT_COUNT=50000
+    ports:
+      - "2379:2379"
+    volumes:
+      - etcd_data:/etcd
+    networks:
+      - graduation_network
+    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+
+  # MinIO - Milvus 依赖（对象存储）
+  minio:
+    image: minio/minio:latest
+    container_name: graduation_minio
+    environment:
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/minio_data
+    networks:
+      - graduation_network
+    command: minio server /minio_data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
+volumes:
+  postgres_data:
+  milvus_data:
+  etcd_data:
+  minio_data:
+
+networks:
+  graduation_network:
+    driver: bridge

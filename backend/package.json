@@ -40,7 +40,14 @@
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
     "socket.io": "^4.8.1",
-    "typeorm": "^0.3.27"
+    "typeorm": "^0.3.27",
+    "langchain": "^0.1.35",
+    "@langchain/core": "^0.1.46",
+    "@langchain/community": "^0.0.37",
+    "@langchain/openai": "^0.0.33",
+    "milvus2-sdk-node": "^2.4.3",
+    "pdf-parse": "^1.1.1",
+    "axios": "^1.6.5"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",
