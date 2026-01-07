@@ -3,7 +3,10 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 
 export interface JwtPayload {
-  phoneNumber: string;
+  userId?: string;
+  phoneNumber?: string;
+  githubId?: string;
+  username?: string;
   [key: string]: any;
 }
 
