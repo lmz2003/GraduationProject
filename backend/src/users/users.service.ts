@@ -19,6 +19,11 @@ export class UsersService {
     return user;
   }
 
+  // Get user by GitHub id
+  async getUserByGithubId(githubId: string): Promise<User | null> {
+    return this.userRepository.findOne({ where: { githubId } });
+  }
+
   // Get user by phone number
   async getUserByPhoneNumber(phoneNumber: string): Promise<User | null> {
     return this.userRepository.findOneBy({ phoneNumber });
@@ -37,8 +42,8 @@ export class UsersService {
   }
 
   // Create a new user
-  async createUser(phoneNumber: string): Promise<User> {
-    const user = this.userRepository.create({ phoneNumber });
+  async createUserFromGithub(payload: Partial<User>): Promise<User> {
+    const user = this.userRepository.create(payload);
     return this.userRepository.save(user);
   }
 }

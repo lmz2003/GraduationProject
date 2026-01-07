@@ -45,7 +45,7 @@
     "@langchain/core": "^0.1.46",
     "@langchain/community": "^0.0.37",
     "@langchain/openai": "^0.0.33",
-    "milvus2-sdk-node": "^2.4.3",
+    "@zilliz/milvus2-sdk-node": "^2.4.3",
     "pdf-parse": "^1.1.1",
     "axios": "^1.6.5"
   },

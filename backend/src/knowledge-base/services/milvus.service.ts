@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { MilvusClient } from 'milvus2-sdk-node';
+import { MilvusClient } from '@zilliz/milvus2-sdk-node';
 
 @Injectable()
 export class MilvusService implements OnModuleInit, OnModuleDestroy {

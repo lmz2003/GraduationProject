@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { SendCodeDto } from './dto/send-code.dto';
 import { LoginDto } from './dto/login.dto';
 import { Throttle } from '@nestjs/throttler';
+import { GithubLoginDto } from './dto/github-login.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -50,6 +51,29 @@ export class AuthController {
             HttpStatus.UNAUTHORIZED,
           );
         }
+      }
+      throw error;
+    }
+  }
+
+  @Post('github')
+  async githubLogin(@Body() githubLoginDto: GithubLoginDto) {
+    try {
+      const { token, isFirstLogin, user } = await this.authService.loginWithGithub(
+        githubLoginDto.code,
+        githubLoginDto.redirectUri,
+      );
+
+      return {
+        success: true,
+        token,
+        isFirstLogin,
+        user,
+      };
+    } catch (error) {
+      if (error instanceof Error) {
+        const message = error.message || 'GitHub login failed';
+        throw new HttpException({ message }, HttpStatus.UNAUTHORIZED);
       }
       throw error;
     }
