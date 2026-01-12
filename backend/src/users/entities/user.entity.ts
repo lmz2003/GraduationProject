@@ -5,11 +5,8 @@ export class User {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @Column({ unique: true, nullable: true })
-  phoneNumber?: string;
-
-  @Column({ unique: true, nullable: true })
-  githubId?: string;
+  @Column({ unique: true })
+  githubId!: string;
 
   @Column({ nullable: true })
   githubUsername?: string;

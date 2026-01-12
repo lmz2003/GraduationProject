@@ -142,7 +142,7 @@ const getTheme = (theme: string | undefined) => {
 // Login Component with theme prop
 interface LoginProps {
   theme?: ThemeType;
-  onLogin: (isFirstLogin: boolean) => void;
+  onLogin: () => void;
 }
 
 const Login: React.FC<LoginProps> = ({ theme: propTheme, onLogin }) => {
@@ -181,17 +181,10 @@ const Login: React.FC<LoginProps> = ({ theme: propTheme, onLogin }) => {
       }
 
       localStorage.setItem('token', data.token);
-
-      if (data.isFirstLogin) {
-        localStorage.setItem('isFirstLogin', 'true');
-      } else {
-        localStorage.removeItem('isFirstLogin');
-      }
-
       localStorage.removeItem('github_oauth_state');
 
       setSuccessMessage('登录成功，正在进入应用...');
-      onLogin(Boolean(data.isFirstLogin));
+      onLogin();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'GitHub 登录失败，请稍后再试';
       setErrorMessage(message);

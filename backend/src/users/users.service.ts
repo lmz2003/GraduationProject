@@ -24,11 +24,6 @@ export class UsersService {
     return this.userRepository.findOne({ where: { githubId } });
   }
 
-  // Get user by phone number
-  async getUserByPhoneNumber(phoneNumber: string): Promise<User | null> {
-    return this.userRepository.findOneBy({ phoneNumber });
-  }
-
   // Update user information
   async updateUserInfo(userId: string, updateUserDto: UpdateUserDto): Promise<User> {
     const user = await this.getUserById(userId);

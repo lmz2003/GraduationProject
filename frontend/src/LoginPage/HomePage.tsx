@@ -570,11 +570,7 @@ const HomePage: React.FC = () => {
   const t = i18n[language];
 
   // Handle login callback
-  const handleLogin = (isFirstLogin: boolean) => {
-    // Save isFirstLogin to localStorage if it's true
-    if (isFirstLogin) {
-      localStorage.setItem('isFirstLogin', 'true');
-    }
+  const handleLogin = () => {
     // Refresh page to let App component check login status
     window.location.reload();
   };
