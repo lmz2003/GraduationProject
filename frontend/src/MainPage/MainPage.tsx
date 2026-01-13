@@ -76,7 +76,8 @@ const MainPageLayout: React.FC = () => {
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        const response = await fetch('http://localhost:3001/api/users/profile', {
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+        const response = await fetch(`${apiBaseUrl}/users/me`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -85,8 +86,8 @@ const MainPageLayout: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           setUserData({
-            name: data.nickname || '用户',
-            email: data.phoneNumber || '', // Using phone number as identifier if email not available
+            name: data.name || data.githubUsername || '用户',
+            email: data.email || '',
             avatar: data.avatar || ''
           });
         }
