@@ -13,6 +13,7 @@
 ## 📊 实现概览
 
 ### 核心功能
+
 - ✅ 文档管理（添加、更新、删除）
 - ✅ 智能向量化（使用 OpenAI Embeddings）
 - ✅ 语义搜索（基于 Milvus 向量数据库）
@@ -21,6 +22,7 @@
 - ✅ 高级功能（总结、分类、评估等）
 
 ### 技术栈
+
 - **后端**: NestJS + TypeScript
 - **数据库**: PostgreSQL + Milvus
 - **AI 框架**: LangChain + OpenAI
@@ -64,43 +66,23 @@
 ✅ docker-compose.yml (100 行)
 ```
 
-### 文档文件 (7 个)
+### 文档文件 (5 个)
 
 ```
-✅ RAG_KNOWLEDGE_BASE_README.md (500+ 行)
-   - 完整系统文档
-   - API 使用指南
-   - 故障排除
+✅ START_HERE.md
+   - 统一指南：快速开始、FAQ 摘要、运维要点
 
-✅ QUICK_START_RAG.md (300+ 行)
-   - 5分钟快速启动
-   - 示例代码
-   - 常见用例
+✅ RAG_KNOWLEDGE_BASE_README.md
+   - 完整系统文档、API 使用指南、架构说明
 
-✅ INTEGRATION_EXAMPLES.md (400+ 行)
-   - 详细集成示例
-   - React 组件示例
-   - 完整的 AI 系统示例
+✅ INTEGRATION_EXAMPLES.md
+   - 集成示例与前端用法
 
-✅ RAG_SYSTEM_SUMMARY.md (400+ 行)
-   - 项目总结
-   - 架构说明
-   - 性能指标
+✅ SETUP_CHECKLIST.md
+   - 安装检查清单与验证步骤
 
-✅ SETUP_CHECKLIST.md (300+ 行)
-   - 安装检查清单
-   - 验证步骤
-   - 故障排除
-
-✅ RAG_FAQ.md (500+ 行)
-   - 32 个常见问题
-   - 详细解答
-   - 最佳实践
-
-✅ FILE_STRUCTURE.md (350+ 行)
-   - 完整文件结构
-   - 数据流说明
-   - 依赖关系图
+✅ FILE_STRUCTURE.md
+   - 文件结构与依赖关系概览
 ```
 
 ### 已修改文件 (2 个)
@@ -117,25 +99,27 @@
 
 ## 📈 代码统计
 
-| 类型 | 数量 | 行数 |
-|------|------|------|
-| TypeScript 文件 | 10 | ~1800 |
-| React 组件 | 1 | ~450 |
-| 配置文件 | 2 | ~130 |
-| 文档文件 | 7 | ~2500 |
-| **总计** | **20** | **~4880** |
+| 类型            | 数量   | 行数      |
+| --------------- | ------ | --------- |
+| TypeScript 文件 | 10     | ~1800     |
+| React 组件      | 1      | ~450      |
+| 配置文件        | 2      | ~130      |
+| 文档文件        | 5      | ~1200     |
+| **总计**        | **18** | **~3580** |
 
 ---
 
 ## 🚀 快速开始 (3 步)
 
 ### 1️⃣ 安装依赖
+
 ```bash
 cd backend && npm install
 cd ../frontend && npm install
 ```
 
 ### 2️⃣ 启动服务
+
 ```bash
 # 终端 1
 docker-compose up -d
@@ -148,6 +132,7 @@ cd frontend && npm run dev
 ```
 
 ### 3️⃣ 配置 API 密钥
+
 ```bash
 cp backend/.env.example backend/.env
 # 编辑 .env，添加 OPENAI_API_KEY
@@ -160,6 +145,7 @@ cp backend/.env.example backend/.env
 ## 🎯 核心 API 端点
 
 ### 文档管理
+
 ```bash
 POST   /api/knowledge-base/documents          # 添加文档
 GET    /api/knowledge-base/documents          # 获取列表
@@ -169,6 +155,7 @@ DELETE /api/knowledge-base/documents/:id      # 删除文档
 ```
 
 ### 查询功能
+
 ```bash
 POST   /api/knowledge-base/query              # 基础查询
 POST   /api/knowledge-base/rag-query          # RAG 查询
@@ -179,15 +166,13 @@ GET    /api/knowledge-base/statistics         # 获取统计
 
 ## 📚 文档导航
 
-| 文档 | 用途 | 推荐读者 |
-|------|------|---------|
-| **QUICK_START_RAG.md** | 快速入门 | 👤 新用户 |
-| **RAG_KNOWLEDGE_BASE_README.md** | 详细文档 | 👨‍💻 开发者 |
-| **INTEGRATION_EXAMPLES.md** | 代码示例 | 👨‍💻 开发者 |
-| **RAG_SYSTEM_SUMMARY.md** | 项目总结 | 👔 项目经理 |
-| **SETUP_CHECKLIST.md** | 安装验证 | 🔧 运维人员 |
-| **RAG_FAQ.md** | 常见问题 | ❓ 所有人 |
-| **FILE_STRUCTURE.md** | 文件结构 | 👨‍💻 开发者 |
+| 文档                                     | 用途                      | 推荐读者    |
+| ---------------------------------------- | ------------------------- | ----------- |
+| **START_HERE.md**                        | 统一快速开始/FAQ/运维要点 | 👤 新用户   |
+| **backend/RAG_KNOWLEDGE_BASE_README.md** | 详细文档与 API            | 👨‍💻 开发者   |
+| **INTEGRATION_EXAMPLES.md**              | 代码示例                  | 👨‍💻 开发者   |
+| **SETUP_CHECKLIST.md**                   | 安装验证                  | 🔧 运维人员 |
+| **FILE_STRUCTURE.md**                    | 文件结构                  | 👨‍💻 开发者   |
 
 ---
 
@@ -239,17 +224,20 @@ GET    /api/knowledge-base/statistics         # 获取统计
 ## 🔧 配置参数
 
 ### Milvus 向量数据库
+
 - **集合名**: knowledge_vectors
 - **向量维度**: 1536 (OpenAI text-embedding-3-small)
 - **索引类型**: IVF_FLAT (可升级为 HNSW)
 - **距离度量**: L2 (欧氏距离)
 
 ### LangChain 文本处理
+
 - **块大小**: 1000 字符
 - **块重叠**: 200 字符
 - **分割优先级**: ['\n\n', '\n', ' ', '']
 
 ### LLM 模型
+
 - **模型**: gpt-3.5-turbo
 - **温度**: 0.7
 - **最大令牌**: 1000
@@ -259,24 +247,28 @@ GET    /api/knowledge-base/statistics         # 获取统计
 ## 💡 关键特性
 
 ### 1. 智能文档处理
+
 - 自动文本分割
 - 向量化处理
 - 元数据管理
 - 用户隔离
 
 ### 2. 高效搜索
+
 - 语义相似度搜索
 - 自定义阈值
 - 相关性排序
 - 批量处理
 
 ### 3. RAG 增强
+
 - 自动上下文检索
 - 动态提示词构建
 - 多文档融合
 - 权重计算
 
 ### 4. LLM 集成
+
 - 答案生成
 - 文档总结
 - 关键词提取
@@ -289,7 +281,7 @@ GET    /api/knowledge-base/statistics         # 获取统计
 
 - **向量生成**: ~100ms/文档
 - **相似度搜索**: ~10ms/查询
-- **文档处理**: ~500ms/1000字符
+- **文档处理**: ~500ms/1000 字符
 - **支持文档数**: 100K+ (取决于配置)
 - **并发连接**: 100+ (取决于服务器)
 
@@ -298,6 +290,7 @@ GET    /api/knowledge-base/statistics         # 获取统计
 ## ✅ 完成清单
 
 ### 后端实现
+
 - [x] Milvus 服务集成
 - [x] LangChain 集成
 - [x] OpenAI Embeddings
@@ -310,6 +303,7 @@ GET    /api/knowledge-base/statistics         # 获取统计
 - [x] 日志记录
 
 ### 前端实现
+
 - [x] 知识库组件
 - [x] 文档管理界面
 - [x] 查询界面
@@ -317,12 +311,14 @@ GET    /api/knowledge-base/statistics         # 获取统计
 - [x] 错误处理
 
 ### 部署配置
+
 - [x] Docker Compose
 - [x] 环境变量配置
 - [x] 依赖管理
 - [x] 健康检查
 
 ### 文档完成
+
 - [x] 系统文档
 - [x] 快速启动
 - [x] 集成示例
@@ -335,18 +331,21 @@ GET    /api/knowledge-base/statistics         # 获取统计
 ## 🚀 后续优化方向
 
 ### 短期 (1-2 周)
+
 - [ ] 添加 PDF 支持
 - [ ] 实现缓存机制
 - [ ] 性能优化
 - [ ] 安全加固
 
 ### 中期 (1-2 月)
+
 - [ ] 升级到 HNSW 索引
 - [ ] 支持多向量检索
 - [ ] GPU 加速
 - [ ] 批量导入功能
 
 ### 长期 (2-3 月)
+
 - [ ] 分布式部署
 - [ ] 集群支持
 - [ ] 高可用配置
@@ -359,12 +358,14 @@ GET    /api/knowledge-base/statistics         # 获取统计
 ### 遇到问题？
 
 1. **查看文档**
-   - 快速问题 → `RAG_FAQ.md`
+
+   - 快速问题 → `START_HERE.md`
    - 安装问题 → `SETUP_CHECKLIST.md`
    - 使用问题 → `RAG_KNOWLEDGE_BASE_README.md`
    - 代码问题 → `INTEGRATION_EXAMPLES.md`
 
 2. **检查日志**
+
    ```bash
    docker-compose logs -f backend
    docker-compose logs -f milvus
@@ -405,16 +406,19 @@ ISC
 ## 📌 重要提醒
 
 1. **API 密钥安全**
+
    - 不要将 API 密钥提交到 Git
    - 使用 `.env` 文件管理敏感信息
    - 定期轮换密钥
 
 2. **数据备份**
+
    - 定期备份 PostgreSQL 数据
    - 备份 Milvus 向量数据
    - 实现灾难恢复计划
 
 3. **性能监控**
+
    - 监控 API 响应时间
    - 跟踪 OpenAI API 成本
    - 定期优化查询性能

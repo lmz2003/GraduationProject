@@ -5,16 +5,19 @@
 ## ✅ 前置条件检查
 
 - [ ] Node.js >= 16 已安装
+
   ```bash
   node --version
   ```
 
 - [ ] npm 已安装
+
   ```bash
   npm --version
   ```
 
 - [ ] Docker 已安装
+
   ```bash
   docker --version
   ```
@@ -51,10 +54,9 @@
 
 ### 文档文件
 
+- [ ] `/START_HERE.md` 存在
 - [ ] `/backend/RAG_KNOWLEDGE_BASE_README.md` 存在
-- [ ] `/QUICK_START_RAG.md` 存在
 - [ ] `/INTEGRATION_EXAMPLES.md` 存在
-- [ ] `/RAG_SYSTEM_SUMMARY.md` 存在
 
 ## ✅ 依赖安装检查
 
@@ -70,6 +72,7 @@ npm list pdf-parse
 ```
 
 验证输出中应包含：
+
 - [ ] langchain@^0.1.35
 - [ ] @langchain/core@^0.1.46
 - [ ] @langchain/openai@^0.0.33
@@ -129,6 +132,7 @@ docker-compose up -d
 ```
 
 验证服务状态：
+
 ```bash
 docker-compose ps
 ```
@@ -154,6 +158,7 @@ npm run start:dev
 ```
 
 验证输出：
+
 ```
 [Nest] ... - 01/15/2024, 10:30:00 AM     LOG [NestFactory] Starting Nest application...
 [Nest] ... - 01/15/2024, 10:30:00 AM     LOG [InstanceLoader] KnowledgeBaseModule dependencies initialized
@@ -172,6 +177,7 @@ npm run dev
 ```
 
 验证输出：
+
 ```
   VITE v... ready in ... ms
 
@@ -393,10 +399,12 @@ docker-compose logs backend
 
 1. **文档**
    - `RAG_KNOWLEDGE_BASE_README.md` - 详细文档
-   - `QUICK_START_RAG.md` - 快速启动
-   - `INTEGRATION_EXAMPLES.md` - 集成示例
+
+- `START_HERE.md` - 统一快速启动/FAQ
+- `INTEGRATION_EXAMPLES.md` - 集成示例
 
 2. **日志**
+
    - 后端控制台输出
    - Docker 日志
    - 浏览器开发者工具
@@ -411,6 +419,7 @@ docker-compose logs backend
 所有检查完成后，你的 RAG 知识库系统已准备就绪！
 
 开始使用：
+
 1. 添加你的知识文档
 2. 查询知识库
 3. 与 LLM 集成生成答案

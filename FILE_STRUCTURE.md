@@ -5,13 +5,11 @@
 ```
 GraduationProject/
 │
-├── 📄 README files (新增)
-│   ├── RAG_KNOWLEDGE_BASE_README.md      # 详细的 RAG 系统文档
-│   ├── QUICK_START_RAG.md                # 5分钟快速启动指南
+├── 📄 README files (精简后)
+│   ├── START_HERE.md                     # 统一快速开始/FAQ/运维指南
+│   ├── backend/RAG_KNOWLEDGE_BASE_README.md  # 详细的 RAG 系统文档
 │   ├── INTEGRATION_EXAMPLES.md           # 集成示例和代码
-│   ├── RAG_SYSTEM_SUMMARY.md             # 完整实现总结
 │   ├── SETUP_CHECKLIST.md                # 安装检查清单
-│   ├── RAG_FAQ.md                        # 常见问题解答
 │   └── FILE_STRUCTURE.md                 # 本文件
 │
 ├── 📦 backend/
@@ -157,19 +155,18 @@ GraduationProject/
 ├── .gitignore                            # ✏️ 已更新
 ├── docker-compose.yml                    # 🆕 Docker 服务编排
 │
-└── 📄 Documentation Files (新增)
-    ├── RAG_KNOWLEDGE_BASE_README.md
-    ├── QUICK_START_RAG.md
-    ├── INTEGRATION_EXAMPLES.md
-    ├── RAG_SYSTEM_SUMMARY.md
-    ├── SETUP_CHECKLIST.md
-    ├── RAG_FAQ.md
-    └── FILE_STRUCTURE.md
+└── 📄 Documentation Files (精简后)
+  ├── START_HERE.md
+  ├── backend/RAG_KNOWLEDGE_BASE_README.md
+  ├── INTEGRATION_EXAMPLES.md
+  ├── SETUP_CHECKLIST.md
+  └── FILE_STRUCTURE.md
 ```
 
 ## 📊 新增文件统计
 
 ### 后端文件 (10 个新文件)
+
 ```
 backend/src/knowledge-base/
 ├── entities/
@@ -190,6 +187,7 @@ backend/src/knowledge-base/
 ```
 
 ### 前端文件 (1 个新文件)
+
 ```
 frontend/src/components/
 └── KnowledgeBase.tsx                      (1 个)
@@ -198,6 +196,7 @@ frontend/src/components/
 ```
 
 ### 配置文件 (2 个新文件)
+
 ```
 backend/.env.example                       (1 个)
 docker-compose.yml                         (1 个)
@@ -205,20 +204,20 @@ docker-compose.yml                         (1 个)
 总计: 2 个配置文件
 ```
 
-### 文档文件 (7 个新文件)
+### 文档文件 (5 个)
+
 ```
-RAG_KNOWLEDGE_BASE_README.md
-QUICK_START_RAG.md
+START_HERE.md
+backend/RAG_KNOWLEDGE_BASE_README.md
 INTEGRATION_EXAMPLES.md
-RAG_SYSTEM_SUMMARY.md
 SETUP_CHECKLIST.md
-RAG_FAQ.md
 FILE_STRUCTURE.md
 
-总计: 7 个文档文件
+总计: 5 个文档文件
 ```
 
 ### 已修改文件 (2 个)
+
 ```
 backend/package.json                       (✏️ 添加依赖)
 backend/src/app.module.ts                  (✏️ 导入 KnowledgeBaseModule)
@@ -230,29 +229,30 @@ backend/src/app.module.ts                  (✏️ 导入 KnowledgeBaseModule)
 
 ### 1. 核心服务文件
 
-| 文件 | 功能 | 主要方法 |
-|------|------|---------|
-| `milvus.service.ts` | 向量数据库管理 | insertVector, searchSimilar, deleteVector |
-| `langchain.service.ts` | 文本处理和向量化 | generateEmbedding, splitText, processDocument |
-| `knowledge-base.service.ts` | 业务逻辑 | addDocument, queryKnowledge, ragQuery |
-| `llm-integration.service.ts` | LLM 集成 | generateRAGAnswer, summarizeDocument, evaluateAnswer |
+| 文件                         | 功能             | 主要方法                                             |
+| ---------------------------- | ---------------- | ---------------------------------------------------- |
+| `milvus.service.ts`          | 向量数据库管理   | insertVector, searchSimilar, deleteVector            |
+| `langchain.service.ts`       | 文本处理和向量化 | generateEmbedding, splitText, processDocument        |
+| `knowledge-base.service.ts`  | 业务逻辑         | addDocument, queryKnowledge, ragQuery                |
+| `llm-integration.service.ts` | LLM 集成         | generateRAGAnswer, summarizeDocument, evaluateAnswer |
 
 ### 2. API 端点
 
-| 端点 | 方法 | 功能 |
-|------|------|------|
-| `/api/knowledge-base/documents` | POST | 添加文档 |
-| `/api/knowledge-base/documents` | GET | 获取文档列表 |
-| `/api/knowledge-base/documents/:id` | GET | 获取单个文档 |
-| `/api/knowledge-base/documents/:id` | PUT | 更新文档 |
-| `/api/knowledge-base/documents/:id` | DELETE | 删除文档 |
-| `/api/knowledge-base/query` | POST | 查询知识库 |
-| `/api/knowledge-base/rag-query` | POST | RAG 查询 |
-| `/api/knowledge-base/statistics` | GET | 获取统计 |
+| 端点                                | 方法   | 功能         |
+| ----------------------------------- | ------ | ------------ |
+| `/api/knowledge-base/documents`     | POST   | 添加文档     |
+| `/api/knowledge-base/documents`     | GET    | 获取文档列表 |
+| `/api/knowledge-base/documents/:id` | GET    | 获取单个文档 |
+| `/api/knowledge-base/documents/:id` | PUT    | 更新文档     |
+| `/api/knowledge-base/documents/:id` | DELETE | 删除文档     |
+| `/api/knowledge-base/query`         | POST   | 查询知识库   |
+| `/api/knowledge-base/rag-query`     | POST   | RAG 查询     |
+| `/api/knowledge-base/statistics`    | GET    | 获取统计     |
 
 ### 3. 数据模型
 
 #### KnowledgeDocument 实体
+
 ```typescript
 {
   id: string                    // UUID
@@ -272,6 +272,7 @@ backend/src/app.module.ts                  (✏️ 导入 KnowledgeBaseModule)
 ## 🔄 数据流
 
 ### 添加文档流程
+
 ```
 用户输入
   ↓
@@ -291,6 +292,7 @@ Milvus 存储向量
 ```
 
 ### 查询流程
+
 ```
 用户查询
   ↓
@@ -333,16 +335,21 @@ KnowledgeBaseModule
 ## 🚀 启动顺序
 
 1. **启动基础服务**
+
    ```bash
    docker-compose up -d
    ```
+
    启动顺序: PostgreSQL → Milvus (etcd + minio)
 
 2. **启动后端**
+
    ```bash
    npm run start:dev
    ```
-   初始化顺序: 
+
+   初始化顺序:
+
    - ConfigModule
    - TypeOrmModule (连接 PostgreSQL)
    - MilvusService (连接 Milvus，创建集合)
@@ -392,15 +399,13 @@ LOG_LEVEL=debug
 
 ## 📚 文档索引
 
-| 文档 | 用途 | 读者 |
-|------|------|------|
-| QUICK_START_RAG.md | 5分钟快速开始 | 新用户 |
-| RAG_KNOWLEDGE_BASE_README.md | 详细系统文档 | 开发者 |
-| INTEGRATION_EXAMPLES.md | 代码示例 | 开发者 |
-| RAG_SYSTEM_SUMMARY.md | 项目总结 | 项目经理 |
-| SETUP_CHECKLIST.md | 安装验证 | 运维人员 |
-| RAG_FAQ.md | 常见问题 | 所有人 |
-| FILE_STRUCTURE.md | 文件结构 | 开发者 |
+| 文档                                 | 用途                  | 读者     |
+| ------------------------------------ | --------------------- | -------- |
+| START_HERE.md                        | 统一快速开始/FAQ/运维 | 新用户   |
+| backend/RAG_KNOWLEDGE_BASE_README.md | 详细系统文档          | 开发者   |
+| INTEGRATION_EXAMPLES.md              | 代码示例              | 开发者   |
+| SETUP_CHECKLIST.md                   | 安装验证              | 运维人员 |
+| FILE_STRUCTURE.md                    | 文件结构              | 开发者   |
 
 ## ✅ 完整性检查
 
