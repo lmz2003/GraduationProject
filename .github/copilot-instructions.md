@@ -4,7 +4,7 @@
 这是一个包含 **NestJS** 后端和 **React + Vite** 前端的全栈应用程序。
 - **根目录**: 包含 `backend/` 和 `frontend/` 目录。
 - **数据库**: PostgreSQL (通过 TypeORM)。
-- **认证**: 手机号验证 + JWT。
+- **认证**: GitHub OAuth 2.0 + JWT。
 
 ## 后端 (NestJS)
 - **框架**: NestJS 配合 TypeORM。
@@ -13,9 +13,9 @@
   - 使用 **TypeORM**，实体文件位于 `*.entity.ts`。
   - 通过 `ConfigModule` 和 `.env` 进行配置。
 - **认证**:
-  - `AuthModule` 处理手机号和验证码登录。
+  - `AuthModule` 处理 GitHub OAuth 2.0 登录。
   - 受保护的路由使用 `JwtAuthGuard`。
-  - `isFirstLogin` 逻辑处理用户引导。
+  - 通过 GitHub 授权自动获取用户信息（昵称、头像、邮箱等）。
 - **验证**:
   - 在 DTO (`*.dto.ts`) 中使用 `class-validator` 装饰器。
   - 启用了全局 `ValidationPipe` 并设置 `whitelist: true`。
@@ -29,7 +29,7 @@
 - **框架**: React 19 + TypeScript + Vite。
 - **样式**:
   - **Styled-components** 用于动态组件样式 (例如 `Login.tsx`)。
-  - **SCSS Modules** (`*.module.scss`) 用于页面级布局 (例如 `UserSetup.module.scss`)。
+  - **SCSS Modules** (`*.module.scss`) 用于页面级布局 (例如 `MainPage.module.scss`)。
 - **状态管理**:
   - 本地状态 (`useState`) 和用于存储 auth token 的 `localStorage`。
   - `useEffect` 用于副作用和 token 监听。

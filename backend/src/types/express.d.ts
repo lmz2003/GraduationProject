@@ -5,9 +5,11 @@ declare module 'express' {
   interface Request {
     user?: {
       id: string;
-      phoneNumber: string;
+      githubId: string;
+      githubUsername?: string;
       name?: string;
       avatar?: string;
+      email?: string;
     };
   }
 }

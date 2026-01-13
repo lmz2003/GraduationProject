@@ -39,12 +39,12 @@ VITE_GITHUB_REDIRECT_URI=http://localhost:5173/login
 
 ## 5) 登录流程说明
 
-- 前端点击 “Continue with GitHub” 后跳转 GitHub 授权页。
+- 前端点击 "Continue with GitHub" 后跳转 GitHub 授权页。
 - GitHub 回调到 `http://localhost:5173/login?code=...&state=...`。
 - 前端用 `code` 调用后端 `POST /api/auth/github`，后端验证并返回：
   - `token`: JWT，已包含 GitHub 用户标识
-  - `isFirstLogin`: 是否首次登录
-- 前端会将 `token` 存入 `localStorage`，首登时同步保存 `isFirstLogin=true`。
+  - `user`: 用户信息对象（包含昵称、头像、邮箱等）
+- 前端会将 `token` 存入 `localStorage`，并自动跳转到应用主页。
 
 ## 6) 数据与字段
 

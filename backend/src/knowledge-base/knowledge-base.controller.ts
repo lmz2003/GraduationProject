@@ -18,8 +18,11 @@ import { QueryKnowledgeDto } from './dto/query-knowledge.dto';
 interface AuthRequest extends Request {
   user?: {
     id: string;
-    phoneNumber: string;
+    githubId: string;
+    githubUsername?: string;
     name?: string;
+    avatar?: string;
+    email?: string;
   };
 }
 

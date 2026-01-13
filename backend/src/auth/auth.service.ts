@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { VerificationCodeService } from './services/verification-code.service';
 import { JwtAuthService } from './services/jwt-auth.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -10,76 +9,15 @@ import axios from 'axios';
 @Injectable()
 export class AuthService {
   constructor(
-    private readonly verificationCodeService: VerificationCodeService,
     private readonly jwtAuthService: JwtAuthService,
     private readonly configService: ConfigService,
     @InjectRepository(User) private userRepository: Repository<User>,
   ) {}
 
   /**
-   * 发送验证码
-   * @param phoneNumber 手机号码
-   */
-  async sendVerificationCode(phoneNumber: string): Promise<void> {
-    // 验证手机号格式
-    const phoneRegex = /^1[3-9]\d{9}$/;
-    if (!phoneRegex.test(phoneNumber)) {
-      throw new Error('Invalid phone number format');
-    }
-
-    // 生成6位验证码
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // 存储验证码
-    this.verificationCodeService.storeVerificationCode(phoneNumber, verificationCode);
-
-    // TODO: 实际项目中这里应该集成短信发送服务
-    console.log(`Verification code for ${phoneNumber}: ${verificationCode}`);
-  }
-
-  /**
-   * 验证登录凭证
-   * @param phoneNumber 手机号码
-   * @param code 验证码
-   * @returns 包含JWT token的对象
-   */
-  async verifyLogin(phoneNumber: string, code: string): Promise<{ token: string; isFirstLogin: boolean }> {
-    // 验证手机号格式
-    const phoneRegex = /^1[3-9]\d{9}$/;
-    if (!phoneRegex.test(phoneNumber)) {
-      throw new Error('Invalid phone number format');
-    }
-
-    // 验证验证码
-    const isCodeValid = this.verificationCodeService.checkVerificationCode(phoneNumber, code);
-    if (!isCodeValid) {
-      throw new Error('Invalid or expired verification code');
-    }
-
-    // 删除已使用的验证码
-    this.verificationCodeService.removeVerificationCode(phoneNumber);
-
-    // 检查用户是否存在
-    let user = await this.userRepository.findOneBy({ phoneNumber });
-    let isFirstLogin = false;
-
-    // 如果用户不存在，创建新用户
-    if (!user) {
-      user = this.userRepository.create({ phoneNumber });
-      await this.userRepository.save(user);
-      isFirstLogin = true;
-    }
-
-    // 生成JWT token
-    const token = this.jwtAuthService.generateToken({ phoneNumber, userId: user.id });
-
-    return { token, isFirstLogin };
-  }
-
-  /**
    * GitHub OAuth 登录
    */
-  async loginWithGithub(code: string, redirectUri?: string): Promise<{ token: string; isFirstLogin: boolean; user: Partial<User> }> {
+  async loginWithGithub(code: string, redirectUri?: string): Promise<{ token: string; user: Partial<User> }> {
     const clientId = this.configService.get<string>('GITHUB_CLIENT_ID');
     const clientSecret = this.configService.get<string>('GITHUB_CLIENT_SECRET');
     const configuredRedirectUri = this.configService.get<string>('GITHUB_REDIRECT_URI');
@@ -138,7 +76,6 @@ export class AuthService {
 
     // 3) 查找或创建用户
     let user = await this.userRepository.findOne({ where: { githubId: id.toString() } });
-    let isFirstLogin = false;
 
     if (!user) {
       user = this.userRepository.create({
@@ -150,7 +87,6 @@ export class AuthService {
         githubProfileUrl: html_url,
       });
       user = await this.userRepository.save(user);
-      isFirstLogin = true;
     } else {
       user.githubUsername = login;
       user.name = name || user.name || login;
@@ -169,7 +105,6 @@ export class AuthService {
 
     return {
       token,
-      isFirstLogin,
       user: {
         id: user.id,
         name: user.name,
