@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import styles from './MainPage.module.scss';
 import NoteManagement from '../Note/NoteManagement';
 import ResumeAnalysisModule from '../components/ResumeAnalysisModule';
@@ -39,7 +40,9 @@ const Header: React.FC<{
 
 // MainPage Layout Component
 const MainPageLayout: React.FC = () => {
-  const [activeModule, setActiveModule] = useState<string>('notes');
+  const { module } = useParams<{ module?: string }>();
+  const navigate = useNavigate();
+  const [activeModule, setActiveModule] = useState<string>(module || 'notes');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const { isOpen: isAssistantOpen } = useAIAssistant();
 
@@ -102,10 +105,18 @@ const MainPageLayout: React.FC = () => {
   // Handle navigation item click
   const handleNavClick = (module: string) => {
     setActiveModule(module);
+    navigate(`/dashboard/${module}`);
     if (window.innerWidth <= 900) {
       setIsSidebarCollapsed(true);
     }
   };
+
+  // Update active module when route changes
+  useEffect(() => {
+    if (module && module !== activeModule) {
+      setActiveModule(module);
+    }
+  }, [module, activeModule]);
 
   // Toggle sidebar collapse
   const toggleSidebar = () => {
@@ -121,7 +132,7 @@ const MainPageLayout: React.FC = () => {
   // Handle logout
   const handleLogout = () => {
     localStorage.removeItem('token');
-    window.location.reload();
+    navigate('/login');
   };
 
   return (

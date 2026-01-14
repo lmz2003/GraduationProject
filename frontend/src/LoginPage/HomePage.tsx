@@ -571,8 +571,8 @@ const HomePage: React.FC = () => {
 
   // Handle login callback
   const handleLogin = () => {
-    // Refresh page to let App component check login status
-    window.location.reload();
+    // Login is handled by LoginCallback component, which redirects to /dashboard
+    // This callback is not needed anymore in router-based approach
   };
 
   return (
