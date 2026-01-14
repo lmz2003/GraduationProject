@@ -105,7 +105,12 @@ const MainPageLayout: React.FC = () => {
   // Handle navigation item click
   const handleNavClick = (module: string) => {
     setActiveModule(module);
-    navigate(`/dashboard/${module}`);
+    // 特殊处理笔记模块，跳转到笔记列表页
+    if (module === 'notes') {
+      navigate('/dashboard/notes');
+    } else {
+      navigate(`/dashboard/${module}`);
+    }
     if (window.innerWidth <= 900) {
       setIsSidebarCollapsed(true);
     }
@@ -235,7 +240,7 @@ const MainPageLayout: React.FC = () => {
 
         {/* Main Content */}
         <main className={styles.mainContent}>
-          {activeModule === 'notes' && <NoteManagement />}
+          {activeModule === 'notes' && <div className={styles.placeholderContent}>请从侧边栏进入笔记管理</div>}
           {activeModule === 'resume' && <ResumeAnalysisModule />}
           {activeModule === 'interview' && <AIIInterviewModule />}
           {activeModule === 'knowledge' && <div className={styles.placeholderContent}>知识库模块开发中...</div>}

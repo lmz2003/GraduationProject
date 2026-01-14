@@ -1,9 +1,7 @@
-version: '3.8'
-
 services:
   # PostgreSQL 数据库
   postgres:
-    image: postgres:15-alpine
+    image: postgres:15
     container_name: graduation_postgres
     environment:
       POSTGRES_USER: postgres
