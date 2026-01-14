@@ -8,9 +8,9 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 201966
-      POSTGRES_DB: notes
+      POSTGRES_DB: interviewer
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"  # 安全：只允许本机访问
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
@@ -30,20 +30,23 @@ services:
       ETCD_ENDPOINTS: etcd:2379
       MINIO_ADDRESS: minio:9000
     ports:
-      - "19530:19530"  # gRPC 端口
-      - "9091:9091"    # HTTP 端口
+      - "127.0.0.1:19530:19530"  # 安全：只允许本机访问 (gRPC)
+      - "127.0.0.1:9091:9091"    # 安全：只允许本机访问 (HTTP)
     volumes:
       - milvus_data:/var/lib/milvus
     networks:
       - graduation_network
     depends_on:
-      - etcd
-      - minio
+      etcd:
+        condition: service_healthy  # 等待 etcd 健康
+      minio:
+        condition: service_healthy  # 等待 minio 健康
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9091/healthz || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped  # 自动重启
 
   # etcd - Milvus 依赖
   etcd:
@@ -55,12 +58,18 @@ services:
       - ETCD_QUOTA_BACKEND_BYTES=4294967296
       - ETCD_SNAPSHOT_COUNT=50000
     ports:
-      - "2379:2379"
+      - "127.0.0.1:2379:2379"  # 安全：只允许本机访问
     volumes:
       - etcd_data:/etcd
     networks:
       - graduation_network
-    command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    command: etcd -advertise-client-urls=http://graduation_etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:  # 新增：etcd 健康检查
+      test: ["CMD-SHELL", "etcdctl --endpoints=http://localhost:2379 endpoint health 2>/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped  # 自动重启
 
   # MinIO - Milvus 依赖（对象存储）
   minio:
@@ -70,18 +79,19 @@ services:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"  # 安全：只允许本机访问 (API)
+      - "127.0.0.1:9001:9001"  # 安全：只允许本机访问 (Console)
     volumes:
       - minio_data:/minio_data
     networks:
       - graduation_network
     command: minio server /minio_data --console-address ":9001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
+      test: ["CMD-SHELL", "timeout 5 bash -c ':> /dev/tcp/127.0.0.1/9000' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped  # 自动重启
 
 volumes:
   postgres_data:
