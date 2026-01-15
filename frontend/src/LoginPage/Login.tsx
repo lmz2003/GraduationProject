@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 
 // Theme type definition
@@ -142,87 +142,23 @@ const getTheme = (theme: string | undefined) => {
 // Login Component with theme prop
 interface LoginProps {
   theme?: ThemeType;
-  onLogin: () => void;
+  onLogin?: () => void;
 }
 
-const Login: React.FC<LoginProps> = ({ theme: propTheme, onLogin }) => {
+const Login: React.FC<LoginProps> = ({ theme: propTheme }) => {
   // Use provided theme or fall back to function
   const theme = getTheme(propTheme);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [successMessage, setSuccessMessage] = useState<string>('');
 
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
   const githubClientId = import.meta.env.VITE_GITHUB_CLIENT_ID || '';
-  const githubRedirectUri = import.meta.env.VITE_GITHUB_REDIRECT_URI || `${window.location.origin}/login`;
+  const githubRedirectUri = import.meta.env.VITE_GITHUB_REDIRECT_URI || `${window.location.origin}/login/callback`;
 
   const clearMessages = () => {
     setErrorMessage('');
     setSuccessMessage('');
   };
 
-  const exchangeCodeForToken = useCallback(async (authCode: string) => {
-    setIsLoading(true);
-    clearMessages();
-
-    try {
-      const response = await fetch(`${apiBaseUrl}/auth/github`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ code: authCode, redirectUri: githubRedirectUri }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || 'GitHub 登录失败');
-      }
-
-      localStorage.setItem('token', data.token);
-      localStorage.removeItem('github_oauth_state');
-
-      setSuccessMessage('登录成功，正在进入应用...');
-      onLogin();
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'GitHub 登录失败，请稍后再试';
-      setErrorMessage(message);
-      console.error('GitHub login error:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [apiBaseUrl, githubRedirectUri, onLogin]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get('code');
-    const state = params.get('state');
-
-    if (!code) {
-      return;
-    }
-
-    const savedState = localStorage.getItem('github_oauth_state');
-    if (savedState && state && savedState !== state) {
-      setErrorMessage('登录状态已失效，请重新登录');
-      params.delete('code');
-      params.delete('state');
-      const newSearch = params.toString();
-      const newUrl = `${window.location.pathname}${newSearch ? `?${newSearch}` : ''}`;
-      window.history.replaceState({}, document.title, newUrl);
-      return;
-    }
-
-    exchangeCodeForToken(code);
-
-    // 清理 URL 中的 code/state，防止重复触发
-    params.delete('code');
-    params.delete('state');
-    const newSearch = params.toString();
-    const newUrl = `${window.location.pathname}${newSearch ? `?${newSearch}` : ''}`;
-    window.history.replaceState({}, document.title, newUrl);
-  }, [exchangeCodeForToken]);
 
   const handleGithubLogin = () => {
     clearMessages();
@@ -258,9 +194,8 @@ const Login: React.FC<LoginProps> = ({ theme: propTheme, onLogin }) => {
         <GithubButton
           theme={theme}
           onClick={handleGithubLogin}
-          disabled={isLoading}
         >
-          {isLoading ? '正在登录...' : 'Continue with GitHub'}
+          Continue with GitHub
         </GithubButton>
 
         <HelperText theme={theme}>系统会同步您的 GitHub 昵称、头像与邮箱信息</HelperText>

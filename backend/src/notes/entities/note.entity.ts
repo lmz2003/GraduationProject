@@ -17,6 +17,18 @@ export class Note {
   @Column({ nullable: true })
   description?: string;
 
+  @Column('text', { nullable: true })
+  summary?: string;
+
+  @Column('simple-array', { nullable: true, default: '' })
+  tags!: string[];
+
+  @Column({ default: 'draft' })
+  status!: string; // draft | published
+
+  @Column({ default: false })
+  deleted!: boolean;
+
   @Column({ default: false })
   isPublic!: boolean;
 

@@ -7,7 +7,9 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: 201966
       POSTGRES_DB: interviewer
+      POSTGRES_DB: interviewer
     ports:
+      - "127.0.0.1:5432:5432"  # 安全：只允许本机访问
       - "127.0.0.1:5432:5432"  # 安全：只允许本机访问
     volumes:
       - postgres_data:/var/lib/postgresql
@@ -18,6 +20,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped  # 自动重启
 
   # Milvus 向量数据库
   milvus:
@@ -28,6 +31,8 @@ services:
       ETCD_ENDPOINTS: etcd:2379
       MINIO_ADDRESS: minio:9000
     ports:
+      - "127.0.0.1:19530:19530"  # 安全：只允许本机访问 (gRPC)
+      - "127.0.0.1:9091:9091"    # 安全：只允许本机访问 (HTTP)
       - "127.0.0.1:19530:19530"  # 安全：只允许本机访问 (gRPC)
       - "127.0.0.1:9091:9091"    # 安全：只允许本机访问 (HTTP)
     volumes:
@@ -43,11 +48,16 @@ services:
         condition: service_healthy  # 等待 etcd 健康
       minio:
         condition: service_healthy  # 等待 minio 健康
+      etcd:
+        condition: service_healthy  # 等待 etcd 健康
+      minio:
+        condition: service_healthy  # 等待 minio 健康
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9091/healthz || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped  # 自动重启
     restart: unless-stopped  # 自动重启
 
   # etcd - Milvus 依赖
@@ -61,10 +71,18 @@ services:
       - ETCD_SNAPSHOT_COUNT=50000
     ports:
       - "127.0.0.1:2379:2379"  # 安全：只允许本机访问
+      - "127.0.0.1:2379:2379"  # 安全：只允许本机访问
     volumes:
       - etcd_data:/etcd
     networks:
       - graduation_network
+    command: etcd -advertise-client-urls=http://graduation_etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
+    healthcheck:  # 新增：etcd 健康检查
+      test: ["CMD-SHELL", "etcdctl --endpoints=http://localhost:2379 endpoint health 2>/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped  # 自动重启
     command: etcd -advertise-client-urls=http://graduation_etcd:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
     healthcheck:  # 新增：etcd 健康检查
       test: ["CMD-SHELL", "etcdctl --endpoints=http://localhost:2379 endpoint health 2>/dev/null || exit 1"]
@@ -81,6 +99,8 @@ services:
       MINIO_ROOT_USER: minioadmin  # 替换已弃用的MINIO_ACCESS_KEY
       MINIO_ROOT_PASSWORD: minioadmin  # 替换已弃用的MINIO_SECRET_KEY
     ports:
+      - "127.0.0.1:9000:9000"  # 安全：只允许本机访问 (API)
+      - "127.0.0.1:9001:9001"  # 安全：只允许本机访问 (Console)
       - "127.0.0.1:9000:9000"  # 安全：只允许本机访问 (API)
       - "127.0.0.1:9001:9001"  # 安全：只允许本机访问 (Console)
     volumes:

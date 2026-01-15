@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import styles from './MainPage.module.scss';
 import NoteManagement from '../Note/NoteManagement';
 import ResumeAnalysisModule from '../components/ResumeAnalysisModule';
@@ -39,7 +40,9 @@ const Header: React.FC<{
 
 // MainPage Layout Component
 const MainPageLayout: React.FC = () => {
-  const [activeModule, setActiveModule] = useState<string>('notes');
+  const { module } = useParams<{ module?: string }>();
+  const navigate = useNavigate();
+  const [activeModule, setActiveModule] = useState<string>(module || 'notes');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const { isOpen: isAssistantOpen } = useAIAssistant();
 
@@ -102,10 +105,23 @@ const MainPageLayout: React.FC = () => {
   // Handle navigation item click
   const handleNavClick = (module: string) => {
     setActiveModule(module);
+    // 特殊处理笔记模块，跳转到笔记列表页
+    if (module === 'notes') {
+      navigate('/dashboard/notes');
+    } else {
+      navigate(`/dashboard/${module}`);
+    }
     if (window.innerWidth <= 900) {
       setIsSidebarCollapsed(true);
     }
   };
+
+  // Update active module when route changes
+  useEffect(() => {
+    if (module && module !== activeModule) {
+      setActiveModule(module);
+    }
+  }, [module, activeModule]);
 
   // Toggle sidebar collapse
   const toggleSidebar = () => {
@@ -121,7 +137,7 @@ const MainPageLayout: React.FC = () => {
   // Handle logout
   const handleLogout = () => {
     localStorage.removeItem('token');
-    window.location.reload();
+    navigate('/login');
   };
 
   return (
@@ -224,7 +240,7 @@ const MainPageLayout: React.FC = () => {
 
         {/* Main Content */}
         <main className={styles.mainContent}>
-          {activeModule === 'notes' && <NoteManagement />}
+          {activeModule === 'notes' && <div className={styles.placeholderContent}>请从侧边栏进入笔记管理</div>}
           {activeModule === 'resume' && <ResumeAnalysisModule />}
           {activeModule === 'interview' && <AIIInterviewModule />}
           {activeModule === 'knowledge' && <div className={styles.placeholderContent}>知识库模块开发中...</div>}

@@ -1,47 +1,85 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, Request, Query } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
+import { AuthGuard } from '@nestjs/passport';
 import { NotesService } from './notes.service';
 import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
+import { QueryNotesDto } from './dto/query-notes.dto';
 
 @Controller('notes')
+@UseGuards(AuthGuard('jwt'))
 export class NotesController {
   constructor(private readonly notesService: NotesService) {}
 
   // Create a new note
   @Post()
   async createNote(@Body() createNoteDto: CreateNoteDto, @Request() req: ExpressRequest) {
-    // In a real application, you would get the user ID from the authenticated request
-    const userId = req.user?.id || 'test-user-id';
-    return this.notesService.createNote(createNoteDto, userId);
+    const userId = req.user?.id;
+    const note = await this.notesService.createNote(createNoteDto, userId);
+    return {
+      code: 0,
+      message: 'created',
+      data: note,
+    };
   }
 
   // Get all notes for the current user
   @Get()
-  async getMyNotes(@Request() req: ExpressRequest) {
-    // In a real application, you would get the user ID from the authenticated request
-    const userId = req.user?.id || 'test-user-id';
-    return this.notesService.getNotesByUserId(userId);
+  async getMyNotes(@Query() queryDto: QueryNotesDto, @Request() req: ExpressRequest) {
+    const userId = req.user?.id;
+    const result = await this.notesService.getNotesByUserId(userId, queryDto);
+    return {
+      code: 0,
+      message: 'ok',
+      data: result,
+    };
   }
 
   // Get a single note by id
   @Get(':id')
   async getNoteById(@Param('id') id: string) {
-    return this.notesService.getNoteById(id);
+    const note = await this.notesService.getNoteById(id);
+    return {
+      code: 0,
+      message: 'ok',
+      data: note,
+    };
   }
 
   // Update a note
   @Put(':id')
   async updateNote(@Param('id') id: string, @Body() updateNoteDto: UpdateNoteDto, @Request() req: ExpressRequest) {
-    // In a real application, you would get the user ID from the authenticated request
-    const userId = req.user?.id || 'test-user-id';
-    return this.notesService.updateNote(id, updateNoteDto, userId);
+    const userId = req.user?.id;
+    const note = await this.notesService.updateNote(id, updateNoteDto, userId);
+    return {
+      code: 0,
+      message: 'updated',
+      data: note,
+    };
   }
 
   // Delete a note
   @Delete(':id')
-  async deleteNote(@Param('id') id: string) {
-    return this.notesService.deleteNote(id);
+  async deleteNote(@Param('id') id: string, @Request() req: ExpressRequest) {
+    const userId = req.user?.id;
+    await this.notesService.deleteNote(id, userId);
+    return {
+      code: 0,
+      message: 'deleted',
+      data: null,
+    };
+  }
+
+  // Batch delete notes
+  @Delete()
+  async batchDeleteNotes(@Body() body: { ids: string[] }, @Request() req: ExpressRequest) {
+    const userId = req.user?.id;
+    const result = await this.notesService.batchDeleteNotes(body.ids, userId);
+    return {
+      code: 0,
+      message: result.failedIds.length > 0 ? 'partial_success' : 'deleted',
+      data: result,
+    };
   }
 
   // Get note versions
