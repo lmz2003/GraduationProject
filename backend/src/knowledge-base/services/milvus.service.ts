@@ -1,6 +1,6 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { MilvusClient } from '@zilliz/milvus2-sdk-node';
+import { MilvusClient, DataType } from '@zilliz/milvus2-sdk-node';
 
 @Injectable()
 export class MilvusService implements OnModuleInit, OnModuleDestroy {
@@ -8,16 +8,19 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(MilvusService.name);
   private readonly collectionName = 'knowledge_vectors';
 
-  constructor(private configService: ConfigService) {}
+  constructor(private configService: ConfigService) {
+    // 初始化 milvusClient 为 undefined，在 onModuleInit 中会被赋值
+    this.milvusClient = new MilvusClient('');
+  }
 
   async onModuleInit() {
     try {
       const milvusHost = this.configService.get<string>('MILVUS_HOST') || 'localhost';
       const milvusPort = this.configService.get<number>('MILVUS_PORT') || 19530;
 
+      // 使用正确的地址格式：host:port
       this.milvusClient = new MilvusClient({
-        address: milvusHost,
-        port: milvusPort,
+        address: `${milvusHost}:${milvusPort}`,
       });
 
       this.logger.log(`连接到 Milvus: ${milvusHost}:${milvusPort}`);
@@ -44,7 +47,7 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
     try {
       // 检查集合是否存在
       const collections = await this.milvusClient.listCollections();
-      const exists = collections.data?.collections?.some(
+      const exists = collections.data?.some(
         (c: any) => c.name === this.collectionName
       );
 
@@ -192,6 +195,7 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
       const result = await this.milvusClient.search({
         collection_name: this.collectionName,
         vectors: [queryEmbedding],
+        vector_type: DataType.FloatVector,
         search_params: {
           anns_field: 'embedding',
           topk: topK.toString(),

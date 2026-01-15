@@ -11,14 +11,6 @@ export class LangChainService {
   private textSplitter: RecursiveCharacterTextSplitter;
 
   constructor(private configService: ConfigService) {
-    this.initializeEmbeddings();
-    this.initializeTextSplitter();
-  }
-
-  /**
-   * 初始化 OpenAI Embeddings
-   */
-  private initializeEmbeddings() {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
     if (!apiKey) {
       this.logger.warn('OPENAI_API_KEY 未配置，请在 .env 文件中设置');
@@ -28,12 +20,7 @@ export class LangChainService {
       openAIApiKey: apiKey,
       modelName: 'text-embedding-3-small', // 使用 3-small 模型，维度 1536
     });
-  }
 
-  /**
-   * 初始化文本分割器
-   */
-  private initializeTextSplitter() {
     this.textSplitter = new RecursiveCharacterTextSplitter({
       chunkSize: 1000, // 每个块的大小
       chunkOverlap: 200, // 块之间的重叠

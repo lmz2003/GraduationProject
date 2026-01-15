@@ -24,17 +24,9 @@ export class LLMIntegrationService {
   private readonly logger = new Logger(LLMIntegrationService.name);
 
   constructor(private configService: ConfigService) {
-    this.initializeLLM();
-  }
-
-  /**
-   * 初始化 LLM
-   */
-  private initializeLLM() {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
     if (!apiKey) {
       this.logger.warn('OPENAI_API_KEY 未配置');
-      return;
     }
 
     this.llm = new OpenAI({
