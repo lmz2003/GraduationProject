@@ -14,7 +14,7 @@ export class NotesController {
   // Create a new note
   @Post()
   async createNote(@Body() createNoteDto: CreateNoteDto, @Request() req: ExpressRequest) {
-    const userId = req.user?.id;
+    const userId = req.user?.id as string;
     const note = await this.notesService.createNote(createNoteDto, userId);
     return {
       code: 0,
@@ -26,7 +26,7 @@ export class NotesController {
   // Get all notes for the current user
   @Get()
   async getMyNotes(@Query() queryDto: QueryNotesDto, @Request() req: ExpressRequest) {
-    const userId = req.user?.id;
+    const userId = req.user?.id as string;
     const result = await this.notesService.getNotesByUserId(userId, queryDto);
     return {
       code: 0,
@@ -49,7 +49,7 @@ export class NotesController {
   // Update a note
   @Put(':id')
   async updateNote(@Param('id') id: string, @Body() updateNoteDto: UpdateNoteDto, @Request() req: ExpressRequest) {
-    const userId = req.user?.id;
+    const userId = req.user?.id as string;
     const note = await this.notesService.updateNote(id, updateNoteDto, userId);
     return {
       code: 0,
@@ -61,7 +61,7 @@ export class NotesController {
   // Delete a note
   @Delete(':id')
   async deleteNote(@Param('id') id: string, @Request() req: ExpressRequest) {
-    const userId = req.user?.id;
+    const userId = req.user?.id as string;
     await this.notesService.deleteNote(id, userId);
     return {
       code: 0,
@@ -73,7 +73,7 @@ export class NotesController {
   // Batch delete notes
   @Delete()
   async batchDeleteNotes(@Body() body: { ids: string[] }, @Request() req: ExpressRequest) {
-    const userId = req.user?.id;
+    const userId = req.user?.id as string;
     const result = await this.notesService.batchDeleteNotes(body.ids, userId);
     return {
       code: 0,
