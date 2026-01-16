@@ -9,8 +9,8 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
   private readonly collectionName = 'knowledge_vectors';
 
   constructor(private configService: ConfigService) {
-    // 初始化 milvusClient 为 undefined，在 onModuleInit 中会被赋值
-    this.milvusClient = new MilvusClient('');
+    // 初始化 milvusClient 为 null，在 onModuleInit 中会被赋值
+    this.milvusClient = null as any;
   }
 
   async onModuleInit() {

@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { OpenAI } from '@langchain/openai';
+import { ChatOpenAI } from '@langchain/openai';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { LLMChain } from 'langchain/chains';
 
@@ -20,7 +20,7 @@ interface LLMResponse {
 
 @Injectable()
 export class LLMIntegrationService {
-  private llm: OpenAI;
+  private llm: ChatOpenAI;
   private readonly logger = new Logger(LLMIntegrationService.name);
 
   constructor(private configService: ConfigService) {
@@ -29,7 +29,7 @@ export class LLMIntegrationService {
       this.logger.warn('OPENAI_API_KEY 未配置');
     }
 
-    this.llm = new OpenAI({
+    this.llm = new ChatOpenAI({
       openAIApiKey: apiKey,
       modelName: 'gpt-3.5-turbo',
       temperature: 0.7,
@@ -257,7 +257,7 @@ export class LLMIntegrationService {
   /**
    * 获取 LLM 实例
    */
-  getLLM(): OpenAI {
+  getLLM(): ChatOpenAI {
     return this.llm;
   }
 }
