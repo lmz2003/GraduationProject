@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import styles from './MainPage.module.scss';
-import NoteManagement from '../Note/NoteManagement';
+import NotesListPage from '../Note/NotesListPage';
 import ResumeAnalysisModule from '../components/ResumeAnalysisModule';
 import AIIInterviewModule from '../components/AIIInterviewModule';
 import AIAssistant from '../components/AIAssistant';
@@ -18,6 +18,7 @@ const Header: React.FC<{
     <header className={styles.header}>
       <div className={styles.headerLeft}>
         <h1 className={styles.pageTitle}>
+          {activeModule === 'home' && '欢迎回来'}
           {activeModule === 'notes' && '我的笔记'}
           {activeModule === 'resume' && '简历分析'}
           {activeModule === 'interview' && '模拟面试'}
@@ -42,7 +43,7 @@ const Header: React.FC<{
 const MainPageLayout: React.FC = () => {
   const { module } = useParams<{ module?: string }>();
   const navigate = useNavigate();
-  const [activeModule, setActiveModule] = useState<string>(module || 'notes');
+  const [activeModule, setActiveModule] = useState<string>(module || 'home');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const { isOpen: isAssistantOpen } = useAIAssistant();
 
@@ -103,13 +104,13 @@ const MainPageLayout: React.FC = () => {
   }, []);
 
   // Handle navigation item click
-  const handleNavClick = (module: string) => {
-    setActiveModule(module);
+  const handleNavClick = (targetModule: string) => {
+    setActiveModule(targetModule);
     // 特殊处理笔记模块，跳转到笔记列表页
-    if (module === 'notes') {
+    if (targetModule === 'notes') {
       navigate('/dashboard/notes');
     } else {
-      navigate(`/dashboard/${module}`);
+      navigate(`/dashboard/${targetModule}`);
     }
     if (window.innerWidth <= 900) {
       setIsSidebarCollapsed(true);
@@ -118,7 +119,11 @@ const MainPageLayout: React.FC = () => {
 
   // Update active module when route changes
   useEffect(() => {
-    if (module && module !== activeModule) {
+    if (!module) {
+      setActiveModule('home');
+      return;
+    }
+    if (module !== activeModule) {
       setActiveModule(module);
     }
   }, [module, activeModule]);
@@ -240,7 +245,12 @@ const MainPageLayout: React.FC = () => {
 
         {/* Main Content */}
         <main className={styles.mainContent}>
-          {activeModule === 'notes' && <div className={styles.placeholderContent}>请从侧边栏进入笔记管理</div>}
+          {activeModule === 'home' && (
+            <div className={styles.placeholderContent}>
+              欢迎使用 AI 面试官平台，请从左侧选择一个模块开始吧。
+            </div>
+          )}
+          {activeModule === 'notes' && <NotesListPage />}
           {activeModule === 'resume' && <ResumeAnalysisModule />}
           {activeModule === 'interview' && <AIIInterviewModule />}
           {activeModule === 'knowledge' && <div className={styles.placeholderContent}>知识库模块开发中...</div>}

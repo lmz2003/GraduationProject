@@ -74,7 +74,7 @@ const GithubButton = styled.button<{ theme: typeof lightTheme; disabled?: boolea
   cursor: pointer;
   transition: all 0.25s ease;
   color: ${props => props.theme.background === '#121212' ? '#f5f5f5' : '#111'};
-  background: linear-gradient(135deg, #24292e 0%, #111 100%);
+  background: ${props => props.theme.background === '#121212' ? 'linear-gradient(135deg, #24292e 0%, #111 100%)' : props.theme.primary};
   box-shadow: ${props => props.theme.shadow};
 
   &:hover {

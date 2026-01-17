@@ -3,7 +3,6 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import HomePage from '../LoginPage/HomePage';
 import MainPageLayout from '../MainPage/MainPage';
 import LoginCallback from '../LoginPage/LoginCallback';
-import NotesListPage from '../Note/NotesListPage';
 import NoteDetailPage from '../Note/NoteDetailPage';
 
 // Protected Route Component
@@ -38,10 +37,6 @@ export const router = createBrowserRouter([
   {
     path: '/dashboard',
     element: <ProtectedRoute element={<MainPageLayout />} />,
-  },
-  {
-    path: '/dashboard/notes',
-    element: <ProtectedRoute element={<NotesListPage />} />,
   },
   {
     path: '/dashboard/notes/:id',
