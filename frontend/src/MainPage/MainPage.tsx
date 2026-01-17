@@ -4,7 +4,8 @@ import styles from './MainPage.module.scss';
 import NotesListPage from '../Note/NotesListPage';
 import ResumeAnalysisModule from '../components/ResumeAnalysisModule';
 import AIIInterviewModule from '../components/AIIInterviewModule';
-import AIAssistant from '../components/AIAssistant';
+import KnowledgeBase from '../KnowledgeBase/KnowledgeBase';
+import AIAssistant from '../AIAssistant/AIAssistant';
 import { AIAssistantProvider, useAIAssistant } from '../context/AIAssistantContext';
 
 // Header Component to use context
@@ -253,7 +254,7 @@ const MainPageLayout: React.FC = () => {
           {activeModule === 'notes' && <NotesListPage />}
           {activeModule === 'resume' && <ResumeAnalysisModule />}
           {activeModule === 'interview' && <AIIInterviewModule />}
-          {activeModule === 'knowledge' && <div className={styles.placeholderContent}>知识库模块开发中...</div>}
+          {activeModule === 'knowledge' && <KnowledgeBase />}
         </main>
       </div>
 
