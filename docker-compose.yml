@@ -44,10 +44,6 @@ services:
         condition: service_healthy  # 等待 etcd 健康
       minio:
         condition: service_healthy  # 等待 minio 健康
-      etcd:
-        condition: service_healthy  # 等待 etcd 健康
-      minio:
-        condition: service_healthy  # 等待 minio 健康
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9091/healthz || exit 1"]
       interval: 10s
