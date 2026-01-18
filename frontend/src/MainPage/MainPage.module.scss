@@ -30,10 +30,21 @@ $radius-md: 10px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   overflow: hidden;
   position: relative;
+  transition: grid-template-columns 0.25s ease;
 }
 
 .layoutContainer.aiClosed {
   grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-areas: 'sidebar main';
+}
+
+.layoutContainer.sidebarCollapsed {
+  grid-template-columns: var(--sidebar-collapsed) 1fr var(--right-width);
+  grid-template-areas: 'sidebar main right';
+}
+
+.layoutContainer.sidebarCollapsed.aiClosed {
+  grid-template-columns: var(--sidebar-collapsed) 1fr;
   grid-template-areas: 'sidebar main';
 }
 

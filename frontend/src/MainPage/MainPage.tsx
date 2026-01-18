@@ -107,12 +107,7 @@ const MainPageLayout: React.FC = () => {
   // Handle navigation item click
   const handleNavClick = (targetModule: string) => {
     setActiveModule(targetModule);
-    // 特殊处理笔记模块，跳转到笔记列表页
-    if (targetModule === 'notes') {
-      navigate('/dashboard/notes');
-    } else {
-      navigate(`/dashboard/${targetModule}`);
-    }
+    navigate(`/dashboard/${targetModule}`);
     if (window.innerWidth <= 900) {
       setIsSidebarCollapsed(true);
     }
@@ -147,7 +142,7 @@ const MainPageLayout: React.FC = () => {
   };
 
   return (
-    <div className={`${styles.layoutContainer} ${!isAssistantOpen ? styles.aiClosed : ''}`}>
+    <div className={`${styles.layoutContainer} ${!isAssistantOpen ? styles.aiClosed : ''} ${isSidebarCollapsed ? styles.sidebarCollapsed : ''}`}>
       {/* Mobile Overlay for Left Sidebar */}
       {!isSidebarCollapsed && (
         <div className={styles.sidebarOverlay} onClick={() => setIsSidebarCollapsed(true)} />
