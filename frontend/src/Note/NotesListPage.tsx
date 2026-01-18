@@ -379,6 +379,7 @@ const NotesListPage: React.FC = () => {
                         checked={selectedNotes.has(note.id)}
                         onChange={() => handleSelectNote(note.id)}
                         className={styles.checkbox}
+                        onClick={(e) => e.stopPropagation()}
                       />
                     </div>
                   )}
