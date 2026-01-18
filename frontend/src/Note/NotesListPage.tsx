@@ -29,6 +29,8 @@ const NotesListPage: React.FC = () => {
   const navigate = useNavigate();
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(false);
+  const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
+  const [showBatchActions, setShowBatchActions] = useState(false);
   const [pagination, setPagination] = useState({
     page: 1,
     pageSize: 20,
@@ -141,6 +143,79 @@ const NotesListPage: React.FC = () => {
     }
   };
 
+  // 批量删除笔记
+  const handleBatchDelete = async () => {
+    const selectedIds = Array.from(selectedNotes);
+    if (selectedIds.length === 0) {
+      return;
+    }
+
+    if (!confirm(`确认删除选中的 ${selectedIds.length} 条笔记吗？删除后将无法恢复。`)) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE}/notes`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ ids: selectedIds }),
+      });
+
+      const result = await response.json();
+      if (result.code === 0) {
+        const { successIds, failedIds } = result.data;
+        if (failedIds.length > 0) {
+          alert(`成功删除 ${successIds.length} 条笔记，失败 ${failedIds.length} 条`);
+        } else {
+          alert(`成功删除 ${successIds.length} 条笔记`);
+        }
+        setSelectedNotes(new Set());
+        setShowBatchActions(false);
+        fetchNotes();
+      } else {
+        throw new Error(result.message || '批量删除失败');
+      }
+    } catch (error) {
+      console.error('批量删除失败:', error);
+      alert('批量删除失败');
+    }
+  };
+
+  // 处理复选框选择
+  const handleSelectNote = (id: string) => {
+    setSelectedNotes(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      setShowBatchActions(newSet.size > 0);
+      return newSet;
+    });
+  };
+
+  // 全选/取消全选
+  const handleSelectAll = () => {
+    if (selectedNotes.size === notes.length) {
+      setSelectedNotes(new Set());
+      setShowBatchActions(false);
+    } else {
+      setSelectedNotes(new Set(notes.map(note => note.id)));
+      setShowBatchActions(true);
+    }
+  };
+
+  // 取消批量操作
+  const handleCancelBatch = () => {
+    setSelectedNotes(new Set());
+    setShowBatchActions(false);
+  };
+
   // 跳转到详情页
   const handleViewNote = (id: string) => {
     navigate(`/dashboard/notes/${id}`);
@@ -169,14 +244,50 @@ const NotesListPage: React.FC = () => {
       <div className={styles.header}>
         <h2 className={styles.title}>所有笔记</h2>
         <div className={styles.headerActions}>
-          <button
-            className={`${styles.button} ${styles.buttonPrimary}`}
-            onClick={handleCreateNote}
-          >
-            ➕ 新建笔记
-          </button>
+          {!showBatchActions ? (
+            <button
+              className={`${styles.button} ${styles.buttonPrimary}`}
+              onClick={handleCreateNote}
+            >
+              ➕ 新建笔记
+            </button>
+          ) : (
+            <>
+              <button
+                className={`${styles.button} ${styles.buttonSecondary}`}
+                onClick={handleCancelBatch}
+              >
+                取消选择
+              </button>
+              <button
+                className={`${styles.button} ${styles.buttonDanger}`}
+                onClick={handleBatchDelete}
+              >
+                🗑️ 删除选中 ({selectedNotes.size})
+              </button>
+            </>
+          )}
         </div>
       </div>
+
+      {showBatchActions && (
+        <div className={styles.batchActionsBar}>
+          <label className={styles.selectAllLabel}>
+            <input
+              type="checkbox"
+              checked={selectedNotes.size === notes.length && notes.length > 0}
+              onChange={handleSelectAll}
+              className={styles.checkbox}
+            />
+            <span className={styles.selectAllText}>
+              {selectedNotes.size === notes.length && notes.length > 0 ? '取消全选' : '全选'}
+            </span>
+          </label>
+          <span className={styles.selectedCount}>
+            已选择 {selectedNotes.size} 条笔记
+          </span>
+        </div>
+      )}
 
       <div className={styles.filtersBar}>
         <input
@@ -236,11 +347,23 @@ const NotesListPage: React.FC = () => {
               {notes.map(note => (
                 <div
                   key={note.id}
-                  className={styles.noteCard}
+                  className={`${styles.noteCard} ${selectedNotes.has(note.id) ? styles.noteCardSelected : ''}`}
                   onClick={() => handleViewNote(note.id)}
                 >
                   <div className={styles.noteCardHeader}>
-                    <h3 className={styles.noteTitle}>{note.title}</h3>
+                    <div className={styles.noteCardLeft}>
+                      <input
+                        type="checkbox"
+                        checked={selectedNotes.has(note.id)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          handleSelectNote(note.id);
+                        }}
+                        className={styles.noteCheckbox}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <h3 className={styles.noteTitle}>{note.title}</h3>
+                    </div>
                     <div className={styles.noteActions}>
                       <button
                         className={`${styles.actionButton} ${styles.actionDelete}`}
