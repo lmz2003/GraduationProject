@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import MarkdownEditor from './MarkdownEditor';
+import PdfExportModal from '../components/PdfExportModal';
 
 // ========== 样式组件 ==========
 const PageContainer = styled.div`
@@ -218,6 +219,8 @@ const NoteDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [showPdfSettings, setShowPdfSettings] = useState(false);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
   const isNewNote = id === 'new';
@@ -362,6 +365,24 @@ const NoteDetailPage: React.FC = () => {
     }
   };
 
+  // 导出Markdown文件
+  const handleExportMd = () => {
+    const blob = new Blob([content], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${title || '未命名笔记'}-${new Date().toISOString().slice(0, 10)}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  // 打开PDF导出设置
+  const handlePdfSettings = () => {
+    setShowPdfSettings(true);
+  };
+
   // 添加标签
   const handleAddTag = () => {
     const trimmed = tagInput.trim();
@@ -422,6 +443,14 @@ const NoteDetailPage: React.FC = () => {
             💾 保存
           </Button>
           
+          <Button variant="secondary" onClick={handleExportMd}>
+            📥 导出MD
+          </Button>
+          
+          <Button variant="secondary" onClick={handlePdfSettings}>
+            📄 导出PDF
+          </Button>
+          
           {!isNewNote && (
             <Button variant="danger" onClick={handleDelete}>
               🗑️ 删除
@@ -454,6 +483,13 @@ const NoteDetailPage: React.FC = () => {
           onContentChange={setContent}
         />
       </EditorContainer>
+
+      <PdfExportModal
+        isOpen={showPdfSettings}
+        onClose={() => setShowPdfSettings(false)}
+        previewRef={previewRef}
+        markdown={content}
+      />
     </PageContainer>
   );
 };
