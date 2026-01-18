@@ -30,6 +30,7 @@ const NotesListPage: React.FC = () => {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
+  const [batchMode, setBatchMode] = useState(false);
   const [showBatchActions, setShowBatchActions] = useState(false);
   const [pagination, setPagination] = useState({
     page: 1,
@@ -173,8 +174,7 @@ const NotesListPage: React.FC = () => {
         } else {
           alert(`成功删除 ${successIds.length} 条笔记`);
         }
-        setSelectedNotes(new Set());
-        setShowBatchActions(false);
+        handleExitBatchMode();
         fetchNotes();
       } else {
         throw new Error(result.message || '批量删除失败');
@@ -199,6 +199,19 @@ const NotesListPage: React.FC = () => {
     });
   };
 
+  // 进入批量删除模式
+  const handleEnterBatchMode = () => {
+    setBatchMode(true);
+    setShowBatchActions(true);
+  };
+
+  // 退出批量删除模式
+  const handleExitBatchMode = () => {
+    setBatchMode(false);
+    setSelectedNotes(new Set());
+    setShowBatchActions(false);
+  };
+
   // 全选/取消全选
   const handleSelectAll = () => {
     if (selectedNotes.size === notes.length) {
@@ -208,12 +221,6 @@ const NotesListPage: React.FC = () => {
       setSelectedNotes(new Set(notes.map(note => note.id)));
       setShowBatchActions(true);
     }
-  };
-
-  // 取消批量操作
-  const handleCancelBatch = () => {
-    setSelectedNotes(new Set());
-    setShowBatchActions(false);
   };
 
   // 跳转到详情页
@@ -244,24 +251,33 @@ const NotesListPage: React.FC = () => {
       <div className={styles.header}>
         <h2 className={styles.title}>所有笔记</h2>
         <div className={styles.headerActions}>
-          {!showBatchActions ? (
-            <button
-              className={`${styles.button} ${styles.buttonPrimary}`}
-              onClick={handleCreateNote}
-            >
-              ➕ 新建笔记
-            </button>
+          {!batchMode ? (
+            <>
+              <button
+                className={`${styles.button} ${styles.buttonSecondary}`}
+                onClick={handleEnterBatchMode}
+              >
+                🗑️ 批量删除
+              </button>
+              <button
+                className={`${styles.button} ${styles.buttonPrimary}`}
+                onClick={handleCreateNote}
+              >
+                ➕ 新建笔记
+              </button>
+            </>
           ) : (
             <>
               <button
                 className={`${styles.button} ${styles.buttonSecondary}`}
-                onClick={handleCancelBatch}
+                onClick={handleExitBatchMode}
               >
-                取消选择
+                取消
               </button>
               <button
                 className={`${styles.button} ${styles.buttonDanger}`}
                 onClick={handleBatchDelete}
+                disabled={selectedNotes.size === 0}
               >
                 🗑️ 删除选中 ({selectedNotes.size})
               </button>
@@ -270,7 +286,7 @@ const NotesListPage: React.FC = () => {
         </div>
       </div>
 
-      {showBatchActions && (
+      {batchMode && (
         <div className={styles.batchActionsBar}>
           <label className={styles.selectAllLabel}>
             <input
@@ -348,48 +364,49 @@ const NotesListPage: React.FC = () => {
                 <div
                   key={note.id}
                   className={`${styles.noteCard} ${selectedNotes.has(note.id) ? styles.noteCardSelected : ''}`}
-                  onClick={() => handleViewNote(note.id)}
+                  onClick={() => !batchMode && handleViewNote(note.id)}
                 >
-                  <div className={styles.noteCardHeader}>
-                    <div className={styles.noteCardLeft}>
+                  {batchMode && (
+                    <div className={styles.noteCardCheckbox}>
                       <input
                         type="checkbox"
                         checked={selectedNotes.has(note.id)}
-                        onChange={(e) => {
-                          e.stopPropagation();
-                          handleSelectNote(note.id);
-                        }}
-                        className={styles.noteCheckbox}
+                        onChange={() => handleSelectNote(note.id)}
+                        className={styles.checkbox}
                         onClick={(e) => e.stopPropagation()}
                       />
+                    </div>
+                  )}
+                  <div className={styles.noteCardContent}>
+                    <div className={styles.noteCardHeader}>
                       <h3 className={styles.noteTitle}>{note.title}</h3>
+                      <div className={styles.noteActions}>
+                        <button
+                          className={`${styles.actionButton} ${styles.actionDelete}`}
+                          onClick={(e) => handleDelete(note.id, e)}
+                        >
+                          🗑️ 删除
+                        </button>
+                      </div>
                     </div>
-                    <div className={styles.noteActions}>
-                      <button
-                        className={`${styles.actionButton} ${styles.actionDelete}`}
-                        onClick={(e) => handleDelete(note.id, e)}
+                    
+                    <p className={styles.noteContent}>{note.summary || note.content}</p>
+                    
+                    <div className={styles.noteMeta}>
+                      <span
+                        className={`${styles.statusBadge} ${note.status === 'published' ? styles.statusPublished : styles.statusDraft}`}
                       >
-                        🗑️ 删除
-                      </button>
+                        {note.status === 'published' ? '已发布' : '草稿'}
+                      </span>
+                      
+                      {note.tags && note.tags.length > 0 && note.tags.map((tag, index) => (
+                        <span key={index} className={styles.tag}>{tag}</span>
+                      ))}
+                      
+                      <span className={styles.timeText}>
+                        更新于 {formatDate(note.updatedAt)}
+                      </span>
                     </div>
-                  </div>
-                  
-                  <p className={styles.noteContent}>{note.summary || note.content}</p>
-                  
-                  <div className={styles.noteMeta}>
-                    <span
-                      className={`${styles.statusBadge} ${note.status === 'published' ? styles.statusPublished : styles.statusDraft}`}
-                    >
-                      {note.status === 'published' ? '已发布' : '草稿'}
-                    </span>
-                    
-                    {note.tags && note.tags.length > 0 && note.tags.map((tag, index) => (
-                      <span key={index} className={styles.tag}>{tag}</span>
-                    ))}
-                    
-                    <span className={styles.timeText}>
-                      更新于 {formatDate(note.updatedAt)}
-                    </span>
                   </div>
                 </div>
               ))}
