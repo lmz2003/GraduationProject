@@ -364,7 +364,13 @@ const NotesListPage: React.FC = () => {
                 <div
                   key={note.id}
                   className={`${styles.noteCard} ${selectedNotes.has(note.id) ? styles.noteCardSelected : ''}`}
-                  onClick={() => !batchMode && handleViewNote(note.id)}
+                  onClick={() => {
+                    if (batchMode) {
+                      handleSelectNote(note.id);
+                    } else {
+                      handleViewNote(note.id);
+                    }
+                  }}
                 >
                   {batchMode && (
                     <div className={styles.noteCardCheckbox}>
@@ -373,7 +379,6 @@ const NotesListPage: React.FC = () => {
                         checked={selectedNotes.has(note.id)}
                         onChange={() => handleSelectNote(note.id)}
                         className={styles.checkbox}
-                        onClick={(e) => e.stopPropagation()}
                       />
                     </div>
                   )}
