@@ -17,7 +17,8 @@ export interface PdfExportModalProps {
   isOpen: boolean;
   onClose: () => void;
   previewRef: React.RefObject<HTMLDivElement | null>;
-  markdown: string;
+  markdown?: string;
+  htmlContent?: string;
 }
 
 // Styled components
@@ -213,7 +214,8 @@ const PdfExportModal: React.FC<PdfExportModalProps> = ({
   isOpen, 
   onClose, 
   previewRef, 
-  markdown 
+  markdown,
+  htmlContent
 }) => {
   // State for PDF configuration
   const [pdfConfig, setPdfConfig] = useState<PdfConfig>({
@@ -241,7 +243,7 @@ const PdfExportModal: React.FC<PdfExportModalProps> = ({
       setIsLoading(true);
       
       // Check preview area or markdown content
-      if (!previewRef.current && !markdown) {
+      if (!previewRef.current && !markdown && !htmlContent) {
         throw new Error('No content to export');
       }
 
@@ -262,6 +264,25 @@ const PdfExportModal: React.FC<PdfExportModalProps> = ({
           logging: false,
           backgroundColor: '#ffffff'
         });
+      } else if (htmlContent) {
+        // Use HTML content if available
+        const tempElement = document.createElement('div');
+        tempElement.innerHTML = `
+          <div style="padding: 20px; font-family: Arial, sans-serif;">
+            <h1>${pdfConfig.title}</h1>
+            <div>${htmlContent}</div>
+          </div>
+        `;
+        document.body.appendChild(tempElement);
+        
+        canvas = await html2canvas(tempElement, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: '#ffffff'
+        });
+        
+        document.body.removeChild(tempElement);
       } else {
         // Fallback: create temporary element from markdown
         const tempElement = document.createElement('div');
