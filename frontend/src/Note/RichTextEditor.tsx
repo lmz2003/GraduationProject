@@ -87,7 +87,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           value={editorHtml}
           onChange={handleChange}
           modules={{
-            toolbar: [
+            toolbar: 
               [{ 'header': [1, 2, 3, false] },
               ['bold', 'italic', 'underline', 'strike'],
               [{ 'list': 'ordered' }, { 'list': 'bullet' }],
