@@ -19,8 +19,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const [wordCount, setWordCount] = useState<number>(0);
 
   useEffect(() => {
-    if (quillRef.current) {
-      quillRef.current.root.innerHTML = initialContent;
+    if (initialContent && initialContent !== editorHtml) {
+      setEditorHtml(initialContent);
       updateWordCount();
     }
   }, [initialContent]);
@@ -87,8 +87,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           value={editorHtml}
           onChange={handleChange}
           modules={{
-            toolbar: 
-              [{ 'header': [1, 2, 3, false] },
+            toolbar: [
+              [{ 'header': [1, 2, 3, false] }],
               ['bold', 'italic', 'underline', 'strike'],
               [{ 'list': 'ordered' }, { 'list': 'bullet' }],
               ['blockquote', 'code-block'],
