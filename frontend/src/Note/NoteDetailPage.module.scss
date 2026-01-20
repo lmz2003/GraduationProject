@@ -3,18 +3,19 @@
   height: 100%;
   display: flex;
   flex-direction: column;
-  background: #f8fafc;
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   overflow: hidden;
 }
 
 .header {
-  background: white;
-  padding: 15px 30px;
+  background: linear-gradient(to bottom, #ffffff, #f8fafc);
+  padding: 18px 30px;
   border-bottom: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
 .headerLeft {
@@ -39,22 +40,26 @@
 }
 
 .titleInput {
-  font-size: 20px;
-  font-weight: 600;
-  border: 1px solid transparent;
+  font-size: 22px;
+  font-weight: 700;
+  border: 2px solid transparent;
   background: transparent;
   padding: 8px 12px;
   border-radius: 8px;
   min-width: 300px;
+  color: #0f172a;
+  transition: all 0.2s ease;
 
   &:hover {
-    border-color: #e2e8f0;
+    border-color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.5);
   }
 
   &:focus {
     outline: none;
-    border-color: #4f46e5;
+    border-color: #3b82f6;
     background: white;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
 }
 
@@ -82,10 +87,13 @@
   padding: 10px 20px;
   border-radius: 8px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   border: none;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 
   &:disabled {
     opacity: 0.5;
@@ -93,41 +101,67 @@
   }
 
   &.primary {
-    background: #4f46e5;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
     color: white;
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 
-    &:hover {
-      background: #4338ca;
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+      box-shadow: 0 6px 16px rgba(59, 130, 246, 0.4);
+      transform: translateY(-2px);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
     }
   }
 
   &.danger {
-    background: #dc2626;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
     color: white;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
 
-    &:hover {
-      background: #b91c1c;
+    &:hover:not(:disabled) {
+      background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+      box-shadow: 0 6px 16px rgba(239, 68, 68, 0.4);
+      transform: translateY(-2px);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
     }
   }
 
   &.secondary {
     background: #f1f5f9;
     color: #475569;
+    border: 1px solid #cbd5e1;
 
-    &:hover {
+    &:hover:not(:disabled) {
       background: #e2e8f0;
+      border-color: #94a3b8;
+      transform: translateY(-1px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    }
+
+    &:active:not(:disabled) {
+      transform: translateY(0);
+      box-shadow: none;
     }
   }
 }
 
 .metaBar {
-  background: white;
-  padding: 12px 30px;
+  background: linear-gradient(to bottom, #ffffff, #f8fafc);
+  padding: 14px 30px;
   border-bottom: 1px solid #e2e8f0;
   display: flex;
   gap: 15px;
   align-items: center;
   flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
 }
 
 .metaLabel {
@@ -156,15 +190,17 @@
 }
 
 .tag {
-  padding: 4px 10px;
-  background: #ede9fe;
-  color: #7c3aed;
-  border-radius: 12px;
-  font-size: 12px;
-  font-weight: 500;
+  padding: 6px 12px;
+  background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+  color: #1e40af;
+  border-radius: 16px;
+  font-size: 13px;
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 6px;
+  border: 1px solid rgba(30, 64, 175, 0.2);
+  box-shadow: 0 2px 4px rgba(30, 64, 175, 0.1);
 }
 
 .tagRemove {
@@ -184,16 +220,35 @@
   flex: 1;
   overflow: hidden;
   padding: 20px 30px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .saveIndicator {
   font-size: 13px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 12px;
+  transition: all 0.2s ease;
 
   &.saving {
-    color: #f59e0b;
+    color: #d97706;
+    background: rgba(217, 119, 6, 0.1);
+    animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   }
 
   &:not(.saving) {
-    color: #10b981;
+    color: #059669;
+    background: rgba(5, 150, 105, 0.1);
+  }
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
   }
 }
