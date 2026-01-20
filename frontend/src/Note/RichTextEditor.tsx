@@ -18,15 +18,19 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const [editorHtml, setEditorHtml] = useState<string>(initialContent);
   const quillRef = useRef<ReactQuill>(null);
   const [wordCount, setWordCount] = useState<number>(0);
+  const isInitializedRef = useRef(false);
 
   useEffect(() => {
-    if (initialContent && initialContent !== editorHtml) {
+    // 仅在初始化时设置内容，之后不再根据 initialContent 更新
+    if (!isInitializedRef.current && initialContent) {
       setEditorHtml(initialContent);
-      updateWordCount();
+      isInitializedRef.current = true;
+      // 初始化时计算一次字数
+      setTimeout(() => updateWordCount(), 100);
     }
-  }, [initialContent]);
+  }, []);
 
-  // 为图片按钮添加自定义处理器
+  // 为图片按钮添加自定义处理器，以及处理中文输入法
   useEffect(() => {
     const editor = quillRef.current?.getEditor?.();
     if (editor) {
@@ -34,6 +38,36 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       if (toolbar) {
         toolbar.addHandler('image', handleImageUpload);
       }
+
+      // 获取编辑器的 DOM 元素以监听输入法事件
+      const editorElement = editor.root;
+      let isComposing = false;
+
+      const handleCompositionStart = () => {
+        isComposing = true;
+      };
+
+      const handleCompositionEnd = (e: Event) => {
+        isComposing = false;
+        // 组合输入结束时触发变化事件
+        const compositionEvent = e as any;
+        if (compositionEvent.data) {
+          const html = editor.root.innerHTML;
+          setEditorHtml(html);
+          updateWordCount();
+          if (onHtmlChange) {
+            onHtmlChange(html);
+          }
+        }
+      };
+
+      editorElement?.addEventListener('compositionstart', handleCompositionStart);
+      editorElement?.addEventListener('compositionend', handleCompositionEnd);
+
+      return () => {
+        editorElement?.removeEventListener('compositionstart', handleCompositionStart);
+        editorElement?.removeEventListener('compositionend', handleCompositionEnd);
+      };
     }
   }, []);
 
@@ -51,19 +85,23 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
   const handleChange = (html: string) => {
     setEditorHtml(html);
-    updateWordCount();
-    if (onContentChange) {
-      try {
-        const editor = quillRef.current?.getEditor?.();
-        const text = editor?.getText?.() || '';
-        onContentChange(text);
-      } catch (error) {
-        console.warn('获取编辑器文本失败:', error);
+    
+    // 使用 setTimeout 避免立即调用，以支持中文输入法
+    setTimeout(() => {
+      updateWordCount();
+      if (onContentChange) {
+        try {
+          const editor = quillRef.current?.getEditor?.();
+          const text = editor?.getText?.() || '';
+          onContentChange(text);
+        } catch (error) {
+          console.warn('获取编辑器文本失败:', error);
+        }
       }
-    }
-    if (onHtmlChange) {
-      onHtmlChange(html);
-    }
+      if (onHtmlChange) {
+        onHtmlChange(html);
+      }
+    }, 0);
   };
 
   const handleImageUpload = async () => {
@@ -113,7 +151,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         <ReactQuill
           ref={quillRef}
           theme="snow"
-          value={editorHtml}
+          defaultValue={editorHtml}
           onChange={handleChange}
           modules={{
             toolbar: [
