@@ -155,12 +155,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           onChange={handleChange}
           modules={{
             toolbar: [
-              [{ 'header': [1, 2, 3, false] }],
-              ['bold', 'italic', 'underline', 'strike'],
-              [{ 'list': 'ordered' }, { 'list': 'bullet' }],
-              ['blockquote', 'code-block'],
-              ['link', 'image'],
-              ['clean']
+              [{ 'header': [1, 2, 3, false] },'bold', 'italic', 'underline', 'strike',{ 'list': 'ordered' }, { 'list': 'bullet' },'blockquote', 'code-block','link', 'image','clean'],
             ],
             clipboard: {
               matchVisual: false,
