@@ -32,15 +32,25 @@
       background: linear-gradient(to bottom, #f8fafc, #ffffff);
       border: none;
       border-bottom: 1px solid #e2e8f0;
-      padding: 12px 16px;
+      padding: 10px 12px;
       transition: all 0.3s ease;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
 
       &.ql-snow {
         .ql-formats {
-          margin-right: 16px;
+          margin-right: 0;
           display: flex;
-          gap: 2px;
+          gap: 0;
           align-items: center;
+          flex-wrap: nowrap;
+
+          &:not(:last-child) {
+            margin-right: 4px;
+            padding-right: 4px;
+            border-right: 1px solid #e2e8f0;
+          }
 
           &:last-child {
             margin-right: 0;
@@ -48,12 +58,12 @@
         }
 
         button {
-          width: 32px;
-          height: 32px;
-          padding: 4px;
-          margin: 0 2px;
+          width: 28px;
+          height: 28px;
+          padding: 2px;
+          margin: 0 1px;
           border: 1px solid transparent;
-          border-radius: 6px;
+          border-radius: 5px;
           background: transparent;
           color: #475569;
           cursor: pointer;
@@ -61,7 +71,8 @@
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 16px;
+          font-size: 14px;
+          flex-shrink: 0;
 
           &:hover {
             background: #e2e8f0;
@@ -77,16 +88,17 @@
         }
 
         select {
-          height: 32px;
-          padding: 4px 8px;
+          height: 28px;
+          padding: 2px 6px;
           border: 1px solid #cbd5e1;
-          border-radius: 6px;
+          border-radius: 5px;
           background: #ffffff;
           color: #475569;
           cursor: pointer;
           transition: all 0.2s ease;
-          font-size: 14px;
-          margin: 0 2px;
+          font-size: 12px;
+          margin: 0 1px;
+          flex-shrink: 0;
 
           &:hover {
             border-color: #94a3b8;
