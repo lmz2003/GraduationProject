@@ -127,11 +127,19 @@ const NoteDetailPage: React.FC = () => {
       const result = await response.json();
       if (result.code === 0) {
         alert('保存成功');
+        
+        // 保存成功后，更新 note 和 content 确保 hasChanges 判断正确
+        const savedNote = result.data;
+        setNote(savedNote);
+        setTitle(savedNote.title);
+        setContent(savedNote.content);
+        setHtmlContent(savedNote.content);
+        setTags(savedNote.tags || []);
+        setStatus(savedNote.status);
         setHasChanges(false);
+        
         if (isNewNote) {
-          navigate(`/dashboard/notes/${result.data.id}`);
-        } else {
-          setNote(result.data);
+          navigate(`/dashboard/notes/${savedNote.id}`);
         }
       } else {
         throw new Error(result.message || '保存失败');

@@ -65,26 +65,46 @@
 
 .headerActions {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  padding-right: 0;
+
+  /* 隐藏滚动条 */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 .statusSelect {
   padding: 8px 12px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #cbd5e1;
   border-radius: 8px;
   font-size: 14px;
   background: white;
   cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: #94a3b8;
+    background: #f8fafc;
+  }
 
   &:focus {
     outline: none;
-    border-color: #4f46e5;
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
 }
 
 .button {
-  padding: 10px 20px;
+  padding: 10px 16px;
   border-radius: 8px;
   font-size: 14px;
   font-weight: 600;
@@ -94,6 +114,8 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  white-space: nowrap;
+  flex-shrink: 0;
 
   &:disabled {
     opacity: 0.5;
