@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+// @ts-ignore - react-quill 类型声明可能不完整
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import styles from './RichTextEditor.module.scss';
@@ -25,18 +26,40 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   }, [initialContent]);
 
+  // 为图片按钮添加自定义处理器
+  useEffect(() => {
+    const editor = quillRef.current?.getEditor?.();
+    if (editor) {
+      const toolbar = editor.getModule('toolbar');
+      if (toolbar) {
+        toolbar.addHandler('image', handleImageUpload);
+      }
+    }
+  }, []);
+
   const updateWordCount = () => {
-    const text = quillRef.current?.getText() || '';
-    const words = text.trim().split(/\s+/).filter(word => word.length > 0).length;
-    setWordCount(words);
+    try {
+      // 获取 Quill 编辑器实例（ReactQuill 组件的 getEditor 方法）
+      const editor = quillRef.current?.getEditor?.();
+      const text = editor?.getText?.() || '';
+      const words = text.trim().split(/\s+/).filter((word: string) => word.length > 0).length;
+      setWordCount(words);
+    } catch (error) {
+      console.warn('计算字数失败:', error);
+    }
   };
 
   const handleChange = (html: string) => {
     setEditorHtml(html);
     updateWordCount();
     if (onContentChange) {
-      const text = quillRef.current?.getText() || '';
-      onContentChange(text);
+      try {
+        const editor = quillRef.current?.getEditor?.();
+        const text = editor?.getText?.() || '';
+        onContentChange(text);
+      } catch (error) {
+        console.warn('获取编辑器文本失败:', error);
+      }
     }
     if (onHtmlChange) {
       onHtmlChange(html);
@@ -63,9 +86,15 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
           if (response.ok) {
             const { url } = await response.json();
-            const range = quillRef.current?.getSelection();
-            if (range) {
-              quillRef.current?.insertEmbed(range.index, 'image', url);
+            try {
+              const editor = quillRef.current?.getEditor?.();
+              const range = editor?.getSelection?.();
+              if (range && editor) {
+                editor.insertEmbed(range.index, 'image', url);
+              }
+            } catch (error) {
+              console.error('插入图片失败:', error);
+              alert('插入图片失败');
             }
           } else {
             alert('图片上传失败');
