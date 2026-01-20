@@ -41,14 +41,12 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
       // 获取编辑器的 DOM 元素以监听输入法事件
       const editorElement = editor.root;
-      let isComposing = false;
 
       const handleCompositionStart = () => {
-        isComposing = true;
+        // Track IME composition state
       };
 
       const handleCompositionEnd = (e: Event) => {
-        isComposing = false;
         // 组合输入结束时触发变化事件
         const compositionEvent = e as any;
         if (compositionEvent.data) {

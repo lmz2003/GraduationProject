@@ -31,7 +31,7 @@ const NotesListPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
   const [batchMode, setBatchMode] = useState(false);
-  const [showBatchActions, setShowBatchActions] = useState(false);
+  const [, setShowBatchActions] = useState(false); // State for batch actions visibility (managed internally)
   const [pagination, setPagination] = useState({
     page: 1,
     pageSize: 20,

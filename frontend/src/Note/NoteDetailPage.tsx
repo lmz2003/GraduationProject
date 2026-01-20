@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import RichTextEditor from './RichTextEditor';
 import PdfExportModal from '../components/PdfExportModal';
+import AIAssistant from '../AIAssistant/AIAssistant';
+import { AIAssistantProvider } from '../context/AIAssistantContext';
 import styles from './NoteDetailPage.module.scss';
 
 interface Note {
@@ -310,12 +312,15 @@ const NoteDetailPage: React.FC = () => {
         />
       </div>
 
-      <div className={styles.editorContainer}>
-        <RichTextEditor
-          initialContent={content}
-          onContentChange={setContent}
-          onHtmlChange={setHtmlContent}
-        />
+      <div className={styles.contentWrapper}>
+        <div className={styles.editorContainer}>
+          <RichTextEditor
+            initialContent={content}
+            onContentChange={setContent}
+            onHtmlChange={setHtmlContent}
+          />
+        </div>
+        <AIAssistant />
       </div>
 
       <PdfExportModal
@@ -328,4 +333,13 @@ const NoteDetailPage: React.FC = () => {
   );
 };
 
-export default NoteDetailPage;
+// Wrapper component to provide AI Assistant context
+const NoteDetailPageWithProvider: React.FC = () => {
+  return (
+    <AIAssistantProvider>
+      <NoteDetailPage />
+    </AIAssistantProvider>
+  );
+};
+
+export default NoteDetailPageWithProvider;
