@@ -26,7 +26,7 @@ interface AuthRequest extends Request {
   };
 }
 
-@Controller('api/knowledge-base')
+@Controller('knowledge-base')
 export class KnowledgeBaseController {
   constructor(private readonly knowledgeBaseService: KnowledgeBaseService) {}
 
