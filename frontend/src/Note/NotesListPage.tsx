@@ -31,7 +31,6 @@ const NotesListPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
   const [batchMode, setBatchMode] = useState(false);
-  const [, setShowBatchActions] = useState(false); // State for batch actions visibility (managed internally)
   const [pagination, setPagination] = useState({
     page: 1,
     pageSize: 20,
@@ -194,7 +193,6 @@ const NotesListPage: React.FC = () => {
       } else {
         newSet.add(id);
       }
-      setShowBatchActions(newSet.size > 0);
       return newSet;
     });
   };
@@ -202,24 +200,20 @@ const NotesListPage: React.FC = () => {
   // 进入批量删除模式
   const handleEnterBatchMode = () => {
     setBatchMode(true);
-    setShowBatchActions(true);
   };
 
   // 退出批量删除模式
   const handleExitBatchMode = () => {
     setBatchMode(false);
     setSelectedNotes(new Set());
-    setShowBatchActions(false);
   };
 
   // 全选/取消全选
   const handleSelectAll = () => {
     if (selectedNotes.size === notes.length) {
       setSelectedNotes(new Set());
-      setShowBatchActions(false);
     } else {
       setSelectedNotes(new Set(notes.map(note => note.id)));
-      setShowBatchActions(true);
     }
   };
 

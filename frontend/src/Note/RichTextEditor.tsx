@@ -30,7 +30,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   }, []);
 
-  // 为图片按钮添加自定义处理器，以及处理中文输入法
+  // 为图片按钮添加自定义处理器
   useEffect(() => {
     const editor = quillRef.current?.getEditor?.();
     if (editor) {
@@ -38,34 +38,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       if (toolbar) {
         toolbar.addHandler('image', handleImageUpload);
       }
-
-      // 获取编辑器的 DOM 元素以监听输入法事件
-      const editorElement = editor.root;
-
-      const handleCompositionStart = () => {
-        // Track IME composition state
-      };
-
-      const handleCompositionEnd = (e: Event) => {
-        // 组合输入结束时触发变化事件
-        const compositionEvent = e as any;
-        if (compositionEvent.data) {
-          const html = editor.root.innerHTML;
-          setEditorHtml(html);
-          updateWordCount();
-          if (onHtmlChange) {
-            onHtmlChange(html);
-          }
-        }
-      };
-
-      editorElement?.addEventListener('compositionstart', handleCompositionStart);
-      editorElement?.addEventListener('compositionend', handleCompositionEnd);
-
-      return () => {
-        editorElement?.removeEventListener('compositionstart', handleCompositionStart);
-        editorElement?.removeEventListener('compositionend', handleCompositionEnd);
-      };
     }
   }, []);
 
