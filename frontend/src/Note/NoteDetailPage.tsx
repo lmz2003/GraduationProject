@@ -228,8 +228,12 @@ const NoteDetailPage: React.FC = () => {
 
   const handleMouseMove = (e: MouseEvent) => {
     if (!isDragging) return;
-    const containerWidth = document.querySelector(`.${styles.pageContainer}`)?.getBoundingClientRect().width || 0;
-    const newAiWidth = containerWidth - e.clientX;
+    const container = document.querySelector(`.${styles.pageContainer}`);
+    if (!container) return;
+    
+    const containerRect = container.getBoundingClientRect();
+    const newAiWidth = containerRect.right - e.clientX;
+    
     if (newAiWidth >= 250 && newAiWidth <= 600) {
       setAiWidth(newAiWidth);
     }
