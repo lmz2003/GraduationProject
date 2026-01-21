@@ -31,6 +31,9 @@ const NoteDetailPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [showPdfSettings, setShowPdfSettings] = useState(false);
+  const [showAI, setShowAI] = useState(true);
+  const [aiWidth, setAiWidth] = useState(350);
+  const [isDragging, setIsDragging] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
@@ -216,6 +219,28 @@ const NoteDetailPage: React.FC = () => {
     navigate('/dashboard/notes');
   };
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging) return;
+    const containerWidth = document.querySelector(`.${styles.contentWrapper}`)?.getBoundingClientRect().width || 0;
+    const newAiWidth = containerWidth - e.clientX;
+    if (newAiWidth >= 250 && newAiWidth <= 600) {
+      setAiWidth(newAiWidth);
+    }
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+    document.removeEventListener('mousemove', handleMouseMove);
+    document.removeEventListener('mouseup', handleMouseUp);
+  };
+
   if (loading) {
     return (
       <div className={styles.pageContainer}>
@@ -277,6 +302,13 @@ const NoteDetailPage: React.FC = () => {
             📄 导出PDF
           </button>
           
+          <button 
+            className={`${styles.button} ${showAI ? styles.active : styles.secondary}`} 
+            onClick={() => setShowAI(!showAI)}
+          >
+            🤖 AI助手
+          </button>
+          
           {!isNewNote && (
             <button 
               className={`${styles.button} ${styles.danger}`} 
@@ -320,6 +352,18 @@ const NoteDetailPage: React.FC = () => {
             onHtmlChange={setHtmlContent}
           />
         </div>
+        
+        {showAI && (
+          <>
+            <div 
+              className={`${styles.resizer} ${isDragging ? styles.resizing : ''}`}
+              onMouseDown={handleMouseDown}
+            />
+            <div className={styles.aiContainer} style={{ width: `${aiWidth}px` }}>
+              <AIAssistant />
+            </div>
+          </>
+        )}
       </div>
 
       <AIAssistant />

@@ -1,36 +1,16 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
-import { useAIAssistant } from '../context/AIAssistantContext';
 
 // Styled components for the AI Assistant
-const AssistantContainer = styled.div<{ $isOpen: boolean }>`
-  width: ${props => props.$isOpen ? '350px' : '0'};
+const AssistantContainer = styled.div`
+  width: 100%;
   height: 100%;
   background-color: #ffffff;
-  border-left: 1px solid #e2e8f0;
   display: flex;
   flex-direction: column;
-  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
-  flex-shrink: 0;
-  position: fixed;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  z-index: 40;
-
-  @media (max-width: 1200px) {
-    width: ${props => props.$isOpen ? '300px' : '0'};
-  }
-
-  @media (max-width: 900px) {
-    width: ${props => props.$isOpen ? '320px' : '0'};
-    box-shadow: ${props => props.$isOpen ? '-4px 0 15px rgba(0, 0, 0, 0.1)' : 'none'};
-  }
-
-  @media (max-width: 480px) {
-    width: ${props => props.$isOpen ? '100%' : '0'};
-  }
+  position: relative;
+  z-index: 30;
 `;
 
 const Header = styled.div`
@@ -52,25 +32,6 @@ const Title = styled.h3`
   display: flex;
   align-items: center;
   gap: 0.5rem;
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #64748b;
-  font-size: 1.2rem;
-  padding: 0.25rem;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-
-  &:hover {
-    background-color: #e2e8f0;
-    color: #0f172a;
-  }
 `;
 
 const MessageList = styled.div`
@@ -152,22 +113,6 @@ const SendButton = styled.button`
   }
 `;
 
-const Overlay = styled.div<{ $isOpen: boolean }>`
-  display: none;
-  
-  @media (max-width: 1024px) {
-    display: ${props => props.$isOpen ? 'block' : 'none'};
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.3);
-    z-index: 25;
-    backdrop-filter: blur(2px);
-  }
-`;
-
 interface Message {
   id: string;
   text: string;
@@ -176,7 +121,6 @@ interface Message {
 }
 
 const AIAssistant: React.FC = () => {
-  const { isOpen, toggleOpen } = useAIAssistant();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -194,7 +138,7 @@ const AIAssistant: React.FC = () => {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, isOpen]);
+  }, [messages]);
 
   const handleSend = () => {
     if (!input.trim()) return;
@@ -228,40 +172,34 @@ const AIAssistant: React.FC = () => {
   };
 
   return (
-    <>
-      <Overlay $isOpen={isOpen} onClick={toggleOpen} />
-      <AssistantContainer $isOpen={isOpen}>
-        <Header>
-          <Title>
-            <span>🤖</span> AI 助手
-          </Title>
-          <CloseButton onClick={toggleOpen} title="关闭">
-            ✕
-          </CloseButton>
-        </Header>
-        
-        <MessageList>
-          {messages.map(msg => (
-            <MessageBubble key={msg.id} $isUser={msg.isUser}>
-              {msg.text}
-            </MessageBubble>
-          ))}
-          <div ref={messagesEndRef} />
-        </MessageList>
-        
-        <InputArea>
-          <Input 
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="输入你的问题..."
-          />
-          <SendButton onClick={handleSend} disabled={!input.trim()}>
-            发送
-          </SendButton>
-        </InputArea>
-      </AssistantContainer>
-    </>
+    <AssistantContainer>
+      <Header>
+        <Title>
+          <span>🤖</span> AI 助手
+        </Title>
+      </Header>
+      
+      <MessageList>
+        {messages.map(msg => (
+          <MessageBubble key={msg.id} $isUser={msg.isUser}>
+            {msg.text}
+          </MessageBubble>
+        ))}
+        <div ref={messagesEndRef} />
+      </MessageList>
+      
+      <InputArea>
+        <Input 
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyPress={handleKeyPress}
+          placeholder="输入你的问题..."
+        />
+        <SendButton onClick={handleSend} disabled={!input.trim()}>
+          发送
+        </SendButton>
+      </InputArea>
+    </AssistantContainer>
   );
 };
 

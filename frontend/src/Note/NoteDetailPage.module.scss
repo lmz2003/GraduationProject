@@ -172,6 +172,19 @@
       transform: translateY(0);
       box-shadow: none;
     }
+
+    &.active {
+      background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+      color: white;
+      border: none;
+      box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+
+      &:hover:not(:disabled) {
+        background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+        box-shadow: 0 6px 16px rgba(139, 92, 246, 0.4);
+        transform: translateY(-2px);
+      }
+    }
   }
 }
 
@@ -244,6 +257,7 @@
   flex-direction: row;
   overflow: hidden;
   min-height: 0;
+  position: relative;
 }
 
 .editorContainer {
@@ -253,19 +267,57 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  margin-right: 350px; // 为 AI 助手留出空间
-  
-  @media (max-width: 1200px) {
-    margin-right: 300px;
+  min-width: 300px;
+}
+
+.resizer {
+  width: 6px;
+  background: #e2e8f0;
+  cursor: col-resize;
+  flex-shrink: 0;
+  transition: background 0.2s;
+  position: relative;
+  z-index: 10;
+
+  &:hover {
+    background: #8b5cf6;
   }
-  
-  @media (max-width: 900px) {
-    margin-right: 320px;
+
+  &.resizing {
+    background: #7c3aed;
   }
-  
-  @media (max-width: 480px) {
-    margin-right: 0;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 4px;
+    height: 40px;
+    background: #94a3b8;
+    border-radius: 2px;
+    opacity: 0;
+    transition: opacity 0.2s;
   }
+
+  &:hover::before,
+  &.resizing::before {
+    opacity: 1;
+    background: white;
+  }
+}
+
+.aiContainer {
+  flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: #ffffff;
+  border-left: 1px solid #e2e8f0;
+  min-width: 250px;
+  max-width: 600px;
+  transition: width 0.1s ease-out;
 }
 
 .saveIndicator {
