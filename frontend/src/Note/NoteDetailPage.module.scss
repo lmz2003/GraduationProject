@@ -253,6 +253,19 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
+  margin-right: 350px; // 为 AI 助手留出空间
+  
+  @media (max-width: 1200px) {
+    margin-right: 300px;
+  }
+  
+  @media (max-width: 900px) {
+    margin-right: 320px;
+  }
+  
+  @media (max-width: 480px) {
+    margin-right: 0;
+  }
 }
 
 .saveIndicator {

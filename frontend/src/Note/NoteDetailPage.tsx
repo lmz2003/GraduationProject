@@ -320,8 +320,9 @@ const NoteDetailPage: React.FC = () => {
             onHtmlChange={setHtmlContent}
           />
         </div>
-        <AIAssistant />
       </div>
+
+      <AIAssistant />
 
       <PdfExportModal
         isOpen={showPdfSettings}

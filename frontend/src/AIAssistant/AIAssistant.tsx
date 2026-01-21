@@ -13,18 +13,17 @@ const AssistantContainer = styled.div<{ $isOpen: boolean }>`
   transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   flex-shrink: 0;
-  position: relative;
-  z-index: 30;
+  position: fixed;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 40;
 
   @media (max-width: 1200px) {
     width: ${props => props.$isOpen ? '300px' : '0'};
   }
 
   @media (max-width: 900px) {
-    position: fixed;
-    right: 0;
-    top: 0;
-    bottom: 0;
     width: ${props => props.$isOpen ? '320px' : '0'};
     box-shadow: ${props => props.$isOpen ? '-4px 0 15px rgba(0, 0, 0, 0.1)' : 'none'};
   }
