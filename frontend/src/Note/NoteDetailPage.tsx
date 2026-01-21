@@ -242,8 +242,8 @@ const NoteDetailPage: React.FC = () => {
   const handleMouseUp = () => {
     console.log('Mouse up');
     setIsDragging(false);
-    document.removeEventListener('mousemove', handleMouseMove);
-    document.removeEventListener('mouseup', handleMouseUp);
+    window.removeEventListener('mousemove', handleMouseMove);
+    window.removeEventListener('mouseup', handleMouseUp);
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -251,8 +251,8 @@ const NoteDetailPage: React.FC = () => {
     e.stopPropagation();
     console.log('Mouse down on resizer');
     setIsDragging(true);
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
   };
 
   if (loading) {
