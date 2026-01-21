@@ -34,6 +34,7 @@ const NoteDetailPage: React.FC = () => {
   const [showAI, setShowAI] = useState(true);
   const [aiWidth, setAiWidth] = useState(350);
   const [isDragging, setIsDragging] = useState(false);
+  console.log(`aiWidth state: ${aiWidth}`);
   const previewRef = useRef<HTMLDivElement>(null);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
@@ -237,12 +238,18 @@ const NoteDetailPage: React.FC = () => {
     const containerRect = container.getBoundingClientRect();
     const newAiWidth = containerRect.right - e.clientX;
     
+    console.log(`Mouse move: clientX=${e.clientX}, containerRect.right=${containerRect.right}, newAiWidth=${newAiWidth}`);
+    
     if (newAiWidth >= 250 && newAiWidth <= 600) {
       setAiWidth(newAiWidth);
+      console.log(`Set aiWidth: ${newAiWidth}`);
+    } else {
+      console.log(`newAiWidth out of range: ${newAiWidth}`);
     }
   }, [isDragging]);
 
   const handleMouseUp = useCallback(() => {
+    console.log('Mouse up');
     setIsDragging(false);
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
