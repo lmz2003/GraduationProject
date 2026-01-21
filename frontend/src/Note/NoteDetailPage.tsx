@@ -41,7 +41,7 @@ const NoteDetailPage: React.FC = () => {
 
   const fetchNote = async () => {
     if (isNewNote) return;
-    
+
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -85,7 +85,7 @@ const NoteDetailPage: React.FC = () => {
 
   useEffect(() => {
     if (note) {
-      const changed = 
+      const changed =
         title !== note.title ||
         content !== note.content ||
         JSON.stringify(tags) !== JSON.stringify(note.tags) ||
@@ -100,7 +100,7 @@ const NoteDetailPage: React.FC = () => {
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
-      
+
       const noteData = {
         title: title || '未命名笔记',
         content: htmlContent,
@@ -132,7 +132,7 @@ const NoteDetailPage: React.FC = () => {
       const result = await response.json();
       if (result.code === 0) {
         alert('保存成功');
-        
+
         // 保存成功后，更新 note 和 content 确保 hasChanges 判断正确
         const savedNote = result.data;
         setNote(savedNote);
@@ -142,7 +142,7 @@ const NoteDetailPage: React.FC = () => {
         setTags(savedNote.tags || []);
         setStatus(savedNote.status);
         setHasChanges(false);
-        
+
         if (isNewNote) {
           navigate(`/dashboard/notes/${savedNote.id}`);
         }
@@ -228,7 +228,7 @@ const NoteDetailPage: React.FC = () => {
 
   const handleMouseMove = (e: MouseEvent) => {
     if (!isDragging) return;
-    const containerWidth = document.querySelector(`.${styles.contentWrapper}`)?.getBoundingClientRect().width || 0;
+    const containerWidth = document.querySelector(`.${styles.pageContainer}`)?.getBoundingClientRect().width || 0;
     const newAiWidth = containerWidth - e.clientX;
     if (newAiWidth >= 250 && newAiWidth <= 600) {
       setAiWidth(newAiWidth);
@@ -253,120 +253,123 @@ const NoteDetailPage: React.FC = () => {
 
   return (
     <div className={styles.pageContainer}>
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <button className={styles.backButton} onClick={handleBack}>
-            ← 返回列表
-          </button>
-          <input
-            className={styles.titleInput}
-            placeholder="未命名笔记"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-        </div>
-        
-        <div className={styles.headerActions}>
-          <div className={`${styles.saveIndicator} ${saving ? styles.saving : ''}`}>
-            {saving ? '保存中...' : hasChanges ? '有未保存的修改' : '已保存'}
-          </div>
-          
-          <select 
-            className={styles.statusSelect} 
-            value={status} 
-            onChange={(e) => setStatus(e.target.value)}
-          >
-            <option value="draft">草稿</option>
-            <option value="published">已发布</option>
-          </select>
-          
-          <button 
-            className={`${styles.button} ${styles.primary}`} 
-            onClick={handleSave} 
-            disabled={saving || !hasChanges}
-          >
-            💾 保存
-          </button>
-          
-          <button 
-            className={`${styles.button} ${styles.secondary}`} 
-            onClick={handleExportHtml}
-          >
-            📥 导出HTML
-          </button>
-          
-          <button 
-            className={`${styles.button} ${styles.secondary}`} 
-            onClick={handlePdfSettings}
-          >
-            📄 导出PDF
-          </button>
-          
-          <button 
-            className={`${styles.button} ${showAI ? styles.active : styles.secondary}`} 
-            onClick={() => setShowAI(!showAI)}
-          >
-            🤖 AI助手
-          </button>
-          
-          {!isNewNote && (
-            <button 
-              className={`${styles.button} ${styles.danger}`} 
-              onClick={handleDelete}
-            >
-              🗑️ 删除
+      <div className={styles.mainContent}>
+        <div className={styles.header}>
+          <div className={styles.headerLeft}>
+            <button className={styles.backButton} onClick={handleBack}>
+              ← 返回列表
             </button>
-          )}
-        </div>
-      </div>
+            <input
+              className={styles.titleInput}
+              placeholder="未命名笔记"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+          </div>
 
-      <div className={styles.metaBar}>
-        <span className={styles.metaLabel}>标签:</span>
-        <div className={styles.tagsList}>
-          {tags.map((tag, index) => (
-            <span key={index} className={styles.tag}>
-              {tag}
-              <button 
-                className={styles.tagRemove} 
-                onClick={() => handleRemoveTag(tag)}
+          <div className={styles.headerActions}>
+            <div className={`${styles.saveIndicator} ${saving ? styles.saving : ''}`}>
+              {saving ? '保存中...' : hasChanges ? '有未保存的修改' : '已保存'}
+            </div>
+
+            <select
+              className={styles.statusSelect}
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+            >
+              <option value="draft">草稿</option>
+              <option value="published">已发布</option>
+            </select>
+
+            <button
+              className={`${styles.button} ${styles.primary}`}
+              onClick={handleSave}
+              disabled={saving || !hasChanges}
+            >
+              💾 保存
+            </button>
+
+            <button
+              className={`${styles.button} ${styles.secondary}`}
+              onClick={handleExportHtml}
+            >
+              📥 导出HTML
+            </button>
+
+            <button
+              className={`${styles.button} ${styles.secondary}`}
+              onClick={handlePdfSettings}
+            >
+              📄 导出PDF
+            </button>
+
+            <button
+              className={`${styles.button} ${showAI ? styles.active : styles.secondary}`}
+              onClick={() => setShowAI(!showAI)}
+            >
+              🤖 AI助手
+            </button>
+
+            {!isNewNote && (
+              <button
+                className={`${styles.button} ${styles.danger}`}
+                onClick={handleDelete}
               >
-                ×
+                🗑️ 删除
               </button>
-            </span>
-          ))}
+            )}
+          </div>
         </div>
-        <input
-          className={styles.tagsInput}
-          placeholder="添加标签（回车确认）"
-          value={tagInput}
-          onChange={(e) => setTagInput(e.target.value)}
-          onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
-        />
-      </div>
 
-      <div className={styles.contentWrapper}>
-        <div className={styles.editorContainer}>
-          <RichTextEditor
-            initialContent={content}
-            onContentChange={setContent}
-            onHtmlChange={setHtmlContent}
+        <div className={styles.metaBar}>
+          <span className={styles.metaLabel}>标签:</span>
+          <div className={styles.tagsList}>
+            {tags.map((tag, index) => (
+              <span key={index} className={styles.tag}>
+                {tag}
+                <button
+                  className={styles.tagRemove}
+                  onClick={() => handleRemoveTag(tag)}
+                >
+                  ×
+                </button>
+              </span>
+            ))}
+          </div>
+          <input
+            className={styles.tagsInput}
+            placeholder="添加标签（回车确认）"
+            value={tagInput}
+            onChange={(e) => setTagInput(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
           />
         </div>
-        
-        {showAI && (
-          <>
-            <div 
-              className={`${styles.resizer} ${isDragging ? styles.resizing : ''}`}
-              onMouseDown={handleMouseDown}
+
+        <div className={styles.contentWrapper}>
+          <div className={styles.editorContainer}>
+            <RichTextEditor
+              initialContent={content}
+              onContentChange={setContent}
+              onHtmlChange={setHtmlContent}
             />
-            <div className={styles.aiContainer} style={{ width: `${aiWidth}px` }}>
-              <AIAssistant />
-            </div>
-          </>
-        )}
+          </div>
+        </div>
       </div>
 
-      <AIAssistant />
+      {showAI && (
+        <>
+          <div
+            className={`${styles.resizer} ${isDragging ? styles.resizing : ''}`}
+            onMouseDown={handleMouseDown}
+          />
+          <div className={styles.aiContainer} style={{ width: `${aiWidth}px` }}>
+            <div className={styles.aiHeader}>
+              <span className={styles.aiTitle}>🤖 AI 助手</span>
+            </div>
+            <AIAssistant />
+          </div>
+        </>
+      )}
 
       <PdfExportModal
         isOpen={showPdfSettings}

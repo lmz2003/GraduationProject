@@ -13,27 +13,6 @@ const AssistantContainer = styled.div`
   z-index: 30;
 `;
 
-const Header = styled.div`
-  height: 64px;
-  padding: 0 1.5rem;
-  border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background-color: #f8fafc;
-  flex-shrink: 0;
-`;
-
-const Title = styled.h3`
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  color: #0f172a;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-`;
-
 const MessageList = styled.div`
   flex: 1;
   padding: 1rem;
@@ -173,12 +152,6 @@ const AIAssistant: React.FC = () => {
 
   return (
     <AssistantContainer>
-      <Header>
-        <Title>
-          <span>🤖</span> AI 助手
-        </Title>
-      </Header>
-      
       <MessageList>
         {messages.map(msg => (
           <MessageBubble key={msg.id} $isUser={msg.isUser}>
