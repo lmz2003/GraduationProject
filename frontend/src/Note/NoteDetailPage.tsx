@@ -366,7 +366,9 @@ const NoteDetailPage: React.FC = () => {
             <div className={styles.aiHeader}>
               <span className={styles.aiTitle}>🤖 AI 助手</span>
             </div>
-            <AIAssistant />
+            <div className={styles.aiContent}>
+              <AIAssistant />
+            </div>
           </div>
         </>
       )}

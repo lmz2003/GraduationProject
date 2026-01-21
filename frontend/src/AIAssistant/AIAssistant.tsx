@@ -11,6 +11,7 @@ const AssistantContainer = styled.div`
   overflow: hidden;
   position: relative;
   z-index: 30;
+  min-height: 0;
 `;
 
 const MessageList = styled.div`
