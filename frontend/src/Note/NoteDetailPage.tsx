@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import RichTextEditor from './RichTextEditor';
 import PdfExportModal from '../components/PdfExportModal';
@@ -221,13 +221,16 @@ const NoteDetailPage: React.FC = () => {
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
+    e.stopPropagation();
+    console.log('Mouse down on resizer');
     setIsDragging(true);
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
+  const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isDragging) return;
+    
     const container = document.querySelector(`.${styles.pageContainer}`);
     if (!container) return;
     
@@ -237,13 +240,13 @@ const NoteDetailPage: React.FC = () => {
     if (newAiWidth >= 250 && newAiWidth <= 600) {
       setAiWidth(newAiWidth);
     }
-  };
+  }, [isDragging]);
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     setIsDragging(false);
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
-  };
+  }, [handleMouseMove]);
 
   if (loading) {
     return (
