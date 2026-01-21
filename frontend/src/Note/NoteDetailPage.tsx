@@ -34,7 +34,6 @@ const NoteDetailPage: React.FC = () => {
   const [showAI, setShowAI] = useState(true);
   const [aiWidth, setAiWidth] = useState(350);
   const [isDragging, setIsDragging] = useState(false);
-  console.log(`aiWidth state: ${aiWidth}`);
   const previewRef = useRef<HTMLDivElement>(null);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
@@ -220,16 +219,7 @@ const NoteDetailPage: React.FC = () => {
     navigate('/dashboard/notes');
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    console.log('Mouse down on resizer');
-    setIsDragging(true);
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
-
-  const handleMouseMove = useCallback((e: MouseEvent) => {
+  const handleMouseMove = (e: MouseEvent) => {
     if (!isDragging) return;
     
     const container = document.querySelector(`.${styles.pageContainer}`);
@@ -240,20 +230,30 @@ const NoteDetailPage: React.FC = () => {
     
     console.log(`Mouse move: clientX=${e.clientX}, containerRect.right=${containerRect.right}, newAiWidth=${newAiWidth}`);
     
-    if (newAiWidth >= 250 && newAiWidth <= 600) {
+    // 调整范围，允许更大的AI助手宽度
+    if (newAiWidth >= 200 && newAiWidth <= 800) {
       setAiWidth(newAiWidth);
       console.log(`Set aiWidth: ${newAiWidth}`);
     } else {
       console.log(`newAiWidth out of range: ${newAiWidth}`);
     }
-  }, [isDragging]);
+  };
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = () => {
     console.log('Mouse up');
     setIsDragging(false);
     document.removeEventListener('mousemove', handleMouseMove);
     document.removeEventListener('mouseup', handleMouseUp);
-  }, [handleMouseMove]);
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    console.log('Mouse down on resizer');
+    setIsDragging(true);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
 
   if (loading) {
     return (
