@@ -21,6 +21,17 @@ const pulse = keyframes`
   }
 `;
 
+const slideUp = keyframes`
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+`;
+
 const AssistantContainer = styled.div`
   width: 100%;
   height: 100%;
@@ -34,15 +45,16 @@ const AssistantContainer = styled.div`
 `;
 
 const WelcomeBanner = styled.div`
-  padding: 20px 16px;
+  padding: 24px 16px;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  animation: ${fadeIn} 0.5s ease-out;
+  animation: ${slideUp} 0.5s ease-out;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
 
   h3 {
-    margin: 0 0 8px 0;
-    font-size: 16px;
-    font-weight: 600;
+    margin: 0 0 12px 0;
+    font-size: 18px;
+    font-weight: 700;
     display: flex;
     align-items: center;
     gap: 8px;
@@ -51,8 +63,9 @@ const WelcomeBanner = styled.div`
   p {
     margin: 0;
     font-size: 13px;
-    opacity: 0.9;
-    line-height: 1.5;
+    opacity: 0.95;
+    line-height: 1.6;
+    font-weight: 500;
   }
 `;
 
@@ -93,50 +106,67 @@ const MessageWrapper = styled.div<{ $isUser: boolean }>`
 `;
 
 const Avatar = styled.div<{ $isUser: boolean }>`
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 18px;
   flex-shrink: 0;
   background: ${props => props.$isUser 
     ? 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)' 
     : 'linear-gradient(135deg, #10b981 0%, #059669 100%)'};
   color: white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 3px 12px ${props => props.$isUser 
+    ? 'rgba(79, 70, 229, 0.3)' 
+    : 'rgba(16, 185, 129, 0.3)'};
+  transition: all 0.2s ease;
+  animation: ${fadeIn} 0.3s ease-out;
 `;
+
 
 const MessageBubble = styled.div<{ $isUser: boolean }>`
   max-width: calc(85% - 42px);
-  padding: 12px 16px;
+  padding: 14px 16px;
   border-radius: ${props => props.$isUser 
     ? '16px 4px 16px 16px' 
     : '4px 16px 16px 16px'};
   font-size: 14px;
-  line-height: 1.6;
+  line-height: 1.7;
   background: ${props => props.$isUser 
     ? 'linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%)' 
     : '#ffffff'};
   color: ${props => props.$isUser ? '#ffffff' : '#1e293b'};
   box-shadow: ${props => props.$isUser 
-    ? '0 4px 12px rgba(79, 70, 229, 0.3)' 
-    : '0 1px 3px rgba(0, 0, 0, 0.08)'};
+    ? '0 4px 16px rgba(79, 70, 229, 0.3)' 
+    : '0 2px 8px rgba(0, 0, 0, 0.06)'};
   border: ${props => props.$isUser ? 'none' : '1px solid #e2e8f0'};
+  transition: all 0.2s ease;
+  animation: ${fadeIn} 0.3s ease-out;
+  word-break: break-word;
 
   p {
     margin: 0;
+    
+    &:not(:last-child) {
+      margin-bottom: 8px;
+    }
   }
 
   a {
     color: ${props => props.$isUser ? '#a5b4fc' : '#3b82f6'};
     text-decoration: underline;
     cursor: pointer;
+    transition: color 0.2s ease;
 
     &:hover {
       color: ${props => props.$isUser ? '#c7d2fe' : '#2563eb'};
     }
+  }
+
+  &:hover {
+    ${props => props.$isUser ? 'transform: translateX(-2px);' : 'box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);'}
   }
 `;
 
@@ -178,11 +208,12 @@ const TypingIndicator = styled.div`
 
 const InputArea = styled.div`
   padding: 16px;
-  background: #ffffff;
+  background: linear-gradient(to bottom, #f8fafc 0%, #ffffff 100%);
   border-top: 1px solid #e2e8f0;
   display: flex;
-  gap: 10px;
+  gap: 12px;
   flex-shrink: 0;
+  box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.04);
 `;
 
 const InputWrapper = styled.div`
@@ -199,8 +230,9 @@ const Input = styled.input`
   border-radius: 24px;
   outline: none;
   font-size: 14px;
-  transition: all 0.2s;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   background: #f8fafc;
+  font-family: inherit;
 
   &:focus {
     border-color: #4f46e5;
@@ -208,14 +240,26 @@ const Input = styled.input`
     box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
   }
 
+  &:disabled {
+    background: #e2e8f0;
+    color: #94a3b8;
+    cursor: not-allowed;
+  }
+
   &::placeholder {
     color: #94a3b8;
+    transition: color 0.2s ease;
+  }
+
+  &:focus::placeholder {
+    color: #cbd5e1;
   }
 `;
 
 const SendButton = styled.button<{ $disabled: boolean }>`
   width: 44px;
   height: 44px;
+  min-width: 44px;
   border-radius: 50%;
   border: none;
   background: ${props => props.$disabled 
@@ -226,21 +270,28 @@ const SendButton = styled.button<{ $disabled: boolean }>`
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: ${props => props.$disabled ? 'none' : '0 4px 12px rgba(79, 70, 229, 0.3)'};
+  position: relative;
 
   &:hover:not(:disabled) {
-    transform: scale(1.05);
-    box-shadow: 0 6px 16px rgba(79, 70, 229, 0.4);
+    transform: scale(1.08);
+    box-shadow: 0 6px 20px rgba(79, 70, 229, 0.4);
   }
 
   &:active:not(:disabled) {
-    transform: scale(0.95);
+    transform: scale(0.94);
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.3);
   }
 
   svg {
     width: 20px;
     height: 20px;
+    transition: transform 0.2s ease;
+  }
+
+  &:hover:not(:disabled) svg {
+    transform: translateX(2px);
   }
 `;
 
