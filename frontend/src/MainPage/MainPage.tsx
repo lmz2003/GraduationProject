@@ -30,11 +30,13 @@ const Header: React.FC<{
         <div className={styles.headerUser}>
           <span>欢迎回来, {userData.name}</span>
         </div>
-        {!isOpen && (
-          <button className={styles.aiToggleBtn} onClick={toggleOpen} title="打开AI助手">
-            🤖 AI助手
-          </button>
-        )}
+        <button 
+          className={`${styles.aiToggleBtn} ${isOpen ? styles.active : ''}`}
+          onClick={toggleOpen} 
+          title={isOpen ? '关闭AI助手' : '打开AI助手'}
+        >
+          🤖 AI助手
+        </button>
       </div>
     </header>
   );
