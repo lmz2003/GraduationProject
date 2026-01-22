@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { NotesModule } from './notes/notes.module';
 import { UsersModule } from './users/users.module';
 import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
+import { UploadModule } from './upload/upload.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
     NotesModule,
     UsersModule,
     KnowledgeBaseModule,
+    UploadModule,
   ],
   controllers: [],
   providers: [],

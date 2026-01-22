@@ -87,29 +87,39 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         formData.append('image', file);
 
         try {
-          const response = await fetch('/api/upload', {
+          const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+          const response = await fetch(`${apiBase}/upload`, {
             method: 'POST',
             body: formData,
           });
 
           if (response.ok) {
-            const { url } = await response.json();
+            const result = await response.json();
+            // 兼容后端返回格式：{ code: 0, url: '...' } 或 { url: '...' }
+            const imageUrl = result.data?.url || result.url;
+            
+            if (!imageUrl) {
+              alert('图片上传失败：返回的 URL 为空');
+              return;
+            }
+
             try {
               const editor = quillRef.current?.getEditor?.();
               const range = editor?.getSelection?.();
               if (range && editor) {
-                editor.insertEmbed(range.index, 'image', url);
+                editor.insertEmbed(range.index, 'image', imageUrl);
               }
             } catch (error) {
               console.error('插入图片失败:', error);
               alert('插入图片失败');
             }
           } else {
-            alert('图片上传失败');
+            const error = await response.json();
+            alert(`图片上传失败: ${error.message || '未知错误'}`);
           }
         } catch (error) {
           console.error('图片上传失败:', error);
-          alert('图片上传失败');
+          alert(`图片上传失败: ${error instanceof Error ? error.message : '未知错误'}`);
         }
       }
     };

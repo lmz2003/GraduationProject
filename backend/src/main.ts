@@ -6,9 +6,11 @@ import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggerInterceptor } from './common/interceptors/logger.interceptor';
 import { ValidationPipe } from '@nestjs/common';
 import * as bodyParser from 'body-parser';
+import { NestExpressApplication } from '@nestjs/platform-express';
+import * as path from 'path';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);
   
   // 配置CORS
@@ -17,6 +19,12 @@ async function bootstrap() {
   // 增加body-parser请求体大小限制，解决头像上传问题
   app.use(bodyParser.json({ limit: '5mb' })); // 增加JSON请求体大小限制到5MB
   app.use(bodyParser.urlencoded({ limit: '5mb', extended: true })); // 增加URL编码请求体大小限制到5MB
+  
+  // 配置静态文件服务
+  const uploadsPath = path.join(process.cwd(), 'uploads');
+  app.useStaticAssets(uploadsPath, {
+    prefix: '/uploads',
+  });
   
   // 设置全局前缀
   app.setGlobalPrefix('api');
