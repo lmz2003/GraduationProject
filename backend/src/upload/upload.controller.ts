@@ -9,13 +9,22 @@ import {
 import { FileInterceptor } from '@nestjs/platform-express';
 import { UploadService } from './upload.service';
 
+interface UploadedFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  size: number;
+  buffer: Buffer;
+}
+
 @Controller('upload')
 export class UploadController {
   constructor(private readonly uploadService: UploadService) {}
 
   @Post()
   @UseInterceptors(FileInterceptor('image'))
-  uploadImage(@UploadedFile() file: Express.Multer.File) {
+  uploadImage(@UploadedFile() file: UploadedFile) {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
@@ -29,9 +38,10 @@ export class UploadController {
         url: result.url, // 兼容前端现有代码
       };
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload image';
       return {
         code: 1,
-        message: error.message || 'Failed to upload image',
+        message: errorMessage,
         statusCode: HttpStatus.BAD_REQUEST,
       };
     }

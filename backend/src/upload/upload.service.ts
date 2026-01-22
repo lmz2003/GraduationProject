@@ -2,6 +2,15 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 
+interface UploadedFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  size: number;
+  buffer: Buffer;
+}
+
 @Injectable()
 export class UploadService {
   private readonly uploadDir = path.join(process.cwd(), 'uploads');
@@ -18,7 +27,7 @@ export class UploadService {
    * @param file 图片文件
    * @returns 图片 URL
    */
-  uploadImage(file: Express.Multer.File): { url: string } {
+  uploadImage(file: UploadedFile): { url: string } {
     if (!file) {
       throw new BadRequestException('No file uploaded');
     }
@@ -50,7 +59,8 @@ export class UploadService {
       const url = `/uploads/${filename}`;
       return { url };
     } catch (error) {
-      throw new BadRequestException(`Failed to upload file: ${error.message}`);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      throw new BadRequestException(`Failed to upload file: ${errorMessage}`);
     }
   }
 }
