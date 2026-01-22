@@ -140,6 +140,30 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
     userId: string
   ) {
     try {
+      // 验证输入
+      if (!id || id.trim().length === 0) {
+        throw new Error('向量 ID 不能为空');
+      }
+      if (!embedding || embedding.length === 0) {
+        throw new Error('向量嵌入不能为空');
+      }
+      if (!title || title.trim().length === 0) {
+        throw new Error('标题不能为空');
+      }
+      if (!content || content.trim().length === 0) {
+        throw new Error('内容不能为空');
+      }
+      if (!userId || userId.trim().length === 0) {
+        throw new Error('用户 ID 不能为空');
+      }
+
+      // 检查 Milvus 客户端是否连接
+      if (!this.milvusClient) {
+        throw new Error('Milvus 客户端未初始化，请确保 Milvus 服务已启动');
+      }
+
+      this.logger.log(`插入向量: ${id}, 嵌入维度: ${embedding.length}, 内容长度: ${content.length}`);
+
       const result = await this.milvusClient.insert({
         collection_name: this.collectionName,
         fields_data: [
@@ -153,7 +177,7 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
           },
           {
             name: 'title',
-            data: [title],
+            data: [title.substring(0, 500)], // 确保不超过最大长度
           },
           {
             name: 'content',
@@ -177,7 +201,14 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
       this.logger.log(`向量插入成功: ${id}`);
       return result;
     } catch (error) {
-      this.logger.error('向量插入失败:', error);
+      const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+      this.logger.error(`向量插入失败: ${errorMsg}`, error);
+      
+      // 检查是否是连接问题
+      if (errorMsg.includes('ECONNREFUSED') || errorMsg.includes('connect') || errorMsg.includes('ENOTFOUND')) {
+        throw new Error('Milvus 服务连接失败。请确保 Milvus 已在 ' + 
+          `${this.configService.get('MILVUS_HOST')}:${this.configService.get('MILVUS_PORT')} 运行`);
+      }
       throw error;
     }
   }
@@ -192,6 +223,27 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
     threshold: number = 0.5
   ) {
     try {
+      // 验证输入
+      if (!queryEmbedding || queryEmbedding.length === 0) {
+        throw new Error('查询嵌入不能为空');
+      }
+      if (!userId || userId.trim().length === 0) {
+        throw new Error('用户 ID 不能为空');
+      }
+      if (topK <= 0) {
+        throw new Error('topK 必须大于 0');
+      }
+      if (threshold < 0 || threshold > 1) {
+        throw new Error('threshold 必须在 0 到 1 之间');
+      }
+
+      // 检查 Milvus 客户端是否连接
+      if (!this.milvusClient) {
+        throw new Error('Milvus 客户端未初始化，请确保 Milvus 服务已启动');
+      }
+
+      this.logger.log(`搜索向量: userId=${userId}, topK=${topK}, threshold=${threshold}`);
+
       const result = await this.milvusClient.search({
         collection_name: this.collectionName,
         vectors: [queryEmbedding],
@@ -216,26 +268,47 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
       })) || [];
 
       // 过滤低于阈值的结果
-      return results.filter((r: any) => r.score >= threshold);
+      const filtered = results.filter((r: any) => r.score >= threshold);
+      this.logger.log(`搜索完成: 找到 ${results.length} 个候选项，${filtered.length} 个满足阈值`);
+      return filtered;
     } catch (error) {
-      this.logger.error('搜索向量失败:', error);
+      const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+      this.logger.error(`搜索向量失败: ${errorMsg}`, error);
+      
+      // 检查是否是连接问题
+      if (errorMsg.includes('ECONNREFUSED') || errorMsg.includes('connect') || errorMsg.includes('ENOTFOUND')) {
+        throw new Error('Milvus 服务连接失败。请确保 Milvus 已在 ' + 
+          `${this.configService.get('MILVUS_HOST')}:${this.configService.get('MILVUS_PORT')} 运行`);
+      }
       throw error;
     }
   }
 
   /**
-   * 删除向量
+   * 删除向量 - 支持删除文档 ID 的所有向量（包括分块）
    */
   async deleteVector(id: string) {
     try {
+      if (!id || id.trim().length === 0) {
+        throw new Error('向量 ID 不能为空');
+      }
+
+      // 由于 Milvus 向量 ID 格式为 ${documentId}_${chunkIndex}
+      // 所以需要用 like 操作符来删除所有相关向量
+      // 注意：Milvus 的 like 操作符在 expr 中的语法是 `id like "prefix%"`
+      const deleteExpr = `id like "${id}_%"`;
+      
+      this.logger.log(`删除向量: ${id}，使用表达式: ${deleteExpr}`);
+
       await this.milvusClient.deleteEntities({
         collection_name: this.collectionName,
-        expr: `id == "${id}"`,
+        expr: deleteExpr,
       });
 
-      this.logger.log(`向量删除成功: ${id}`);
+      this.logger.log(`向量删除成功: ${id} (删除所有分块)`);
     } catch (error) {
-      this.logger.error('向量删除失败:', error);
+      const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+      this.logger.error(`向量删除失败: ${errorMsg}`, error);
       throw error;
     }
   }

@@ -19,6 +19,9 @@ export class UploadService {
     // 确保上传目录存在
     if (!fs.existsSync(this.uploadDir)) {
       fs.mkdirSync(this.uploadDir, { recursive: true });
+      console.log(`✅ 已创建上传目录: ${this.uploadDir}`);
+    } else {
+      console.log(`✅ 上传目录已存在: ${this.uploadDir}`);
     }
   }
 
