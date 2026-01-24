@@ -1,5 +1,4 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn, ManyToOne } from 'typeorm';
-import { User } from '../../users/entities/user.entity';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('knowledge_documents')
 export class KnowledgeDocument {
@@ -27,8 +26,8 @@ export class KnowledgeDocument {
   @Column({ default: false })
   isProcessed!: boolean; // 是否已处理为向量
 
-  @ManyToOne(() => User, { nullable: false })
-  owner!: User;
+  @Column({ type: 'varchar', length: 100 })
+  ownerId!: string; // 用户ID，存储字符串类型
 
   @CreateDateColumn()
   createdAt!: Date;

@@ -30,7 +30,7 @@ export class KnowledgeBaseService {
       const document = this.documentRepository.create({
         ...createDocumentDto,
         documentType: createDocumentDto.documentType || 'text',
-        owner: { id: userId } as any,
+        ownerId: userId,
       });
 
       const savedDocument = await this.documentRepository.save(document);
@@ -145,7 +145,7 @@ export class KnowledgeBaseService {
   async getUserDocuments(userId: string): Promise<KnowledgeDocument[]> {
     try {
       return await this.documentRepository.find({
-        where: { owner: { id: userId } as any },
+        where: { ownerId },
         order: { createdAt: 'DESC' },
       });
     } catch (error) {
@@ -162,7 +162,7 @@ export class KnowledgeBaseService {
       const document = await this.documentRepository.findOne({
         where: {
           id: documentId,
-          owner: { id: userId } as any,
+          ownerId,
         },
       });
 

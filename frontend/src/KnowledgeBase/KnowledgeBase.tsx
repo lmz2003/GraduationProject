@@ -211,7 +211,7 @@ const KnowledgeBase: React.FC = () => {
   const [query, setQuery] = useState('');
 
   const token = localStorage.getItem('token');
-  const API_BASE = 'http://localhost:3001/api/knowledge-base';
+  const API_BASE = import.meta.env.VITE_API_BASE_URL + '/knowledge-base';
 
   // 获取文档列表
   const fetchDocuments = async () => {
