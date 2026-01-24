@@ -153,7 +153,7 @@ export class KnowledgeBaseService {
   async getUserDocuments(userId: string): Promise<KnowledgeDocument[]> {
     try {
       return await this.documentRepository.find({
-        where: { ownerId },
+        where: { ownerId: userId },
         order: { createdAt: 'DESC' },
       });
     } catch (error) {
@@ -170,7 +170,7 @@ export class KnowledgeBaseService {
       const document = await this.documentRepository.findOne({
         where: {
           id: documentId,
-          ownerId,
+          ownerId: userId,
         },
       });
 
