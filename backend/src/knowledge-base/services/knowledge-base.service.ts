@@ -66,14 +66,22 @@ export class KnowledgeBaseService {
 
         this.logger.log(`文档处理完成: ${savedDocument.id} (${chunks.length} 个向量)`);
       } catch (error) {
-        this.logger.error(`文档处理失败: ${savedDocument.id}`, error);
-        // 不中断流程，仅记录错误
+        const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+        this.logger.error(`文档向量处理失败: ${savedDocument.id} - ${errorMsg}`, error);
+        
+        // 记录详细的错误信息但继续保存文档
+        // 用户可以稍后重新处理该文档
+        savedDocument.isProcessed = false;
+        await this.documentRepository.save(savedDocument);
+        
+        this.logger.warn(`文档已保存但未处理向量: ${savedDocument.id}。错误: ${errorMsg}`);
       }
 
       return savedDocument;
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
       this.logger.error('添加文档失败:', error);
-      throw new BadRequestException('添加文档失败');
+      throw new BadRequestException(`添加文档失败: ${errorMsg}`);
     }
   }
 

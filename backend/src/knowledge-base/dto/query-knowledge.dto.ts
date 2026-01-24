@@ -1,9 +1,11 @@
-import { IsString, IsNotEmpty, IsOptional, Min, Max } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, Min, Max, MinLength, MaxLength } from 'class-validator';
 
 export class QueryKnowledgeDto {
   @IsString()
   @IsNotEmpty()
-  query!: string;
+  @MinLength(1)
+  @MaxLength(5000)
+  query!: string; // 查询文本，最多 5000 字符
 
   @IsOptional()
   @Min(1)

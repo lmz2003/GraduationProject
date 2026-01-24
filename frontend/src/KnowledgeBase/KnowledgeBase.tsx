@@ -223,10 +223,13 @@ const KnowledgeBase: React.FC = () => {
       });
       const data = await response.json();
       if (data.success) {
-        setDocuments(data.data);
+        setDocuments(data.data || []);
+      } else {
+        console.error('获取文档列表失败:', data.message);
       }
     } catch (error) {
-      console.error('获取文档失败:', error);
+      const errorMsg = error instanceof Error ? error.message : '未知错误';
+      console.error('获取文档失败:', error, errorMsg);
     }
   };
 
@@ -240,10 +243,13 @@ const KnowledgeBase: React.FC = () => {
       });
       const data = await response.json();
       if (data.success) {
-        setStats(data.data);
+        setStats(data.data || { totalDocuments: 0, processedDocuments: 0, pendingDocuments: 0 });
+      } else {
+        console.error('获取统计信息失败:', data.message);
       }
     } catch (error) {
-      console.error('获取统计信息失败:', error);
+      const errorMsg = error instanceof Error ? error.message : '未知错误';
+      console.error('获取统计信息失败:', error, errorMsg);
     }
   };
 
@@ -257,6 +263,17 @@ const KnowledgeBase: React.FC = () => {
   const handleAddDocument = async () => {
     if (!newDoc.title || !newDoc.content) {
       alert('请填写标题和内容');
+      return;
+    }
+
+    // 客户端验证
+    if (newDoc.title.length > 500) {
+      alert('文档标题不能超过 500 个字符');
+      return;
+    }
+
+    if (newDoc.source && newDoc.source.length > 2000) {
+      alert('文档来源不能超过 2000 个字符');
       return;
     }
 
@@ -278,11 +295,15 @@ const KnowledgeBase: React.FC = () => {
         fetchDocuments();
         fetchStats();
       } else {
-        alert('添加失败: ' + data.message);
+        // 显示更详细的错误信息
+        const errorMsg = data.message || '添加失败';
+        alert(`添加失败: ${errorMsg}`);
+        console.error('添加文档错误:', errorMsg);
       }
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : '网络错误';
       console.error('添加文档失败:', error);
-      alert('添加文档失败');
+      alert(`添加文档失败: ${errorMsg}。请检查服务器连接`);
     } finally {
       setLoading(false);
     }
@@ -292,6 +313,12 @@ const KnowledgeBase: React.FC = () => {
   const handleQuery = async () => {
     if (!query) {
       alert('请输入查询内容');
+      return;
+    }
+
+    // 客户端验证
+    if (query.length > 5000) {
+      alert('查询内容不能超过 5000 个字符');
       return;
     }
 
@@ -313,12 +340,19 @@ const KnowledgeBase: React.FC = () => {
       const data = await response.json();
       if (data.success) {
         setQueryResults(data.data);
+        if (data.data.length === 0) {
+          alert('未找到匹配的文档');
+        }
       } else {
-        alert('查询失败: ' + data.message);
+        // 显示更详细的错误信息
+        const errorMsg = data.message || '查询失败';
+        alert(`查询失败: ${errorMsg}`);
+        console.error('查询知识库错误:', errorMsg);
       }
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : '网络错误';
       console.error('查询失败:', error);
-      alert('查询失败');
+      alert(`查询失败: ${errorMsg}。请检查服务器连接`);
     } finally {
       setLoading(false);
     }
@@ -344,11 +378,15 @@ const KnowledgeBase: React.FC = () => {
         fetchDocuments();
         fetchStats();
       } else {
-        alert('删除失败: ' + data.message);
+        // 显示更详细的错误信息
+        const errorMsg = data.message || '删除失败';
+        alert(`删除失败: ${errorMsg}`);
+        console.error('删除文档错误:', errorMsg);
       }
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : '网络错误';
       console.error('删除文档失败:', error);
-      alert('删除文档失败');
+      alert(`删除文档失败: ${errorMsg}。请检查服务器连接`);
     }
   };
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import RichTextEditor from './RichTextEditor';
 import PdfExportModal from '../components/PdfExportModal';
@@ -377,9 +377,6 @@ const NoteDetailPage: React.FC = () => {
             onMouseDown={handleMouseDown}
           />
           <div className={styles.aiContainer} style={{ width: `${aiWidth}px` }}>
-            <div className={styles.aiHeader}>
-              <span className={styles.aiTitle}>🤖 AI 助手</span>
-            </div>
             <div className={styles.aiContent}>
               <AIAssistant />
             </div>

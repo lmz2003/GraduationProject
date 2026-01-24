@@ -1,0 +1,49 @@
+import {
+  Controller,
+  Post,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
+  HttpStatus,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { UploadService } from './upload.service';
+
+interface UploadedFile {
+  fieldname: string;
+  originalname: string;
+  encoding: string;
+  mimetype: string;
+  size: number;
+  buffer: Buffer;
+}
+
+@Controller('upload')
+export class UploadController {
+  constructor(private readonly uploadService: UploadService) {}
+
+  @Post()
+  @UseInterceptors(FileInterceptor('image'))
+  uploadImage(@UploadedFile() file: UploadedFile) {
+    if (!file) {
+      throw new BadRequestException('No file uploaded');
+    }
+
+    try {
+      const result = this.uploadService.uploadImage(file);
+      return {
+        code: 0,
+        message: 'Image uploaded successfully',
+        data: result,
+        url: result.url, // 兼容前端现有代码
+      };
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload image';
+      return {
+        code: 1,
+        message: errorMessage,
+        statusCode: HttpStatus.BAD_REQUEST,
+      };
+    }
+  }
+}
