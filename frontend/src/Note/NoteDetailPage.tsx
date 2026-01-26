@@ -290,6 +290,7 @@ const NoteDetailPage: React.FC = () => {
               className={styles.statusSelect}
               value={status}
               onChange={(e) => setStatus(e.target.value)}
+              aria-label="笔记状态"
             >
               <option value="draft">草稿</option>
               <option value="published">已发布</option>

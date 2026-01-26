@@ -1,16 +1,18 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+// cspell:ignore MilvusClient
 import { MilvusClient, DataType } from '@zilliz/milvus2-sdk-node';
 
 @Injectable()
 export class MilvusService implements OnModuleInit, OnModuleDestroy {
-  private milvusClient: MilvusClient;
+  private milvusClient: MilvusClient | null;
   private readonly logger = new Logger(MilvusService.name);
   private readonly collectionName = 'knowledge_vectors';
+  private embeddingDim: number;
 
   constructor(private configService: ConfigService) {
-    // 初始化 milvusClient 为 null，在 onModuleInit 中会被赋值
-    this.milvusClient = null as any;
+    this.milvusClient = null;
+    this.embeddingDim = this.configService.get<number>('EMBEDDING_DIM') || 1536;
   }
 
   async onModuleInit() {
@@ -44,6 +46,10 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
    * 初始化 Milvus 集合
    */
   private async initializeCollection() {
+    if (!this.milvusClient) {
+      throw new Error('Milvus client not initialized');
+    }
+    
     try {
       // 检查集合是否存在
       const collections = await this.milvusClient.listCollections();
@@ -68,7 +74,7 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
               name: 'embedding',
               description: 'Document embedding vector',
               data_type: 'FloatVector',
-              dim: 1536, // OpenAI embedding 维度
+              dim: this.embeddingDim, // 从环境变量读取
             },
             {
               name: 'title',
@@ -288,14 +294,15 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
    * 删除向量 - 支持删除文档 ID 的所有向量（包括分块）
    */
   async deleteVector(id: string) {
+    if (!this.milvusClient) {
+      throw new Error('Milvus client not initialized');
+    }
+    
     try {
       if (!id || id.trim().length === 0) {
         throw new Error('向量 ID 不能为空');
       }
 
-      // 由于 Milvus 向量 ID 格式为 ${documentId}_${chunkIndex}
-      // 所以需要用 like 操作符来删除所有相关向量
-      // 注意：Milvus 的 like 操作符在 expr 中的语法是 `id like "prefix%"`
       const deleteExpr = `id like "${id}_%"`;
       
       this.logger.log(`删除向量: ${id}，使用表达式: ${deleteExpr}`);
@@ -317,6 +324,10 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
    * 删除用户的所有向量
    */
   async deleteUserVectors(userId: string) {
+    if (!this.milvusClient) {
+      throw new Error('Milvus client not initialized');
+    }
+    
     try {
       await this.milvusClient.deleteEntities({
         collection_name: this.collectionName,
@@ -334,6 +345,9 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
    * 获取 Milvus 客户端
    */
   getClient(): MilvusClient {
+    if (!this.milvusClient) {
+      throw new Error('Milvus client not initialized');
+    }
     return this.milvusClient;
   }
 }

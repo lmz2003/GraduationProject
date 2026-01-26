@@ -288,6 +288,7 @@ const NotesListPage: React.FC = () => {
               checked={selectedNotes.size === notes.length && notes.length > 0}
               onChange={handleSelectAll}
               className={styles.checkbox}
+              aria-label={selectedNotes.size === notes.length && notes.length > 0 ? '取消全选' : '全选'}
             />
             <span className={styles.selectAllText}>
               {selectedNotes.size === notes.length && notes.length > 0 ? '取消全选' : '全选'}
@@ -374,6 +375,7 @@ const NotesListPage: React.FC = () => {
                         onChange={() => handleSelectNote(note.id)}
                         className={styles.checkbox}
                         onClick={(e) => e.stopPropagation()}
+                        aria-label={`选择笔记：${note.title}`}
                       />
                     </div>
                   )}

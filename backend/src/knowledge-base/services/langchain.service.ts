@@ -6,25 +6,34 @@ import { Document } from 'langchain/document';
 
 @Injectable()
 export class LangChainService {
-  private embeddings: OpenAIEmbeddings;
+  private embeddings: any;
   private readonly logger = new Logger(LangChainService.name);
   private textSplitter: RecursiveCharacterTextSplitter;
 
   constructor(private configService: ConfigService) {
-    const apiKey = this.configService.get<string>('OPENAI_API_KEY');
-    if (!apiKey) {
-      this.logger.warn('OPENAI_API_KEY 未配置，请在 .env 文件中设置');
+    const embeddingProvider = this.configService.get<string>('EMBEDDING_PROVIDER');
+    const apiKey = this.configService.get<string>('LLM_API_KEY');
+    const baseUrl = this.configService.get<string>('OPENAI_BASE_URL');
+    const modelName = this.configService.get<string>('EMBEDDING_MODEL');
+
+    if (embeddingProvider === 'siliconflow') {
+      if (!apiKey) {
+        this.logger.warn('硅基流动 API 密钥未配置，请在 .env 文件中设置 OPENAI_API_KEY');
+      }
+      this.logger.log(`使用硅基流动 Embeddings: ${modelName}`);
+      this.embeddings = new OpenAIEmbeddings({
+        openAIApiKey: apiKey,
+        modelName: modelName,
+        configuration: {
+          baseURL: baseUrl || 'https://api.siliconflow.cn/v1',
+        },
+      });
     }
 
-    this.embeddings = new OpenAIEmbeddings({
-      openAIApiKey: apiKey,
-      modelName: 'text-embedding-3-small', // 使用 3-small 模型，维度 1536
-    });
-
     this.textSplitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 1000, // 每个块的大小
-      chunkOverlap: 200, // 块之间的重叠
-      separators: ['\n\n', '\n', ' ', ''], // 分割符优先级
+      chunkSize: 1000,
+      chunkOverlap: 200,
+      separators: ['\n\n', '\n', ' ', ''],
     });
   }
 
@@ -45,7 +54,7 @@ export class LangChainService {
       
       // 检查是否是 API 密钥问题
       if (errorMsg.includes('401') || errorMsg.includes('Unauthorized') || errorMsg.includes('API key')) {
-        throw new Error('OpenAI API 密钥无效或未配置。请检查 OPENAI_API_KEY 环境变量');
+        throw new Error('API 密钥无效或未配置。请检查环境变量');
       }
       throw error;
     }
@@ -72,9 +81,8 @@ export class LangChainService {
       const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
       this.logger.error(`批量生成嵌入失败: ${errorMsg}`, error);
       
-      // 检查是否是 API 密钥问题
       if (errorMsg.includes('401') || errorMsg.includes('Unauthorized') || errorMsg.includes('API key')) {
-        throw new Error('OpenAI API 密钥无效或未配置。请检查 OPENAI_API_KEY 环境变量');
+        throw new Error('API 密钥无效或未配置。请检查环境变量');
       }
       throw error;
     }
