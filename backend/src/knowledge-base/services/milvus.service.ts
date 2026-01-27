@@ -51,10 +51,11 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
       );
 
       if (exists) {
-        this.logger.warn(`集合 ${this.collectionName} 已存在，删除旧集合并重建以确保字段结构正确`);
-        await this.milvusClient.dropCollection({
+        this.logger.log(`集合 ${this.collectionName} 已存在，加载集合`);
+        await this.milvusClient.loadCollectionSync({
           collection_name: this.collectionName,
         });
+        return;
       }
 
       this.logger.log(`创建集合: ${this.collectionName}`);
@@ -136,75 +137,74 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
     source: string | null,
     userId: string
   ) {
-    try {
-      if (!id || id.trim().length === 0) {
-        throw new Error('向量 ID 不能为空');
-      }
-      if (!embedding || embedding.length === 0) {
-        throw new Error('向量嵌入不能为空');
-      }
-      if (!title || title.trim().length === 0) {
-        throw new Error('标题不能为空');
-      }
-      if (!content || content.trim().length === 0) {
-        throw new Error('内容不能为空');
-      }
-      if (!userId || userId.trim().length === 0) {
-        throw new Error('用户 ID 不能为空');
-      }
+    const maxRetries = 5;
+    const retryDelay = 2000;
+    let lastError: any;
 
-      if (!this.milvusClient) {
-        throw new Error('Milvus 客户端未初始化，请确保 Milvus 服务已启动');
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        if (!id || id.trim().length === 0) {
+          throw new Error('向量 ID 不能为空');
+        }
+        if (!embedding || embedding.length === 0) {
+          throw new Error('向量嵌入不能为空');
+        }
+        if (!title || title.trim().length === 0) {
+          throw new Error('标题不能为空');
+        }
+        if (!content || content.trim().length === 0) {
+          throw new Error('内容不能为空');
+        }
+        if (!userId || userId.trim().length === 0) {
+          throw new Error('用户 ID 不能为空');
+        }
+
+        if (!this.milvusClient) {
+          throw new Error('Milvus 客户端未初始化，请确保 Milvus 服务已启动');
+        }
+
+        this.logger.log(`插入向量: ${id}, 嵌入维度: ${embedding.length}, 内容长度: ${content.length} (尝试 ${attempt}/${maxRetries})`);
+
+        const result = await this.milvusClient.insert({
+          collection_name: this.collectionName,
+          data: [
+            {
+              id: id,
+              embedding: embedding,
+              title: title.substring(0, 500),
+              content: content.substring(0, 65535),
+              source: source || '',
+              userId: userId,
+              timestamp: Date.now(),
+            },
+          ],
+        });
+
+        this.logger.log(`向量插入成功: ${id}`);
+        return result;
+      } catch (error) {
+        lastError = error;
+        const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+        
+        if (errorMsg.includes('ECONNREFUSED') || errorMsg.includes('connect') || errorMsg.includes('ENOTFOUND')) {
+          throw new Error('Milvus 服务连接失败。请确保 Milvus 已在 ' + 
+            `${this.configService.get('MILVUS_HOST')}:${this.configService.get('MILVUS_PORT')} 运行`);
+        }
+        
+        if (errorMsg.includes('NotReadyServe') || errorMsg.includes('Initializing')) {
+          if (attempt < maxRetries) {
+            this.logger.warn(`Milvus 服务未就绪，${retryDelay / 1000} 秒后重试 (${attempt}/${maxRetries})`);
+            await new Promise(resolve => setTimeout(resolve, retryDelay));
+            continue;
+          }
+        }
+        
+        this.logger.error(`向量插入失败: ${errorMsg}`, error);
+        throw error;
       }
-
-      this.logger.log(`插入向量: ${id}, 嵌入维度: ${embedding.length}, 内容长度: ${content.length}`);
-
-      const result = await this.milvusClient.insert({
-        collection_name: this.collectionName,
-        fields_data: [
-          {
-            name: 'id',
-            data: [id],
-          },
-          {
-            name: 'embedding',
-            data: [embedding],
-          },
-          {
-            name: 'title',
-            data: [title.substring(0, 500)],
-          },
-          {
-            name: 'content',
-            data: [content.substring(0, 65535)],
-          },
-          {
-            name: 'source',
-            data: [source || ''],
-          },
-          {
-            name: 'userId',
-            data: [userId],
-          },
-          {
-            name: 'timestamp',
-            data: [Date.now()],
-          },
-        ],
-      });
-
-      this.logger.log(`向量插入成功: ${id}`);
-      return result;
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
-      this.logger.error(`向量插入失败: ${errorMsg}`, error);
-      
-      if (errorMsg.includes('ECONNREFUSED') || errorMsg.includes('connect') || errorMsg.includes('ENOTFOUND')) {
-        throw new Error('Milvus 服务连接失败。请确保 Milvus 已在 ' + 
-          `${this.configService.get('MILVUS_HOST')}:${this.configService.get('MILVUS_PORT')} 运行`);
-      }
-      throw error;
     }
+    
+    throw lastError;
   }
 
   async searchSimilar(
