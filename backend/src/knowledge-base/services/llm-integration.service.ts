@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { ChatOpenAI } from '@langchain/openai';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { LLMChain } from 'langchain/chains';
+import { HumanMessage, SystemMessage } from '@langchain/core/messages';
 
 interface RAGContext {
   query: string;
@@ -25,16 +26,37 @@ export class LLMIntegrationService {
 
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
+    const baseUrl = this.configService.get<string>('OPENAI_BASE_URL');
+    const provider = this.configService.get<string>('LLM_PROVIDER') || 'openai';
+    const modelName = this.configService.get<string>('LLM_MODEL') || 'gpt-3.5-turbo';
+
     if (!apiKey) {
-      this.logger.warn('OPENAI_API_KEY 未配置');
+      this.logger.warn('API Key 未配置，请设置 OPENAI_API_KEY');
     }
 
-    this.llm = new ChatOpenAI({
-      openAIApiKey: apiKey,
-      modelName: 'gpt-3.5-turbo',
-      temperature: 0.7,
-      maxTokens: 1000,
-    });
+    if (provider === 'siliconflow') {
+      this.logger.log(`使用硅基流动 LLM: ${modelName}`);
+      this.llm = new ChatOpenAI({
+        openAIApiKey: apiKey,
+        modelName: modelName,
+        configuration: {
+          baseURL: baseUrl || 'https://api.siliconflow.cn/v1',
+        },
+        temperature: 0.7,
+        maxTokens: 1000,
+      });
+    } else {
+      this.logger.log(`使用 OpenAI LLM: ${modelName}`);
+      this.llm = new ChatOpenAI({
+        openAIApiKey: apiKey,
+        modelName: modelName,
+        configuration: baseUrl ? {
+          baseURL: baseUrl,
+        } : undefined,
+        temperature: 0.7,
+        maxTokens: 1000,
+      });
+    }
   }
 
   /**
@@ -48,7 +70,7 @@ export class LLMIntegrationService {
 
       // 调用 LLM
       const response = await this.llm.invoke([
-        { role: 'user', content: ragContext.ragPrompt },
+        new HumanMessage(ragContext.ragPrompt),
       ]);
 
       return {
@@ -97,14 +119,12 @@ export class LLMIntegrationService {
 
       // 构建消息
       const messages = [
-        ...conversationHistory.map((msg) => ({
-          role: msg.role as 'user' | 'assistant',
-          content: msg.content,
-        })),
-        {
-          role: 'system' as const,
-          content: ragContext.ragPrompt,
-        },
+        ...conversationHistory.map((msg) => 
+          msg.role === 'user' 
+            ? new HumanMessage(msg.content)
+            : new SystemMessage(msg.content)
+        ),
+        new SystemMessage(ragContext.ragPrompt),
       ];
 
       // 调用 LLM
@@ -136,7 +156,7 @@ export class LLMIntegrationService {
 
       const prompt = `请用不超过 ${maxLength} 个字符总结以下文档内容：\n\n${content}`;
       const response = await this.llm.invoke([
-        { role: 'user', content: prompt },
+        new HumanMessage(prompt),
       ]);
 
       return response.content as string;
@@ -157,7 +177,7 @@ export class LLMIntegrationService {
 
       const prompt = `从以下文本中提取 ${count} 个最重要的关键词，用逗号分隔：\n\n${content}`;
       const response = await this.llm.invoke([
-        { role: 'user', content: prompt },
+        new HumanMessage(prompt),
       ]);
 
       return (response.content as string).split(',').map((kw: string) => kw.trim());
@@ -182,7 +202,7 @@ export class LLMIntegrationService {
       const categoriesList = categories.join('、');
       const prompt = `将以下文本分类到以下类别之一：${categoriesList}\n\n文本：${content}\n\n请回答：类别名称和置信度（0-100）`;
       const response = await this.llm.invoke([
-        { role: 'user', content: prompt },
+        new HumanMessage(prompt),
       ]);
 
       // 解析响应
@@ -213,7 +233,7 @@ export class LLMIntegrationService {
 
       const prompt = `基于以下文本生成 ${count} 个有意义的问题：\n\n${content}`;
       const response = await this.llm.invoke([
-        { role: 'user', content: prompt },
+        new HumanMessage(prompt),
       ]);
 
       // 解析响应
@@ -254,7 +274,7 @@ export class LLMIntegrationService {
 反馈：[您的反馈]`;
 
       const response = await this.llm.invoke([
-        { role: 'user', content: prompt },
+        new HumanMessage(prompt),
       ]);
 
       // 解析响应
