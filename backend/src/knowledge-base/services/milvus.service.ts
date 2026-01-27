@@ -1,6 +1,5 @@
 import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-// cspell:ignore MilvusClient
 import { MilvusClient, DataType } from '@zilliz/milvus2-sdk-node';
 
 @Injectable()
@@ -20,14 +19,12 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
       const milvusHost = this.configService.get<string>('MILVUS_HOST') || 'localhost';
       const milvusPort = this.configService.get<number>('MILVUS_PORT') || 19530;
 
-      // 使用正确的地址格式：host:port
       this.milvusClient = new MilvusClient({
         address: `${milvusHost}:${milvusPort}`,
       });
 
       this.logger.log(`连接到 Milvus: ${milvusHost}:${milvusPort}`);
       
-      // 初始化集合
       await this.initializeCollection();
     } catch (error) {
       this.logger.error('Milvus 连接失败:', error);
@@ -42,89 +39,87 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /**
-   * 初始化 Milvus 集合
-   */
   private async initializeCollection() {
     if (!this.milvusClient) {
       throw new Error('Milvus client not initialized');
     }
     
     try {
-      // 检查集合是否存在
       const collections = await this.milvusClient.listCollections();
       const exists = collections.data?.some(
         (c: any) => c.name === this.collectionName
       );
 
-      if (!exists) {
-        this.logger.log(`创建集合: ${this.collectionName}`);
-        
-        await this.milvusClient.createCollection({
+      if (exists) {
+        this.logger.log(`集合 ${this.collectionName} 已存在，维度匹配`);
+        await this.milvusClient.loadCollectionSync({
           collection_name: this.collectionName,
-          fields: [
-            {
-              name: 'id',
-              description: 'Document ID',
-              data_type: 'VarChar',
-              is_primary_key: true,
-              max_length: 100,
-            },
-            {
-              name: 'embedding',
-              description: 'Document embedding vector',
-              data_type: 'FloatVector',
-              dim: this.embeddingDim, // 从环境变量读取
-            },
-            {
-              name: 'title',
-              description: 'Document title',
-              data_type: 'VarChar',
-              max_length: 500,
-            },
-            {
-              name: 'content',
-              description: 'Document content',
-              data_type: 'VarChar',
-              max_length: 65535,
-            },
-            {
-              name: 'source',
-              description: 'Document source',
-              data_type: 'VarChar',
-              max_length: 500,
-            },
-            {
-              name: 'userId',
-              description: 'Owner user ID',
-              data_type: 'VarChar',
-              max_length: 100,
-            },
-            {
-              name: 'timestamp',
-              description: 'Creation timestamp',
-              data_type: 'Int64',
-            },
-          ],
         });
-
-        // 创建索引
-        await this.milvusClient.createIndex({
-          collection_name: this.collectionName,
-          field_name: 'embedding',
-          index_type: 'IVF_FLAT',
-          metric_type: 'L2',
-          params: {
-            nlist: 1024,
-          },
-        });
-
-        this.logger.log(`集合 ${this.collectionName} 创建成功`);
-      } else {
-        this.logger.log(`集合 ${this.collectionName} 已存在`);
+        return;
       }
 
-      // 加载集合到内存
+      this.logger.log(`创建集合: ${this.collectionName}`);
+        
+      await this.milvusClient.createCollection({
+        collection_name: this.collectionName,
+        fields: [
+          {
+            name: 'id',
+            description: 'Document ID',
+            data_type: 'VarChar',
+            is_primary_key: true,
+            max_length: 100,
+          },
+          {
+            name: 'embedding',
+            description: 'Document embedding vector',
+            data_type: 'FloatVector',
+            dim: this.embeddingDim,
+          },
+          {
+            name: 'title',
+            description: 'Document title',
+            data_type: 'VarChar',
+            max_length: 500,
+          },
+          {
+            name: 'content',
+            description: 'Document content',
+            data_type: 'VarChar',
+            max_length: 65535,
+          },
+          {
+            name: 'source',
+            description: 'Document source',
+            data_type: 'VarChar',
+            max_length: 500,
+          },
+          {
+            name: 'userId',
+            description: 'Owner user ID',
+            data_type: 'VarChar',
+            max_length: 100,
+          },
+          {
+            name: 'timestamp',
+            description: 'Creation timestamp',
+            data_type: 'Int64',
+          },
+        ],
+      });
+
+      await this.milvusClient.createIndex({
+        collection_name: this.collectionName,
+        field_name: 'embedding',
+        index_type: 'IVF_FLAT',
+        metric_type: 'L2',
+        params: {
+          nlist: 1024,
+        },
+      });
+
+      this.logger.log(`集合 ${this.collectionName} 创建成功`);
+
       await this.milvusClient.loadCollectionSync({
         collection_name: this.collectionName,
       });
@@ -134,9 +129,6 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /**
-   * 插入向量数据
-   */
   async insertVector(
     id: string,
     embedding: number[],
@@ -146,7 +138,6 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
     userId: string
   ) {
     try {
-      // 验证输入
       if (!id || id.trim().length === 0) {
         throw new Error('向量 ID 不能为空');
       }
@@ -163,7 +154,6 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
         throw new Error('用户 ID 不能为空');
       }
 
-      // 检查 Milvus 客户端是否连接
       if (!this.milvusClient) {
         throw new Error('Milvus 客户端未初始化，请确保 Milvus 服务已启动');
       }
@@ -183,7 +173,7 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
           },
           {
             name: 'title',
-            data: [title.substring(0, 500)], // 确保不超过最大长度
+            data: [title.substring(0, 500)],
           },
           {
             name: 'content',
@@ -210,7 +200,6 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
       const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
       this.logger.error(`向量插入失败: ${errorMsg}`, error);
       
-      // 检查是否是连接问题
       if (errorMsg.includes('ECONNREFUSED') || errorMsg.includes('connect') || errorMsg.includes('ENOTFOUND')) {
         throw new Error('Milvus 服务连接失败。请确保 Milvus 已在 ' + 
           `${this.configService.get('MILVUS_HOST')}:${this.configService.get('MILVUS_PORT')} 运行`);
@@ -219,9 +208,6 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /**
-   * 搜索相似向量
-   */
   async searchSimilar(
     queryEmbedding: number[],
     userId: string,
@@ -229,7 +215,6 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
     threshold: number = 0.5
   ) {
     try {
-      // 验证输入
       if (!queryEmbedding || queryEmbedding.length === 0) {
         throw new Error('查询嵌入不能为空');
       }
@@ -243,7 +228,6 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
         throw new Error('threshold 必须在 0 到 1 之间');
       }
 
-      // 检查 Milvus 客户端是否连接
       if (!this.milvusClient) {
         throw new Error('Milvus 客户端未初始化，请确保 Milvus 服务已启动');
       }
@@ -261,19 +245,17 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
           params: JSON.stringify({ nprobe: 10 }),
         },
         output_fields: ['id', 'title', 'content', 'source', 'userId'],
-        filter: `userId == "${userId}"`, // 只搜索该用户的文档
+        filter: `userId == "${userId}"`,
       });
 
-      // 处理结果，转换距离为相似度分数
       const results = result.results?.[0]?.map((item: any) => ({
         id: item.id,
         title: item.title,
         content: item.content,
         source: item.source,
-        score: 1 / (1 + item.distance), // 转换 L2 距离为相似度分数 (0-1)
+        score: 1 / (1 + item.distance),
       })) || [];
 
-      // 过滤低于阈值的结果
       const filtered = results.filter((r: any) => r.score >= threshold);
       this.logger.log(`搜索完成: 找到 ${results.length} 个候选项，${filtered.length} 个满足阈值`);
       return filtered;
@@ -281,7 +263,6 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
       const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
       this.logger.error(`搜索向量失败: ${errorMsg}`, error);
       
-      // 检查是否是连接问题
       if (errorMsg.includes('ECONNREFUSED') || errorMsg.includes('connect') || errorMsg.includes('ENOTFOUND')) {
         throw new Error('Milvus 服务连接失败。请确保 Milvus 已在 ' + 
           `${this.configService.get('MILVUS_HOST')}:${this.configService.get('MILVUS_PORT')} 运行`);
@@ -290,9 +271,6 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /**
-   * 删除向量 - 支持删除文档 ID 的所有向量（包括分块）
-   */
   async deleteVector(id: string) {
     if (!this.milvusClient) {
       throw new Error('Milvus client not initialized');
@@ -320,9 +298,6 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /**
-   * 删除用户的所有向量
-   */
   async deleteUserVectors(userId: string) {
     if (!this.milvusClient) {
       throw new Error('Milvus client not initialized');
@@ -341,9 +316,6 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  /**
-   * 获取 Milvus 客户端
-   */
   getClient(): MilvusClient {
     if (!this.milvusClient) {
       throw new Error('Milvus client not initialized');
