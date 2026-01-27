@@ -51,11 +51,10 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
       );
 
       if (exists) {
-        this.logger.log(`集合 ${this.collectionName} 已存在，维度匹配`);
-        await this.milvusClient.loadCollectionSync({
+        this.logger.warn(`集合 ${this.collectionName} 已存在，删除旧集合并重建以确保字段结构正确`);
+        await this.milvusClient.dropCollection({
           collection_name: this.collectionName,
         });
-        return;
       }
 
       this.logger.log(`创建集合: ${this.collectionName}`);
