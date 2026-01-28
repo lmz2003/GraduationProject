@@ -247,12 +247,27 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
         filter: `userId == "${userId}"`,
       });
 
-      const results = result.results?.[0]?.map((item: any) => ({
-        id: item.id,
-        title: item.title,
-        content: item.content,
-        source: item.source,
-        score: 1 / (1 + item.distance),
+      // 处理 Milvus 搜索结果
+      let searchResults: any[] = [];
+      
+      // 兼容不同版本的 Milvus SDK 返回格式
+      if (result.results && Array.isArray(result.results)) {
+        // 格式 1: results 是数组的数组
+        if (result.results.length > 0 && Array.isArray(result.results[0])) {
+          searchResults = result.results[0];
+        } else if (result.results.length > 0 && typeof result.results[0] === 'object') {
+          // 格式 2: results 直接是对象数组
+          searchResults = result.results;
+        }
+      }
+
+      // 转换格式并计算相似度分数
+      const results = searchResults.map((item: any) => ({
+        id: item.id || item.entity?.id,
+        title: item.title || item.entity?.title,
+        content: item.content || item.entity?.content,
+        source: item.source || item.entity?.source,
+        score: item.distance !== undefined ? 1 / (1 + item.distance) : 0.5,
       })) || [];
 
       const filtered = results.filter((r: any) => r.score >= threshold);

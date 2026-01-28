@@ -11,6 +11,7 @@ import {
   HttpException,
   HttpStatus,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { KnowledgeBaseService } from './services/knowledge-base.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { QueryKnowledgeDto } from './dto/query-knowledge.dto';
@@ -27,6 +28,7 @@ interface AuthRequest extends Request {
 }
 
 @Controller('knowledge-base')
+@UseGuards(AuthGuard('jwt'))
 export class KnowledgeBaseController {
   constructor(private readonly knowledgeBaseService: KnowledgeBaseService) {}
 
@@ -39,7 +41,16 @@ export class KnowledgeBaseController {
     @Request() req: AuthRequest
   ) {
     try {
-      const userId = req.user?.id || 'test-user-id';
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new HttpException(
+          {
+            success: false,
+            message: '未授权的请求，请先登录',
+          },
+          HttpStatus.UNAUTHORIZED
+        );
+      }
       const document = await this.knowledgeBaseService.addDocument(createDocumentDto, userId);
       return {
         success: true,
@@ -66,7 +77,16 @@ export class KnowledgeBaseController {
     @Request() req: AuthRequest
   ) {
     try {
-      const userId = req.user?.id || 'test-user-id';
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new HttpException(
+          {
+            success: false,
+            message: '未授权的请求，请先登录',
+          },
+          HttpStatus.UNAUTHORIZED
+        );
+      }
       const results = await this.knowledgeBaseService.queryKnowledge(queryDto, userId);
       return {
         success: true,
@@ -93,7 +113,16 @@ export class KnowledgeBaseController {
     @Request() req: AuthRequest
   ) {
     try {
-      const userId = req.user?.id || 'test-user-id';
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new HttpException(
+          {
+            success: false,
+            message: '未授权的请求，请先登录',
+          },
+          HttpStatus.UNAUTHORIZED
+        );
+      }
       const result = await this.knowledgeBaseService.ragQuery(queryDto, userId);
       return {
         success: true,
@@ -117,7 +146,16 @@ export class KnowledgeBaseController {
   @Get('documents')
   async getUserDocuments(@Request() req: AuthRequest) {
     try {
-      const userId = req.user?.id || 'test-user-id';
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new HttpException(
+          {
+            success: false,
+            message: '未授权的请求，请先登录',
+          },
+          HttpStatus.UNAUTHORIZED
+        );
+      }
       const documents = await this.knowledgeBaseService.getUserDocuments(userId);
       return {
         success: true,
@@ -141,7 +179,16 @@ export class KnowledgeBaseController {
   @Get('documents/:id')
   async getDocument(@Param('id') documentId: string, @Request() req: AuthRequest) {
     try {
-      const userId = req.user?.id || 'test-user-id';
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new HttpException(
+          {
+            success: false,
+            message: '未授权的请求，请先登录',
+          },
+          HttpStatus.UNAUTHORIZED
+        );
+      }
       const document = await this.knowledgeBaseService.getDocument(documentId, userId);
       return {
         success: true,
@@ -169,7 +216,16 @@ export class KnowledgeBaseController {
     @Request() req: AuthRequest
   ) {
     try {
-      const userId = req.user?.id || 'test-user-id';
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new HttpException(
+          {
+            success: false,
+            message: '未授权的请求，请先登录',
+          },
+          HttpStatus.UNAUTHORIZED
+        );
+      }
       const document = await this.knowledgeBaseService.updateDocument(
         documentId,
         updateData,
@@ -197,7 +253,16 @@ export class KnowledgeBaseController {
   @Delete('documents/:id')
   async deleteDocument(@Param('id') documentId: string, @Request() req: AuthRequest) {
     try {
-      const userId = req.user?.id || 'test-user-id';
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new HttpException(
+          {
+            success: false,
+            message: '未授权的请求，请先登录',
+          },
+          HttpStatus.UNAUTHORIZED
+        );
+      }
       await this.knowledgeBaseService.deleteDocument(documentId, userId);
       return {
         success: true,
@@ -220,7 +285,16 @@ export class KnowledgeBaseController {
   @Get('statistics')
   async getStatistics(@Request() req: AuthRequest) {
     try {
-      const userId = req.user?.id || 'test-user-id';
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new HttpException(
+          {
+            success: false,
+            message: '未授权的请求，请先登录',
+          },
+          HttpStatus.UNAUTHORIZED
+        );
+      }
       const stats = await this.knowledgeBaseService.getStatistics(userId);
       return {
         success: true,

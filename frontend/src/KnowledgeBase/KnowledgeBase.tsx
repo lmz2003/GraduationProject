@@ -199,7 +199,8 @@ const KnowledgeBase: React.FC = () => {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [queryResults, setQueryResults] = useState<QueryResult[]>([]);
   const [stats, setStats] = useState({ totalDocuments: 0, processedDocuments: 0, pendingDocuments: 0 });
-  const [loading, setLoading] = useState(false);
+  const [loadingAdd, setLoadingAdd] = useState(false);  // 添加文档的 loading 状态
+  const [loadingQuery, setLoadingQuery] = useState(false);  // 查询的 loading 状态
 
   // 表单状态
   const [newDoc, setNewDoc] = useState({
@@ -277,7 +278,7 @@ const KnowledgeBase: React.FC = () => {
       return;
     }
 
-    setLoading(true);
+    setLoadingAdd(true);
     try {
       const response = await fetch(`${API_BASE}/documents`, {
         method: 'POST',
@@ -305,7 +306,7 @@ const KnowledgeBase: React.FC = () => {
       console.error('添加文档失败:', error);
       alert(`添加文档失败: ${errorMsg}。请检查服务器连接`);
     } finally {
-      setLoading(false);
+      setLoadingAdd(false);
     }
   };
 
@@ -322,7 +323,7 @@ const KnowledgeBase: React.FC = () => {
       return;
     }
 
-    setLoading(true);
+    setLoadingQuery(true);
     try {
       const response = await fetch(`${API_BASE}/query`, {
         method: 'POST',
@@ -354,7 +355,7 @@ const KnowledgeBase: React.FC = () => {
       console.error('查询失败:', error);
       alert(`查询失败: ${errorMsg}。请检查服务器连接`);
     } finally {
-      setLoading(false);
+      setLoadingQuery(false);
     }
   };
 
@@ -440,8 +441,8 @@ const KnowledgeBase: React.FC = () => {
             onChange={(e) => setNewDoc({ ...newDoc, source: e.target.value })}
           />
         </FormGroup>
-        <Button onClick={handleAddDocument} disabled={loading}>
-          {loading ? '处理中...' : '添加文档'}
+        <Button onClick={handleAddDocument} disabled={loadingAdd}>
+          {loadingAdd ? '处理中...' : '添加文档'}
         </Button>
       </Section>
 
@@ -457,8 +458,8 @@ const KnowledgeBase: React.FC = () => {
             style={{ minHeight: '80px' }}
           />
         </FormGroup>
-        <Button onClick={handleQuery} disabled={loading}>
-          {loading ? '查询中...' : '搜索'}
+        <Button onClick={handleQuery} disabled={loadingQuery}>
+          {loadingQuery ? '查询中...' : '搜索'}
         </Button>
 
         {queryResults.length > 0 && (
