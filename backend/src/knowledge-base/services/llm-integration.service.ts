@@ -25,8 +25,8 @@ export class LLMIntegrationService {
   private readonly logger = new Logger(LLMIntegrationService.name);
 
   constructor(private configService: ConfigService) {
-    const apiKey = this.configService.get<string>('OPENAI_API_KEY');
-    const baseUrl = this.configService.get<string>('OPENAI_BASE_URL');
+    const apiKey = this.configService.get<string>('LLM_API_KEY');
+    const baseUrl = this.configService.get<string>('LLM_BASE_URL');
     const provider = this.configService.get<string>('LLM_PROVIDER') || 'openai';
     const modelName = this.configService.get<string>('LLM_MODEL') || 'gpt-3.5-turbo';
 
