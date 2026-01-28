@@ -13,12 +13,12 @@ export class LangChainService {
   constructor(private configService: ConfigService) {
     const embeddingProvider = this.configService.get<string>('EMBEDDING_PROVIDER');
     const apiKey = this.configService.get<string>('LLM_API_KEY');
-    const baseUrl = this.configService.get<string>('OPENAI_BASE_URL');
+    const baseUrl = this.configService.get<string>('LLM_BASE_URL');
     const modelName = this.configService.get<string>('EMBEDDING_MODEL');
 
     if (embeddingProvider === 'siliconflow') {
       if (!apiKey) {
-        this.logger.warn('硅基流动 API 密钥未配置，请在 .env 文件中设置 OPENAI_API_KEY');
+        this.logger.warn('硅基流动 API 密钥未配置，请在 .env 文件中设置 LLM_API_KEY');
       }
       this.logger.log(`使用硅基流动 Embeddings: ${modelName}`);
       this.embeddings = new OpenAIEmbeddings({
