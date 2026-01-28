@@ -249,7 +249,8 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
 
       // 处理 Milvus 搜索结果
       let searchResults: any[] = [];
-      
+      // 添加调试日志
+      this.logger.log('Milvus search result:', JSON.stringify(result, null, 2));
       // 兼容不同版本的 Milvus SDK 返回格式
       if (result.results && Array.isArray(result.results)) {
         // 格式 1: results 是数组的数组
