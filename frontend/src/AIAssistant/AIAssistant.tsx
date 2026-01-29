@@ -383,6 +383,7 @@ const AIAssistant: React.FC = () => {
           />
         </div>
         <button 
+          aria-label="发送消息"
           className="send-button" 
           onClick={handleSend} 
           disabled={!input.trim() || isTyping || !token}
