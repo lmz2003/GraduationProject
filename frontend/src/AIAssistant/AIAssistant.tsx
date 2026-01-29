@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_BASE = import.meta.env.VITE_API_BASE_URL;
 
 const fadeIn = keyframes`
   from {
@@ -391,7 +391,7 @@ const AIAssistant: React.FC = () => {
     setIsTyping(true);
 
     try {
-      const response = await fetch(`${API_BASE}/api/ai-assistant/message`, {
+      const response = await fetch(`${API_BASE}/ai-assistant/message`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
