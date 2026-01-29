@@ -1,174 +1,51 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { HumanMessage } from '@langchain/core/messages';
-import { ChatSession, ChatMessage } from '../entities/chat-session.entity';
-import { SendMessageDto } from '../dto/send-message.dto';
-import { ChatResponseDto } from '../dto/chat-response.dto';
-import { GetSessionDto } from '../dto/get-session.dto';
-import { KnowledgeBaseService } from '../../knowledge-base/services/knowledge-base.service';
+import { AIAssistantSession } from '../entities/ai-assistant-session.entity';
+import { AIAssistantMessage } from '../entities/ai-assistant-message.entity';
 import { LLMIntegrationService } from '../../knowledge-base/services/llm-integration.service';
-import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class AIAssistantService {
   private readonly logger = new Logger(AIAssistantService.name);
 
   constructor(
-    @InjectRepository(ChatSession)
-    private chatSessionRepository: Repository<ChatSession>,
-    private knowledgeBaseService: KnowledgeBaseService,
-    private llmService: LLMIntegrationService,
+    @InjectRepository(AIAssistantSession)
+    private sessionRepository: Repository<AIAssistantSession>,
+    @InjectRepository(AIAssistantMessage)
+    private messageRepository: Repository<AIAssistantMessage>,
+    private llmIntegrationService: LLMIntegrationService,
   ) {}
 
-  /**
-   * 发送消息并获取AI响应
-   */
-  async sendMessage(
-    dto: SendMessageDto,
-    userId: string,
-  ): Promise<ChatResponseDto> {
+  // 获取用户的会话列表
+  async getSessions(userId: string): Promise<AIAssistantSession[]> {
     try {
-      if (!dto.message || dto.message.trim().length === 0) {
-        throw new BadRequestException('消息内容不能为空');
-      }
-
-      // 1. 获取或创建会话
-      let session: ChatSession;
-      if (dto.sessionId) {
-        const foundSession = await this.getSession(dto.sessionId, userId);
-        if (!foundSession) {
-          throw new NotFoundException('会话不存在');
-        }
-        session = foundSession;
-      } else {
-        session = await this.createSession(userId, dto.title, dto.topic);
-      }
-
-      // 2. 保存用户消息
-      const userMessage: ChatMessage = {
-        id: uuidv4(),
-        role: 'user',
-        content: dto.message.trim(),
-        timestamp: new Date(),
-      };
-      session.messages.push(userMessage);
-      await this.chatSessionRepository.save(session);
-
-      // 3. 执行RAG查询和LLM生成
-      const topK = dto.topK ?? 5;
-      const threshold = dto.threshold ?? 0.5;
-      const useRAG = dto.useRAG !== false;
-
-      let assistantContent: string;
-      let sources: Array<{ id: string; title: string; content: string; score: number; source?: string }> = [];
-
-      if (useRAG) {
-        try {
-          // RAG增强查询
-          this.logger.log(`执行RAG查询: ${dto.message}`);
-          
-          const ragResult = await this.knowledgeBaseService.ragQuery(
-            {
-              query: dto.message,
-              topK,
-              threshold,
-            },
-            userId,
-          );
-
-          // 获取源文档信息
-          sources = ragResult.contexts || [];
-
-          // 调用LLM生成答案
-          const llmResponse = await this.llmService.generateRAGAnswer({
-            query: dto.message,
-            contexts: ragResult.contexts || [],
-            ragPrompt: ragResult.ragPrompt,
-          });
-
-          assistantContent = llmResponse.answer;
-        } catch (error) {
-          this.logger.warn(`RAG查询失败，使用纯LLM模式: ${error}`);
-          // 降级处理：如果RAG失败，直接调用LLM
-          assistantContent = await this.generatePlainLLMResponse(dto.message);
-        }
-      } else {
-        // 不使用RAG，直接调用LLM
-        assistantContent = await this.generatePlainLLMResponse(dto.message);
-      }
-
-      // 4. 保存AI回复并获取源文档信息
-      const assistantMessage: ChatMessage = {
-        id: uuidv4(),
-        role: 'assistant',
-        content: assistantContent,
-        timestamp: new Date(),
-        sources: sources.map((s) => ({
-          title: s.title,
-          score: s.score,
-        })),
-      };
-      session.messages.push(assistantMessage);
-
-      // 5. 如果标题为空，用第一条消息自动生成标题
-      if (!session.title && session.messages.length === 2) {
-        session.title = dto.message.substring(0, 50);
-      }
-
-      await this.chatSessionRepository.save(session);
-
-      this.logger.log(`消息处理完成，会话ID: ${session.id}`);
-
-      // 6. 返回响应
-      return {
-        sessionId: session.id,
-        answer: assistantContent,
-        sources,
-        messageCount: session.messages.length,
-        timestamp: new Date(),
-      };
+      return await this.sessionRepository.find({
+        where: { userId },
+        order: { updatedAt: 'DESC' },
+      });
     } catch (error) {
-      this.logger.error('发送消息失败:', error);
-      throw error;
+      this.logger.error('获取会话列表失败:', error);
+      throw new BadRequestException('获取会话列表失败');
     }
   }
 
-  /**
-   * 生成纯LLM响应（不使用RAG）
-   */
-  private async generatePlainLLMResponse(message: string): Promise<string> {
+  // 创建新会话并生成标题
+  async createSession(userId: string, initialMessage: string): Promise<AIAssistantSession> {
     try {
-      // 这里可以调用LLM的通用接口
-      const response = await this.llmService.getLLM().invoke([
-        new HumanMessage(message),
-      ]);
+      // 生成会话标题
+      const title = await this.generateSessionTitle(initialMessage);
 
-      return response.content as string;
-    } catch (error) {
-      this.logger.error('LLM调用失败:', error);
-      throw new BadRequestException('AI助手暂时无法回答');
-    }
-  }
-
-  /**
-   * 创建新会话
-   */
-  async createSession(
-    userId: string,
-    title?: string,
-    topic?: string,
-  ): Promise<ChatSession> {
-    try {
-      const session = this.chatSessionRepository.create({
-        ownerId: userId,
-        title: title || `对话 ${new Date().toLocaleString('zh-CN')}`,
-        topic,
-        messages: [],
+      // 创建会话
+      const session = this.sessionRepository.create({
+        userId,
+        title,
+        messageCount: 0,
       });
 
-      const savedSession = await this.chatSessionRepository.save(session);
-      this.logger.log(`创建新会话: ${savedSession.id}`);
+      const savedSession = await this.sessionRepository.save(session);
+      this.logger.log(`会话创建成功: ${savedSession.id}, 标题: ${title}`);
+
       return savedSession;
     } catch (error) {
       this.logger.error('创建会话失败:', error);
@@ -176,150 +53,136 @@ export class AIAssistantService {
     }
   }
 
-  /**
-   * 获取会话
-   */
-  async getSession(sessionId: string, userId: string): Promise<ChatSession | null> {
+  // 获取会话详情和消息
+  async getSession(sessionId: string, userId: string): Promise<{
+    session: AIAssistantSession;
+    messages: AIAssistantMessage[];
+  }> {
     try {
-      const session = await this.chatSessionRepository.findOne({
-        where: {
-          id: sessionId,
-          ownerId: userId,
-        },
+      // 查找会话
+      const session = await this.sessionRepository.findOne({
+        where: { id: sessionId, userId },
       });
-
-      return session || null;
-    } catch (error) {
-      this.logger.error('获取会话失败:', error);
-      return null;
-    }
-  }
-
-  /**
-   * 获取会话详情（DTO格式）
-   */
-  async getSessionDetails(sessionId: string, userId: string): Promise<GetSessionDto> {
-    try {
-      const session = await this.getSession(sessionId, userId);
 
       if (!session) {
         throw new NotFoundException('会话不存在');
       }
 
-      return {
-        id: session.id,
-        title: session.title,
-        topic: session.topic,
-        messages: session.messages,
-        messageCount: session.messages.length,
-        createdAt: session.createdAt,
-        updatedAt: session.updatedAt,
-      };
+      // 查找会话的消息
+      const messages = await this.messageRepository.find({
+        where: { sessionId },
+        order: { timestamp: 'ASC' },
+      });
+
+      return { session, messages };
     } catch (error) {
       this.logger.error('获取会话详情失败:', error);
       throw error;
     }
   }
 
-  /**
-   * 获取用户的所有会话
-   */
-  async getUserSessions(userId: string): Promise<Array<{
-    id: string;
-    title?: string;
-    topic?: string;
-    messageCount: number;
-    createdAt: Date;
-    updatedAt: Date;
-  }>> {
-    try {
-      const sessions = await this.chatSessionRepository.find({
-        where: { ownerId: userId },
-        order: { updatedAt: 'DESC' },
-      });
-
-      return sessions.map((session) => ({
-        id: session.id,
-        title: session.title,
-        topic: session.topic,
-        messageCount: session.messages.length,
-        createdAt: session.createdAt,
-        updatedAt: session.updatedAt,
-      }));
-    } catch (error) {
-      this.logger.error('获取会话列表失败:', error);
-      throw new BadRequestException('获取会话列表失败');
-    }
-  }
-
-  /**
-   * 删除会话
-   */
+  // 删除会话
   async deleteSession(sessionId: string, userId: string): Promise<void> {
     try {
-      const session = await this.getSession(sessionId, userId);
+      // 查找会话
+      const session = await this.sessionRepository.findOne({
+        where: { id: sessionId, userId },
+      });
 
       if (!session) {
         throw new NotFoundException('会话不存在');
       }
 
-      await this.chatSessionRepository.remove(session);
-      this.logger.log(`删除会话: ${sessionId}`);
+      // 删除会话的所有消息
+      await this.messageRepository.delete({ sessionId });
+
+      // 删除会话
+      await this.sessionRepository.remove(session);
+
+      this.logger.log(`会话删除成功: ${sessionId}`);
     } catch (error) {
       this.logger.error('删除会话失败:', error);
       throw error;
     }
   }
 
-  /**
-   * 清空会话消息（重置对话）
-   */
-  async resetSession(sessionId: string, userId: string): Promise<ChatSession> {
+  // 添加消息
+  async addMessage(
+    sessionId: string,
+    userId: string,
+    content: string,
+    role: 'user' | 'assistant',
+    sources?: Array<{ title: string; score: number }>,
+  ): Promise<AIAssistantMessage> {
     try {
-      const session = await this.getSession(sessionId, userId);
+      // 创建消息
+      const message = this.messageRepository.create({
+        sessionId,
+        userId,
+        content,
+        role,
+        sources: sources || null,
+      });
 
-      if (!session) {
-        throw new NotFoundException('会话不存在');
-      }
+      const savedMessage = await this.messageRepository.save(message);
 
-      session.messages = [];
-      const updated = await this.chatSessionRepository.save(session);
-      this.logger.log(`重置会话: ${sessionId}`);
-      return updated;
+      // 更新会话的消息数量
+      await this.updateSessionMessageCount(sessionId);
+
+      this.logger.log(`消息添加成功: ${savedMessage.id}, 角色: ${role}`);
+
+      return savedMessage;
     } catch (error) {
-      this.logger.error('重置会话失败:', error);
-      throw error;
+      this.logger.error('添加消息失败:', error);
+      throw new BadRequestException('添加消息失败');
     }
   }
 
-  /**
-   * 更新会话标题或主题
-   */
-  async updateSession(
-    sessionId: string,
-    userId: string,
-    updates: { title?: string; topic?: string },
-  ): Promise<ChatSession> {
+  // 更新会话的消息数量
+  private async updateSessionMessageCount(sessionId: string): Promise<void> {
     try {
-      const session = await this.getSession(sessionId, userId);
+      // 计算消息数量
+      const messageCount = await this.messageRepository.count({
+        where: { sessionId },
+      });
 
-      if (!session) {
-        throw new NotFoundException('会话不存在');
-      }
-
-      if (updates.title !== undefined) {
-        session.title = updates.title;
-      }
-      if (updates.topic !== undefined) {
-        session.topic = updates.topic;
-      }
-
-      const updated = await this.chatSessionRepository.save(session);
-      this.logger.log(`更新会话: ${sessionId}`);
-      return updated;
+      // 更新会话
+      await this.sessionRepository.update(sessionId, {
+        messageCount,
+      });
     } catch (error) {
-      this.logger.error('更新会话失败:', error);
-      throw error;
+      this.logger.error('更新会话消息数量失败:', error);
+    }
+  }
+
+  // 生成会话标题
+  private async generateSessionTitle(message: string): Promise<string> {
+    try {
+      // 使用LLM生成标题
+      const prompt = `请从以下消息中提炼出一个简洁的标题，不超过50个字符，用于AI助手的会话标识：\n\n${message}`;
+
+      // 调用LLM服务
+      const response = await this.llmIntegrationService.generateRAGAnswer({
+        query: '生成会话标题',
+        contexts: [],
+        ragPrompt: prompt,
+      });
+
+      let title = response.answer.trim();
+
+      // 清理标题
+      title = title.replace(/^"|"$/g, ''); // 移除引号
+      title = title.substring(0, 50); // 限制长度
+
+      // 如果生成失败，使用默认标题
+      if (!title || title.length === 0) {
+        title = '新会话';
+      }
+
+      return title;
+    } catch (error) {
+      this.logger.warn('生成会话标题失败，使用默认标题:', error);
+      return '新会话';
     }
   }
 }

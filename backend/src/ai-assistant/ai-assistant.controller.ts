@@ -1,319 +1,203 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Put,
-  Delete,
-  Body,
-  Param,
-  UseGuards,
-  Request,
-  HttpException,
-  HttpStatus,
-} from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, UseGuards, Request, Logger } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AIAssistantService } from './services/ai-assistant.service';
-import { SendMessageDto } from './dto/send-message.dto';
+import { KnowledgeBaseService } from '../knowledge-base/services/knowledge-base.service';
+import { QueryKnowledgeDto } from '../knowledge-base/dto/query-knowledge.dto';
 
-interface AuthRequest extends Request {
-  user?: {
-    id: string;
-    githubId: string;
-    githubUsername?: string;
-    name?: string;
-    avatar?: string;
-    email?: string;
-  };
+interface CreateSessionBody {
+  initialMessage?: string;
 }
 
-@Controller('ai-assistant')
-@UseGuards(AuthGuard('jwt'))
+interface SendMessageBody {
+  message: string;
+  sessionId?: string;
+  useRAG?: boolean;
+  topK?: number;
+  threshold?: number;
+}
+
+@Controller('api/ai-assistant')
 export class AIAssistantController {
-  constructor(private readonly aiAssistantService: AIAssistantService) {}
+  private readonly logger = new Logger(AIAssistantController.name);
 
-  /**
-   * 发送消息（单轮或多轮对话）
-   */
-  @Post('message')
-  async sendMessage(
-    @Body() sendMessageDto: SendMessageDto,
-    @Request() req: AuthRequest,
-  ) {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        throw new HttpException(
-          {
-            success: false,
-            message: '未授权的请求，请先登录',
-          },
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
+  constructor(
+    private aiAssistantService: AIAssistantService,
+    private knowledgeBaseService: KnowledgeBaseService,
+  ) {}
 
-      const response = await this.aiAssistantService.sendMessage(
-        sendMessageDto,
-        userId,
-      );
-
-      return {
-        success: true,
-        message: '消息处理成功',
-        data: response,
-      };
-    } catch (error: any) {
-      throw new HttpException(
-        {
-          success: false,
-          message: error.message || '消息处理失败',
-        },
-        error instanceof HttpException ? error.getStatus() : HttpStatus.BAD_REQUEST,
-      );
-    }
-  }
-
-  /**
-   * 创建新会话
-   */
-  @Post('sessions')
-  async createSession(
-    @Body() dto: { title?: string; topic?: string },
-    @Request() req: AuthRequest,
-  ) {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        throw new HttpException(
-          {
-            success: false,
-            message: '未授权的请求，请先登录',
-          },
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
-
-      const session = await this.aiAssistantService.createSession(
-        userId,
-        dto.title,
-        dto.topic,
-      );
-
-      return {
-        success: true,
-        message: '会话创建成功',
-        data: {
-          id: session.id,
-          title: session.title,
-          topic: session.topic,
-          createdAt: session.createdAt,
-        },
-      };
-    } catch (error: any) {
-      throw new HttpException(
-        {
-          success: false,
-          message: error.message || '创建会话失败',
-        },
-        HttpStatus.BAD_REQUEST,
-      );
-    }
-  }
-
-  /**
-   * 获取用户的所有会话
-   */
+  // 获取会话列表
+  @UseGuards(AuthGuard('jwt'))
   @Get('sessions')
-  async getUserSessions(@Request() req: AuthRequest) {
+  async getSessions(@Request() req: any) {
     try {
-      const userId = req.user?.id;
-      if (!userId) {
-        throw new HttpException(
-          {
-            success: false,
-            message: '未授权的请求，请先登录',
-          },
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
-
-      const sessions = await this.aiAssistantService.getUserSessions(userId);
+      const userId = req.user.id;
+      const sessions = await this.aiAssistantService.getSessions(userId);
 
       return {
         success: true,
-        message: '获取会话列表成功',
         data: sessions,
       };
     } catch (error: any) {
-      throw new HttpException(
-        {
-          success: false,
-          message: error.message || '获取会话列表失败',
-        },
-        HttpStatus.BAD_REQUEST,
-      );
+      this.logger.error('获取会话列表失败:', error);
+      return {
+        success: false,
+        message: error.message || '获取会话列表失败',
+      };
     }
   }
 
-  /**
-   * 获取会话详情
-   */
-  @Get('sessions/:sessionId')
-  async getSession(
-    @Param('sessionId') sessionId: string,
-    @Request() req: AuthRequest,
-  ) {
+  // 创建新会话
+  @UseGuards(AuthGuard('jwt'))
+  @Post('sessions')
+  async createSession(@Request() req: any, @Body() body: CreateSessionBody) {
     try {
-      const userId = req.user?.id;
-      if (!userId) {
-        throw new HttpException(
-          {
-            success: false,
-            message: '未授权的请求，请先登录',
-          },
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
+      const userId = req.user.id;
+      const initialMessage = body.initialMessage || '';
 
-      const session = await this.aiAssistantService.getSessionDetails(
-        sessionId,
-        userId,
-      );
+      const session = await this.aiAssistantService.createSession(userId, initialMessage);
 
       return {
         success: true,
-        message: '获取会话成功',
         data: session,
       };
     } catch (error: any) {
-      throw new HttpException(
-        {
-          success: false,
-          message: error.message || '获取会话失败',
-        },
-        error instanceof HttpException ? error.getStatus() : HttpStatus.BAD_REQUEST,
-      );
+      this.logger.error('创建会话失败:', error);
+      return {
+        success: false,
+        message: error.message || '创建会话失败',
+      };
     }
   }
 
-  /**
-   * 更新会话（标题、主题）
-   */
-  @Put('sessions/:sessionId')
-  async updateSession(
-    @Param('sessionId') sessionId: string,
-    @Body() dto: { title?: string; topic?: string },
-    @Request() req: AuthRequest,
-  ) {
+  // 获取会话详情和消息
+  @UseGuards(AuthGuard('jwt'))
+  @Get('sessions/:id')
+  async getSession(@Request() req: any, @Param('id') sessionId: string) {
     try {
-      const userId = req.user?.id;
-      if (!userId) {
-        throw new HttpException(
-          {
-            success: false,
-            message: '未授权的请求，请先登录',
-          },
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
+      const userId = req.user.id;
+      const { session, messages } = await this.aiAssistantService.getSession(sessionId, userId);
 
-      const session = await this.aiAssistantService.updateSession(
-        sessionId,
-        userId,
-        dto,
-      );
+      // 转换消息格式以匹配前端期望
+      const formattedMessages = messages.map(message => ({
+        id: message.id,
+        role: message.role,
+        content: message.content,
+        timestamp: message.timestamp,
+        sources: message.sources,
+      }));
 
       return {
         success: true,
-        message: '会话更新成功',
         data: {
-          id: session.id,
-          title: session.title,
-          topic: session.topic,
-          updatedAt: session.updatedAt,
+          session,
+          messages: formattedMessages,
         },
       };
     } catch (error: any) {
-      throw new HttpException(
-        {
-          success: false,
-          message: error.message || '更新会话失败',
-        },
-        error instanceof HttpException ? error.getStatus() : HttpStatus.BAD_REQUEST,
-      );
-    }
-  }
-
-  /**
-   * 重置会话（清空消息）
-   */
-  @Post('sessions/:sessionId/reset')
-  async resetSession(
-    @Param('sessionId') sessionId: string,
-    @Request() req: AuthRequest,
-  ) {
-    try {
-      const userId = req.user?.id;
-      if (!userId) {
-        throw new HttpException(
-          {
-            success: false,
-            message: '未授权的请求，请先登录',
-          },
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
-
-      await this.aiAssistantService.resetSession(sessionId, userId);
-
+      this.logger.error('获取会话详情失败:', error);
       return {
-        success: true,
-        message: '会话已重置',
+        success: false,
+        message: error.message || '获取会话详情失败',
       };
-    } catch (error: any) {
-      throw new HttpException(
-        {
-          success: false,
-          message: error.message || '重置会话失败',
-        },
-        error instanceof HttpException ? error.getStatus() : HttpStatus.BAD_REQUEST,
-      );
     }
   }
 
-  /**
-   * 删除会话
-   */
-  @Delete('sessions/:sessionId')
-  async deleteSession(
-    @Param('sessionId') sessionId: string,
-    @Request() req: AuthRequest,
-  ) {
+  // 删除会话
+  @UseGuards(AuthGuard('jwt'))
+  @Delete('sessions/:id')
+  async deleteSession(@Request() req: any, @Param('id') sessionId: string) {
     try {
-      const userId = req.user?.id;
-      if (!userId) {
-        throw new HttpException(
-          {
-            success: false,
-            message: '未授权的请求，请先登录',
-          },
-          HttpStatus.UNAUTHORIZED,
-        );
-      }
-
+      const userId = req.user.id;
       await this.aiAssistantService.deleteSession(sessionId, userId);
 
       return {
         success: true,
-        message: '会话已删除',
+        message: '会话删除成功',
       };
     } catch (error: any) {
-      throw new HttpException(
-        {
-          success: false,
-          message: error.message || '删除会话失败',
-        },
-        error instanceof HttpException ? error.getStatus() : HttpStatus.BAD_REQUEST,
+      this.logger.error('删除会话失败:', error);
+      return {
+        success: false,
+        message: error.message || '删除会话失败',
+      };
+    }
+  }
+
+  // 发送消息
+  @UseGuards(AuthGuard('jwt'))
+  @Post('message')
+  async sendMessage(@Request() req: any, @Body() body: SendMessageBody) {
+    try {
+      const userId = req.user.id;
+      const { message, sessionId, useRAG = true, topK = 5, threshold = 0.5 } = body;
+
+      if (!message || message.trim().length === 0) {
+        throw new Error('消息内容不能为空');
+      }
+
+      let currentSessionId = sessionId;
+
+      // 如果没有会话ID，创建新会话
+      if (!currentSessionId) {
+        const session = await this.aiAssistantService.createSession(userId, message);
+        currentSessionId = session.id;
+      }
+
+      // 存储用户消息
+      await this.aiAssistantService.addMessage(
+        currentSessionId,
+        userId,
+        message,
+        'user',
       );
+
+      // 处理AI回复
+      let answer = '';
+      let sources: Array<{ title: string; score: number }> = [];
+
+      if (useRAG) {
+        // 使用知识库增强
+        const ragResult = await this.knowledgeBaseService.ragQuery(
+          { query: message, topK, threshold },
+          userId,
+        );
+
+        // 这里应该调用LLM生成答案
+        // 为了演示，我们使用一个简单的回复
+        answer = `我收到了你的消息: ${message}\n\n这是一个基于知识库的回复。`;
+        sources = ragResult.contexts.map(ctx => ({
+          title: ctx.title,
+          score: ctx.score,
+        }));
+      } else {
+        // 不使用知识库
+        answer = `我收到了你的消息: ${message}\n\n这是一个普通回复。`;
+      }
+
+      // 存储AI回复
+      await this.aiAssistantService.addMessage(
+        currentSessionId,
+        userId,
+        answer,
+        'assistant',
+        sources,
+      );
+
+      return {
+        success: true,
+        data: {
+          answer,
+          sessionId: currentSessionId,
+          sources,
+          timestamp: new Date(),
+        },
+      };
+    } catch (error: any) {
+      this.logger.error('发送消息失败:', error);
+      return {
+        success: false,
+        message: error.message || '发送消息失败',
+      };
     }
   }
 }

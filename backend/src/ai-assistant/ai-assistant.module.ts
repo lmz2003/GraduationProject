@@ -1,17 +1,18 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AIAssistantController } from './ai-assistant.controller';
+import { AIAssistantSession } from './entities/ai-assistant-session.entity';
+import { AIAssistantMessage } from './entities/ai-assistant-message.entity';
 import { AIAssistantService } from './services/ai-assistant.service';
-import { ChatSession } from './entities/chat-session.entity';
+import { AIAssistantController } from './ai-assistant.controller';
 import { KnowledgeBaseModule } from '../knowledge-base/knowledge-base.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([ChatSession]),
+    TypeOrmModule.forFeature([AIAssistantSession, AIAssistantMessage]),
     KnowledgeBaseModule,
   ],
-  controllers: [AIAssistantController],
   providers: [AIAssistantService],
+  controllers: [AIAssistantController],
   exports: [AIAssistantService],
 })
 export class AIAssistantModule {}
