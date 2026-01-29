@@ -263,13 +263,31 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
       }
 
       // 转换格式并计算相似度分数
-      const results = searchResults.map((item: any) => ({
-        id: item.id || item.entity?.id,
-        title: item.title || item.entity?.title,
-        content: item.content || item.entity?.content,
-        source: item.source || item.entity?.source,
-        score: item.distance !== undefined ? 1 / (1 + item.distance) : 0.5,
-      })) || [];
+      const results = searchResults.map((item: any) => {
+        let score = 0.5; // 默认分数
+        
+        // Milvus 使用 L2 距离，需要转换为相似度分数
+        // L2 距离越小，相似度越高
+        // 使用公式: similarity = 1 / (1 + distance)
+        if (item.score !== undefined && item.score !== null) {
+          // score实际上是L2距离（或其他距离度量）
+          const distance = item.score;
+          score = 1 / (1 + distance);
+        } 
+        else if (item.distance !== undefined && item.distance !== null) {
+          // 备用：如果返回的字段名是distance
+          const distance = item.distance;
+          score = 1 / (1 + distance);
+        }
+        
+        return {
+          id: item.id || item.entity?.id,
+          title: item.title || item.entity?.title,
+          content: item.content || item.entity?.content,
+          source: item.source || item.entity?.source,
+          score: Math.min(1, Math.max(0, score)), // 确保分数在0-1之间
+        };
+      }) || [];
 
       const filtered = results.filter((r: any) => r.score >= threshold);
       this.logger.log(`搜索完成: 找到 ${results.length} 个候选项，${filtered.length} 个满足阈值`);
