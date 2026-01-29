@@ -1,5 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 const fadeIn = keyframes`
   from {
@@ -125,7 +127,6 @@ const Avatar = styled.div<{ $isUser: boolean }>`
   animation: ${fadeIn} 0.3s ease-out;
 `;
 
-
 const MessageBubble = styled.div<{ $isUser: boolean }>`
   max-width: calc(85% - 42px);
   padding: 14px 16px;
@@ -175,6 +176,35 @@ const Timestamp = styled.span<{ $isUser: boolean }>`
   color: ${props => props.$isUser ? '#a5b4fc' : '#94a3b8'};
   margin-top: 4px;
   display: block;
+`;
+
+const SourcesContainer = styled.div`
+  margin-top: 8px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  font-size: 12px;
+
+  p {
+    margin: 0 0 6px 0;
+    opacity: 0.9;
+    font-weight: 600;
+  }
+
+  div {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+
+    span {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 4px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
 `;
 
 const TypingIndicator = styled.div`
@@ -295,31 +325,46 @@ const SendButton = styled.button<{ $disabled: boolean }>`
   }
 `;
 
+const ErrorMessage = styled.div`
+  padding: 12px 16px;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #dc2626;
+  font-size: 13px;
+  margin: 8px 0;
+  animation: ${fadeIn} 0.3s ease-out;
+`;
+
 interface Message {
   id: string;
-  text: string;
-  isUser: boolean;
+  role: 'user' | 'assistant';
+  content: string;
   timestamp: Date;
+  sources?: Array<{ title: string; score: number }>;
 }
 
 const formatTime = (date: Date) => {
-  return date.toLocaleTimeString('zh-CN', {
+  return new Date(date).toLocaleTimeString('zh-CN', {
     hour: '2-digit',
     minute: '2-digit'
   });
 };
 
 const AIAssistant: React.FC = () => {
+  const token = localStorage.getItem('token');
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: '你好！👋 我是AI助手，很高兴为你服务！我可以帮你：\n\n• 解答问题和提供建议\n• 帮你整理思路和分析内容\n• 提供创意灵感和写作帮助\n\n有什么我可以帮你的吗？',
-      isUser: false,
+      role: 'assistant',
+      content: '你好！👋 我是AI助手，很高兴为你服务！我可以帮你：\n\n• 解答问题和提供建议\n• 帮你整理思路和分析内容\n• 利用你的知识库提供更精准的回答\n\n有什么我可以帮你的吗？',
       timestamp: new Date()
     }
   ]);
   const [isTyping, setIsTyping] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -330,39 +375,71 @@ const AIAssistant: React.FC = () => {
     scrollToBottom();
   }, [messages, isTyping]);
 
-  const handleSend = () => {
-    if (!input.trim() || isTyping) return;
+  const handleSend = useCallback(async () => {
+    if (!input.trim() || isTyping || !token) return;
 
-    const newMessage: Message = {
+    setError(null);
+    const userMessage: Message = {
       id: Date.now().toString(),
-      text: input.trim(),
-      isUser: true,
+      role: 'user',
+      content: input.trim(),
       timestamp: new Date()
     };
 
-    setMessages(prev => [...prev, newMessage]);
+    setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsTyping(true);
 
-    setTimeout(() => {
-      const responses = [
-        '我理解你的问题了，让我思考一下... 🤔',
-        '这是个很有趣的话题！让我来帮你分析一下... 💡',
-        '好的，我收到了！让我组织一下思路... ✨',
-        '关于这个问题，我可以给你一些建议... 📝'
-      ];
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
-      
-      const aiResponse: Message = {
-        id: (Date.now() + 1).toString(),
-        text: randomResponse + '\n\n（这是一个演示版本，在实际项目中这里会连接到后端AI API）',
-        isUser: false,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, aiResponse]);
+    try {
+      const response = await fetch(`${API_BASE}/api/ai-assistant/message`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          message: input.trim(),
+          sessionId: sessionId || undefined,
+          useRAG: true,
+          topK: 5,
+          threshold: 0.5,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || '消息处理失败');
+      }
+
+      if (data.success) {
+        // 设置会话ID
+        if (!sessionId) {
+          setSessionId(data.data.sessionId);
+        }
+
+        const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: data.data.answer,
+          timestamp: new Date(data.data.timestamp),
+          sources: data.data.sources?.map((s: any) => ({
+            title: s.title,
+            score: s.score,
+          })) || [],
+        };
+        setMessages(prev => [...prev, aiMessage]);
+      } else {
+        throw new Error(data.message || '消息处理失败');
+      }
+     } catch (err) {
+       const errorMessage = err instanceof Error ? err.message : '发送消息失败，请重试';
+       setError(errorMessage);
+       console.error('发送消息失败:', err);
+     } finally {
       setIsTyping(false);
-    }, 1500);
-  };
+    }
+  }, [input, isTyping, token, sessionId]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -375,22 +452,34 @@ const AIAssistant: React.FC = () => {
     <AssistantContainer>
       <WelcomeBanner>
         <h3>🤖 AI 智能助手</h3>
-        <p>随时为你提供智能问答和创意支持</p>
+        <p>连接到你的知识库，提供智能问答和创意支持</p>
       </WelcomeBanner>
       
       <MessageList>
         {messages.map(msg => (
-          <MessageWrapper key={msg.id} $isUser={msg.isUser}>
-            <Avatar $isUser={msg.isUser}>
-              {msg.isUser ? '👤' : '🤖'}
+          <MessageWrapper key={msg.id} $isUser={msg.role === 'user'}>
+            <Avatar $isUser={msg.role === 'user'}>
+              {msg.role === 'user' ? '👤' : '🤖'}
             </Avatar>
             <div>
-              <MessageBubble $isUser={msg.isUser}>
-                {msg.text.split('\n').map((line, i) => (
+              <MessageBubble $isUser={msg.role === 'user'}>
+                {msg.content.split('\n').map((line, i) => (
                   <p key={i}>{line}</p>
                 ))}
+                {msg.sources && msg.sources.length > 0 && msg.role === 'assistant' && (
+                  <SourcesContainer>
+                    <p>📚 知识库来源</p>
+                    <div>
+                      {msg.sources.map((source, idx) => (
+                        <span key={idx} title={`${source.title} (相似度: ${(source.score * 100).toFixed(1)}%)`}>
+                          {source.title} ({(source.score * 100).toFixed(0)}%)
+                        </span>
+                      ))}
+                    </div>
+                  </SourcesContainer>
+                )}
               </MessageBubble>
-              <Timestamp $isUser={msg.isUser}>
+              <Timestamp $isUser={msg.role === 'user'}>
                 {formatTime(msg.timestamp)}
               </Timestamp>
             </div>
@@ -408,6 +497,8 @@ const AIAssistant: React.FC = () => {
           </MessageWrapper>
         )}
         
+        {error && <ErrorMessage>❌ {error}</ErrorMessage>}
+        
         <div ref={messagesEndRef} />
       </MessageList>
       
@@ -418,13 +509,13 @@ const AIAssistant: React.FC = () => {
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="输入消息..."
-            disabled={isTyping}
+            disabled={isTyping || !token}
           />
         </InputWrapper>
         <SendButton 
           onClick={handleSend} 
-          disabled={!input.trim() || isTyping}
-          $disabled={!input.trim() || isTyping}
+          disabled={!input.trim() || isTyping || !token}
+          $disabled={!input.trim() || isTyping || !token}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />

@@ -6,6 +6,7 @@ import { AuthModule } from './auth/auth.module';
 import { NotesModule } from './notes/notes.module';
 import { UsersModule } from './users/users.module';
 import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
+import { AIAssistantModule } from './ai-assistant/ai-assistant.module';
 import { UploadModule } from './upload/upload.module';
 
 @Module({
@@ -32,6 +33,7 @@ import { UploadModule } from './upload/upload.module';
     NotesModule,
     UsersModule,
     KnowledgeBaseModule,
+    AIAssistantModule,
     UploadModule,
   ],
   controllers: [],
