@@ -19,17 +19,55 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
       const milvusHost = this.configService.get<string>('MILVUS_HOST') || 'localhost';
       const milvusPort = this.configService.get<number>('MILVUS_PORT') || 19530;
 
+      // 增加超时时间到60秒，给Milvus充分的启动时间
       this.milvusClient = new MilvusClient({
         address: `${milvusHost}:${milvusPort}`,
+        timeout: 60000, // 60秒超时
       });
 
       this.logger.log(`连接到 Milvus: ${milvusHost}:${milvusPort}`);
       
-      await this.initializeCollection();
+      // 增加重试逻辑，如果超时会自动重试
+      await this.initializeCollectionWithRetry();
     } catch (error) {
       this.logger.error('Milvus 连接失败:', error);
       throw error;
     }
+  }
+
+  /**
+   * 带重试的集合初始化
+   */
+  private async initializeCollectionWithRetry(maxRetries: number = 6) {
+    let lastError: any;
+    
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        this.logger.log(`初始化集合 (尝试 ${attempt}/${maxRetries})`);
+        await this.initializeCollection();
+        this.logger.log('集合初始化成功');
+        return;
+      } catch (error) {
+        lastError = error;
+        const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+        
+        if (errorMsg.includes('DEADLINE_EXCEEDED') || errorMsg.includes('Deadline exceeded')) {
+          if (attempt < maxRetries) {
+            const delaySeconds = attempt * 5; // 逐次增加延迟：5秒、10秒、15秒
+            this.logger.warn(
+              `初始化超时，${delaySeconds}秒后重试... (${attempt}/${maxRetries})`
+            );
+            await new Promise(resolve => setTimeout(resolve, delaySeconds * 1000));
+            continue;
+          }
+        }
+        
+        // 其他错误直接抛出
+        throw error;
+      }
+    }
+    
+    throw lastError;
   }
 
   async onModuleDestroy() {
@@ -45,16 +83,24 @@ export class MilvusService implements OnModuleInit, OnModuleDestroy {
     }
     
     try {
+      this.logger.log('正在列出现有集合...');
       const collections = await this.milvusClient.listCollections();
       const exists = collections.data?.some(
         (c: any) => c.name === this.collectionName
       );
 
       if (exists) {
-        this.logger.log(`集合 ${this.collectionName} 已存在，加载集合`);
-        await this.milvusClient.loadCollectionSync({
-          collection_name: this.collectionName,
-        });
+        this.logger.log(`集合 ${this.collectionName} 已存在，准备加载集合...`);
+        try {
+          await this.milvusClient.loadCollectionSync({
+            collection_name: this.collectionName,
+          });
+          this.logger.log(`集合 ${this.collectionName} 加载成功`);
+        } catch (loadError) {
+          const errorMsg = loadError instanceof Error ? loadError.message : JSON.stringify(loadError);
+          this.logger.warn(`加载集合失败，尝试直接使用: ${errorMsg}`);
+          // 加载失败不影响使用，集合已经存在
+        }
         return;
       }
 

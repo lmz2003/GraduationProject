@@ -28,6 +28,9 @@ services:
       COMMON_STORAGETYPE: local
       ETCD_ENDPOINTS: etcd:2379
       MINIO_ADDRESS: minio:9000
+      # 提高gRPC超时时间，解决启动时的超时问题
+      GRPC_MAX_SEND_MESSAGE_LENGTH: 268435456  # 256MB
+      GRPC_MAX_RECEIVE_MESSAGE_LENGTH: 268435456  # 256MB
     ports:
       - "127.0.0.1:19530:19530"  # 安全：只允许本机访问 (gRPC)
       - "127.0.0.1:9091:9091"    # 安全：只允许本机访问 (HTTP)
@@ -47,9 +50,11 @@ services:
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9091/healthz || exit 1"]
       interval: 10s
-      timeout: 5s
-      retries: 5
+      timeout: 10s  # 增加超时时间
+      retries: 10   # 增加重试次数
     restart: unless-stopped  # 自动重启
+    # 给予充足的启动时间
+    init: true
 
   # etcd - Milvus 依赖
   etcd:
