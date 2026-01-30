@@ -16,7 +16,7 @@ interface SendMessageBody {
   threshold?: number;
 }
 
-@Controller('api/ai-assistant')
+@Controller('ai-assistant')
 export class AIAssistantController {
   private readonly logger = new Logger(AIAssistantController.name);
 
