@@ -256,35 +256,47 @@ export class AIAssistantService {
     try {
       if (useRAG) {
         // 使用知识库增强
-        const ragResult = await this.knowledgeBaseService.ragQuery(
-          { query: message, topK, threshold },
-          userId,
-        );
+        let ragResult: any = null;
+        let hasRagError = false;
+
+        try {
+          ragResult = await this.knowledgeBaseService.ragQuery(
+            { query: message, topK, threshold },
+            userId,
+          );
+        } catch (ragError) {
+          // RAG 查询失败，自动降级到直接调用 LLM
+          this.logger.warn('RAG 查询失败，自动降级到直接调用 LLM:', ragError);
+          hasRagError = true;
+        }
 
         // 使用知识库作为补充资料
         let ragPrompt = '';
         
-        if (ragResult.contexts && ragResult.contexts.length > 0) {
+        if (!hasRagError && ragResult?.contexts && ragResult.contexts.length > 0) {
           // 有相关资料，将其作为补充背景信息
           const contextsText = ragResult.contexts
-            .map((ctx, idx) => `[${idx + 1}] ${ctx.title}:\n${ctx.content}`)
+            .map((ctx: any, idx: number) => `[${idx + 1}] ${ctx.title}:\n${ctx.content}`)
             .join('\n\n');
 
           ragPrompt = `你是一个有帮助的AI助手。
 
 用户问题：${message}
 
-以下是一些可能相关的参考资料（作为补充信息，不是必须的）：
+以下是一些可能相关的参考资料（作为补充信息）：
 ${contextsText}
 
-请使用你的知识和上述参考资料来回答用户的问题。如果参考资料有帮助，可以参考；如果没有相关资料或参考资料不够准确，可以基于你的通用知识直接回答。`;
+请使用你的知识和上述参考资料来回答用户的问题。如果参考资料有帮助，可以参考；如果没有相关资料或参考资料不够准确，可以基于你的通用知识直接回答。生成回答时不用提到基于参考资料类似的话术。`;
 
-          sources = ragResult.contexts.map(ctx => ({
+          sources = ragResult.contexts.map((ctx: any) => ({
             title: ctx.title,
             score: ctx.score,
           }));
         } else {
-          // 知识库中没有相关资料，直接使用 LLM 回答
+          // 知识库中没有相关资料或查询失败，直接使用 LLM 回答
+          if (hasRagError) {
+            this.logger.log('知识库查询失败，使用 LLM 通用知识回答');
+          }
           ragPrompt = `${message}\n\n请直接回答上述问题。`;
           sources = [];
         }
@@ -293,15 +305,15 @@ ${contextsText}
         try {
           const response = await this.llmIntegrationService.generateRAGAnswer({
             query: message,
-            contexts: ragResult.contexts || [],
+            contexts: ragResult?.contexts || [],
             ragPrompt,
           });
           answer = response.answer;
         } catch (error) {
           this.logger.warn('LLM 调用失败，错误信息:', error);
-          if (ragResult.contexts && ragResult.contexts.length > 0) {
+          if (ragResult?.contexts && ragResult.contexts.length > 0) {
             const contextsText = ragResult.contexts
-              .map((ctx, idx) => `[${idx + 1}] ${ctx.title}:\n${ctx.content}`)
+              .map((ctx: any, idx: number) => `[${idx + 1}] ${ctx.title}:\n${ctx.content}`)
               .join('\n\n');
             answer = `模型调用失败，以下是我从知识库搜索到的相关信息，请参考：\n\n${contextsText}`;
           } else {
