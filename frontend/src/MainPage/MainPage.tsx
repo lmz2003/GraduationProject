@@ -49,6 +49,11 @@ const MainPageLayout: React.FC = () => {
   const [activeModule, setActiveModule] = useState<string>(module || 'home');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const { isOpen: isAssistantOpen } = useAIAssistant();
+  const [mainWidth, setMainWidth] = useState<number>(() => {
+    const saved = localStorage.getItem('mainLayoutWidth');
+    return saved ? parseInt(saved) : 65; // 默认 65% 宽度
+  });
+  const [isDragging, setIsDragging] = useState(false);
 
   // Initialize sidebar state based on screen width
   useEffect(() => {
@@ -64,6 +69,49 @@ const MainPageLayout: React.FC = () => {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // 处理拖动分隔线
+  const handleDividerMouseDown = () => {
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const container = document.querySelector(`.${styles.layoutContainer}`) as HTMLElement;
+      if (!container) return;
+
+      const containerRect = container.getBoundingClientRect();
+      const sidebar = document.querySelector(`.${styles.sidebar}`) as HTMLElement;
+      if (!sidebar) return;
+
+      const sidebarWidth = sidebar.offsetWidth;
+      const containerWidth = containerRect.width;
+
+      // 计算鼠标相对于 sidebar 右边的位置
+      const mainAndDividerWidth = e.clientX - (containerRect.left + sidebarWidth);
+      const newMainWidth = (mainAndDividerWidth / (containerWidth - sidebarWidth)) * 100;
+
+      // 限制主区域宽度在 40% - 80% 之间
+      if (newMainWidth >= 40 && newMainWidth <= 80) {
+        setMainWidth(newMainWidth);
+        localStorage.setItem('mainLayoutWidth', Math.round(newMainWidth).toString());
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
 
   // User data state
   const [userData, setUserData] = useState<{
@@ -143,8 +191,19 @@ const MainPageLayout: React.FC = () => {
     navigate('/login');
   };
 
+  const aiWidth = 100 - mainWidth;
+  // 计算 flex 值，4px 的分隔线宽度相对较小，直接用百分比表示
+  const mainFlex = mainWidth;
+  const aiFlex = aiWidth;
+  const gridTemplate = isAssistantOpen 
+    ? `var(--sidebar-width) ${mainFlex}fr 4px ${aiFlex}fr`
+    : `var(--sidebar-width) 1fr`;
+
   return (
-    <div className={`${styles.layoutContainer} ${!isAssistantOpen ? styles.aiClosed : ''} ${isSidebarCollapsed ? styles.sidebarCollapsed : ''}`}>
+    <div 
+      className={`${styles.layoutContainer} ${!isAssistantOpen ? styles.aiClosed : ''} ${isSidebarCollapsed ? styles.sidebarCollapsed : ''} ${isDragging ? styles.dragging : ''}`}
+      style={isAssistantOpen ? { gridTemplateColumns: gridTemplate } : {}}
+    >
       {/* Mobile Overlay for Left Sidebar */}
       {!isSidebarCollapsed && (
         <div className={styles.sidebarOverlay} onClick={() => setIsSidebarCollapsed(true)} />
@@ -254,6 +313,15 @@ const MainPageLayout: React.FC = () => {
           {activeModule === 'knowledge' && <KnowledgeBase />}
         </main>
       </div>
+
+      {/* Divider between Main and AI Assistant */}
+      {isAssistantOpen && (
+        <div 
+          className={styles.divider}
+          onMouseDown={handleDividerMouseDown}
+          title="拖动来调整区域大小"
+        />
+      )}
 
       {/* Right Sidebar */}
       <aside className={`${styles.rightSidebar} ${!isAssistantOpen ? styles.aiHidden : ''}`}>

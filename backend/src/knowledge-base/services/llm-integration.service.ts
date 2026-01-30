@@ -310,19 +310,28 @@ export class LLMIntegrationService {
 
       let fullAnswer = '';
 
-      // 调用 LLM 并使用流式处理
+      // 使用 stream 方式，并严格验证数据
       const stream = await this.llm.stream([
         new HumanMessage(ragContext.ragPrompt),
       ]);
 
-      // 逐块处理响应
       for await (const chunk of stream) {
-        // 只处理包含 content 的块，过滤掉元数据块
-        if (chunk && chunk.content && typeof chunk.content === 'string' && chunk.content.length > 0) {
-          const content = chunk.content;
-          fullAnswer += content;
-          // 只在有实际内容时调用回调
-          onChunk(content);
+        try {
+          // 只处理包含有效 content 的块
+          if (
+            chunk &&
+            typeof chunk === 'object' &&
+            'content' in chunk &&
+            typeof chunk.content === 'string' &&
+            chunk.content.trim().length > 0
+          ) {
+            const content = chunk.content;
+            fullAnswer += content;
+            onChunk(content);
+          }
+        } catch (parseError) {
+          // 静默忽略处理错误
+          this.logger.debug('数据块处理错误，已忽略');
         }
       }
 
@@ -360,11 +369,22 @@ export class LLMIntegrationService {
           ]);
 
           for await (const chunk of stream) {
-            if (chunk.content && typeof chunk.content === 'string') {
-              readable.push(JSON.stringify({
-                type: 'chunk',
-                data: chunk.content,
-              }) + '\n');
+            try {
+              if (
+                chunk &&
+                typeof chunk === 'object' &&
+                'content' in chunk &&
+                typeof chunk.content === 'string' &&
+                chunk.content.length > 0
+              ) {
+                readable.push(JSON.stringify({
+                  type: 'chunk',
+                  data: chunk.content,
+                }) + '\n');
+              }
+            } catch (parseError) {
+              // 静默忽略无法处理的块
+              logger.debug('跳过无效的数据块');
             }
           }
 

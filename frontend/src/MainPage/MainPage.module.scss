@@ -30,12 +30,25 @@ $radius-md: 10px;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   overflow: hidden;
   position: relative;
-  transition: grid-template-columns 0.25s ease;
+
+  &.dragging {
+    user-select: none;
+    cursor: col-resize;
+
+    * {
+      cursor: col-resize !important;
+      user-select: none;
+    }
+  }
 }
 
 .layoutContainer.aiClosed {
   grid-template-columns: var(--sidebar-width) 1fr;
   grid-template-areas: 'sidebar main';
+  
+  .divider {
+    display: none;
+  }
 }
 
 .layoutContainer.sidebarCollapsed {
@@ -330,6 +343,26 @@ $radius-md: 10px;
   display: none;
 }
 
+.divider {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  cursor: col-resize;
+  border-left: 1px solid $border-color;
+  border-right: 1px solid $border-color;
+  transition: background 0.2s ease, border-color 0.2s ease;
+
+  &:hover {
+    background: rgba(79, 70, 229, 0.1);
+    border-color: $primary-color;
+  }
+
+  &:active {
+    background: rgba(79, 70, 229, 0.15);
+    border-color: $primary-color;
+  }
+}
+
 .header {
   height: 64px;
   display: flex;
@@ -452,6 +485,10 @@ $radius-md: 10px;
   .layoutContainer.aiClosed {
     grid-template-columns: var(--sidebar-width) 1fr;
     grid-template-areas: 'sidebar main';
+  }
+
+  .divider {
+    display: none;
   }
 
   .rightSidebar {
