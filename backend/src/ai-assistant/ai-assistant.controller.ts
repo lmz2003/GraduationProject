@@ -1,7 +1,6 @@
 import { Controller, Get, Post, Delete, Param, Body, UseGuards, Request, Logger } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AIAssistantService } from './services/ai-assistant.service';
-import { KnowledgeBaseService } from '../knowledge-base/services/knowledge-base.service';
 import { QueryKnowledgeDto } from '../knowledge-base/dto/query-knowledge.dto';
 
 interface CreateSessionBody {
@@ -22,7 +21,6 @@ export class AIAssistantController {
 
   constructor(
     private aiAssistantService: AIAssistantService,
-    private knowledgeBaseService: KnowledgeBaseService,
   ) {}
 
   // 获取会话列表
@@ -135,60 +133,22 @@ export class AIAssistantController {
         throw new Error('消息内容不能为空');
       }
 
-      let currentSessionId = sessionId;
-
-      // 如果没有会话ID，创建新会话
-      if (!currentSessionId) {
-        const session = await this.aiAssistantService.createSession(userId, message);
-        currentSessionId = session.id;
-      }
-
-      // 存储用户消息
-      await this.aiAssistantService.addMessage(
-        currentSessionId,
+      // 使用服务处理消息
+      const result = await this.aiAssistantService.processMessage(
         userId,
         message,
-        'user',
-      );
-
-      // 处理AI回复
-      let answer = '';
-      let sources: Array<{ title: string; score: number }> = [];
-
-      if (useRAG) {
-        // 使用知识库增强
-        const ragResult = await this.knowledgeBaseService.ragQuery(
-          { query: message, topK, threshold },
-          userId,
-        );
-
-        // 这里应该调用LLM生成答案
-        // 为了演示，我们使用一个简单的回复
-        answer = `我收到了你的消息: ${message}\n\n这是一个基于知识库的回复。`;
-        sources = ragResult.contexts.map(ctx => ({
-          title: ctx.title,
-          score: ctx.score,
-        }));
-      } else {
-        // 不使用知识库
-        answer = `我收到了你的消息: ${message}\n\n这是一个普通回复。`;
-      }
-
-      // 存储AI回复
-      await this.aiAssistantService.addMessage(
-        currentSessionId,
-        userId,
-        answer,
-        'assistant',
-        sources,
+        sessionId,
+        useRAG,
+        topK,
+        threshold,
       );
 
       return {
         success: true,
         data: {
-          answer,
-          sessionId: currentSessionId,
-          sources,
+          answer: result.answer,
+          sessionId: result.sessionId,
+          sources: result.sources,
           timestamp: new Date(),
         },
       };

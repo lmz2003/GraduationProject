@@ -23,22 +23,22 @@ interface LLMResponse {
 export class LLMIntegrationService {
   private llm: ChatOpenAI;
   private readonly logger = new Logger(LLMIntegrationService.name);
+  private modelName = this.configService.get<string>('LLM_MODEL') || 'gpt-3.5-turbo';
 
   constructor(private configService: ConfigService) {
     const apiKey = this.configService.get<string>('LLM_API_KEY');
     const baseUrl = this.configService.get<string>('LLM_BASE_URL');
     const provider = this.configService.get<string>('LLM_PROVIDER') || 'openai';
-    const modelName = this.configService.get<string>('LLM_MODEL') || 'gpt-3.5-turbo';
 
     if (!apiKey) {
       this.logger.warn('API Key 未配置，请设置 OPENAI_API_KEY');
     }
 
     if (provider === 'siliconflow') {
-      this.logger.log(`使用硅基流动 LLM: ${modelName}`);
+      this.logger.log(`使用硅基流动 LLM: ${this.modelName}`);
       this.llm = new ChatOpenAI({
         openAIApiKey: apiKey,
-        modelName: modelName,
+        modelName: this.modelName,
         configuration: {
           baseURL: baseUrl || 'https://api.siliconflow.cn/v1',
         },
@@ -46,10 +46,10 @@ export class LLMIntegrationService {
         maxTokens: 1000,
       });
     } else {
-      this.logger.log(`使用 OpenAI LLM: ${modelName}`);
+      this.logger.log(`使用 OpenAI LLM: ${this.modelName}`);
       this.llm = new ChatOpenAI({
         openAIApiKey: apiKey,
-        modelName: modelName,
+        modelName: this.modelName,
         configuration: baseUrl ? {
           baseURL: baseUrl,
         } : undefined,
@@ -80,7 +80,7 @@ export class LLMIntegrationService {
           title: c.title,
           score: c.score,
         })),
-        model: 'gpt-3.5-turbo',
+        model: this.modelName,
       };
     } catch (error) {
       this.logger.error('LLM 调用失败:', error);

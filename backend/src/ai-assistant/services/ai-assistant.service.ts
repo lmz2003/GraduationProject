@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { AIAssistantSession } from '../entities/ai-assistant-session.entity';
 import { AIAssistantMessage } from '../entities/ai-assistant-message.entity';
 import { LLMIntegrationService } from '../../knowledge-base/services/llm-integration.service';
+import { KnowledgeBaseService } from '../../knowledge-base/services/knowledge-base.service';
 
 @Injectable()
 export class AIAssistantService {
@@ -15,6 +16,7 @@ export class AIAssistantService {
     @InjectRepository(AIAssistantMessage)
     private messageRepository: Repository<AIAssistantMessage>,
     private llmIntegrationService: LLMIntegrationService,
+    private knowledgeBaseService: KnowledgeBaseService,
   ) {}
 
   // 获取用户的会话列表
@@ -183,6 +185,132 @@ export class AIAssistantService {
     } catch (error) {
       this.logger.warn('生成会话标题失败，使用默认标题:', error);
       return '新会话';
+    }
+  }
+
+  /**
+   * 处理用户消息并生成 AI 回复
+   */
+  async processMessage(
+    userId: string,
+    message: string,
+    sessionId?: string,
+    useRAG: boolean = true,
+    topK: number = 5,
+    threshold: number = 0.5,
+  ): Promise<{
+    answer: string;
+    sources: Array<{ title: string; score: number }>;
+    sessionId: string;
+  }> {
+    try {
+      // 创建或获取会话
+      let currentSessionId = sessionId;
+      if (!currentSessionId) {
+        const session = await this.createSession(userId, message);
+        currentSessionId = session.id;
+      }
+
+      // 存储用户消息
+      await this.addMessage(currentSessionId, userId, message, 'user');
+
+      // 生成 AI 回复
+      const { answer, sources } = await this.generateAnswer(
+        message,
+        userId,
+        useRAG,
+        topK,
+        threshold,
+      );
+
+      // 存储 AI 回复
+      await this.addMessage(currentSessionId, userId, answer, 'assistant', sources);
+
+      return {
+        answer,
+        sources,
+        sessionId: currentSessionId,
+      };
+    } catch (error) {
+      this.logger.error('处理消息失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 生成 AI 答案
+   */
+  private async generateAnswer(
+    message: string,
+    userId: string,
+    useRAG: boolean = true,
+    topK: number = 5,
+    threshold: number = 0.5,
+  ): Promise<{
+    answer: string;
+    sources: Array<{ title: string; score: number }>;
+  }> {
+    let answer = '';
+    let sources: Array<{ title: string; score: number }> = [];
+
+    try {
+      if (useRAG) {
+        // 使用知识库增强
+        const ragResult = await this.knowledgeBaseService.ragQuery(
+          { query: message, topK, threshold },
+          userId,
+        );
+
+        // 调用LLM生成答案
+        const contextsText = ragResult.contexts
+          .map((ctx, idx) => `[${idx + 1}] ${ctx.title}:\n${ctx.content}`)
+          .join('\n\n');
+
+        const ragPrompt = `你是一个有帮助的AI助手。基于以下参考资料回答用户的问题。如果参考资料中没有相关信息，请说明这一点。
+
+参考资料：
+${contextsText}
+
+用户问题：${message}
+
+请提供清晰、准确的回答。`;
+
+        // 调用 LLM 生成答案
+        try {
+          const response = await this.llmIntegrationService.generateRAGAnswer({
+            query: message,
+            contexts: ragResult.contexts,
+            ragPrompt,
+          });
+          answer = response.answer;
+        } catch (error) {
+          this.logger.warn('LLM 调用失败，使用备用回复:', error);
+          answer = `基于知识库的回复：\n\n${contextsText}`;
+        }
+
+        sources = ragResult.contexts.map(ctx => ({
+          title: ctx.title,
+          score: ctx.score,
+        }));
+      } else {
+        // 不使用知识库，直接调用LLM
+        try {
+          const response = await this.llmIntegrationService.generateRAGAnswer({
+            query: message,
+            contexts: [],
+            ragPrompt: message,
+          });
+          answer = response.answer;
+        } catch (error) {
+          this.logger.warn('LLM 调用失败，使用备用回复:', error);
+          answer = `我收到了你的消息: ${message}\n\n这是一个回复。`;
+        }
+      }
+
+      return { answer, sources };
+    } catch (error) {
+      this.logger.error('生成答案失败:', error);
+      throw new BadRequestException('生成答案失败');
     }
   }
 }
