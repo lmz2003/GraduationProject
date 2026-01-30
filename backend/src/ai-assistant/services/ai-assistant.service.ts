@@ -261,49 +261,65 @@ export class AIAssistantService {
           userId,
         );
 
-        // 调用LLM生成答案
-        const contextsText = ragResult.contexts
-          .map((ctx, idx) => `[${idx + 1}] ${ctx.title}:\n${ctx.content}`)
-          .join('\n\n');
+        // 使用知识库作为补充资料
+        let ragPrompt = '';
+        
+        if (ragResult.contexts && ragResult.contexts.length > 0) {
+          // 有相关资料，将其作为补充背景信息
+          const contextsText = ragResult.contexts
+            .map((ctx, idx) => `[${idx + 1}] ${ctx.title}:\n${ctx.content}`)
+            .join('\n\n');
 
-        const ragPrompt = `你是一个有帮助的AI助手。基于以下参考资料回答用户的问题。如果参考资料中没有相关信息，请说明这一点。
-
-参考资料：
-${contextsText}
+          ragPrompt = `你是一个有帮助的AI助手。
 
 用户问题：${message}
 
-请提供清晰、准确的回答。`;
+以下是一些可能相关的参考资料（作为补充信息，不是必须的）：
+${contextsText}
+
+请使用你的知识和上述参考资料来回答用户的问题。如果参考资料有帮助，可以参考；如果没有相关资料或参考资料不够准确，可以基于你的通用知识直接回答。`;
+
+          sources = ragResult.contexts.map(ctx => ({
+            title: ctx.title,
+            score: ctx.score,
+          }));
+        } else {
+          // 知识库中没有相关资料，直接使用 LLM 回答
+          ragPrompt = `${message}\n\n请直接回答上述问题。`;
+          sources = [];
+        }
 
         // 调用 LLM 生成答案
         try {
           const response = await this.llmIntegrationService.generateRAGAnswer({
             query: message,
-            contexts: ragResult.contexts,
+            contexts: ragResult.contexts || [],
             ragPrompt,
           });
           answer = response.answer;
         } catch (error) {
-          this.logger.warn('LLM 调用失败，使用备用回复:', error);
-          answer = `基于知识库的回复：\n\n${contextsText}`;
+          this.logger.warn('LLM 调用失败，错误信息:', error);
+          if (ragResult.contexts && ragResult.contexts.length > 0) {
+            const contextsText = ragResult.contexts
+              .map((ctx, idx) => `[${idx + 1}] ${ctx.title}:\n${ctx.content}`)
+              .join('\n\n');
+            answer = `模型调用失败，以下是我从知识库搜索到的相关信息，请参考：\n\n${contextsText}`;
+          } else {
+            answer = `我收到了你的问题："${message}"，但暂时无法给出回答。`;
+          }
         }
-
-        sources = ragResult.contexts.map(ctx => ({
-          title: ctx.title,
-          score: ctx.score,
-        }));
       } else {
         // 不使用知识库，直接调用LLM
         try {
           const response = await this.llmIntegrationService.generateRAGAnswer({
             query: message,
             contexts: [],
-            ragPrompt: message,
+            ragPrompt: `${message}\n\n请直接回答上述问题。`,
           });
           answer = response.answer;
         } catch (error) {
-          this.logger.warn('LLM 调用失败，使用备用回复:', error);
-          answer = `我收到了你的消息: ${message}\n\n这是一个回复。`;
+          this.logger.warn('LLM 调用失败，错误信息:', error);
+          answer = `我收到了你的问题："${message}"，但暂时无法给出回答。`;
         }
       }
 
