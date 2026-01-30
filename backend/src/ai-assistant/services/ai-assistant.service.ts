@@ -326,7 +326,14 @@ ${contextsText}
         useRAG,
         topK,
         threshold,
-        onChunk || (() => {}),
+        (chunk: string) => {
+          // 确保只发送非空字符串
+          if (chunk && chunk.trim().length > 0) {
+            if (onChunk) {
+              onChunk(chunk);
+            }
+          }
+        },
       );
 
       // 存储 AI 回复

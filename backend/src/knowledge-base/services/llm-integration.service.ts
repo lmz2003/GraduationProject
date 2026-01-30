@@ -317,9 +317,12 @@ export class LLMIntegrationService {
 
       // 逐块处理响应
       for await (const chunk of stream) {
-        if (chunk.content && typeof chunk.content === 'string') {
-          fullAnswer += chunk.content;
-          onChunk(chunk.content);
+        // 只处理包含 content 的块，过滤掉元数据块
+        if (chunk && chunk.content && typeof chunk.content === 'string' && chunk.content.length > 0) {
+          const content = chunk.content;
+          fullAnswer += content;
+          // 只在有实际内容时调用回调
+          onChunk(content);
         }
       }
 

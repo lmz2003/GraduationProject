@@ -156,10 +156,17 @@ export class AIAssistantController {
           threshold,
           (chunk: string) => {
             // 每次收到数据块时发送 SSE 事件
-            res.write(`data: ${JSON.stringify({
-              type: 'chunk',
-              data: chunk,
-            })}\n\n`);
+            // 确保 chunk 是有效的非空字符串
+            if (chunk && typeof chunk === 'string' && chunk.length > 0) {
+              try {
+                res.write(`data: ${JSON.stringify({
+                  type: 'chunk',
+                  data: chunk,
+                })}\n\n`);
+              } catch (writeError) {
+                this.logger.warn('写入数据块失败:', writeError);
+              }
+            }
           },
         );
 

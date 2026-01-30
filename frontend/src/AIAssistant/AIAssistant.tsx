@@ -163,16 +163,6 @@ const AIAssistant: React.FC = () => {
       const aiMessageId = (Date.now() + 1).toString();
       setStreamingMessageId(aiMessageId);
 
-      // 创建初始的AI消息
-      const aiMessage: Message = {
-        id: aiMessageId,
-        role: 'assistant',
-        content: '',
-        timestamp: new Date(),
-        sources: [],
-      };
-      setMessages(prev => [...prev, aiMessage]);
-
       // 关闭之前的请求
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
@@ -230,29 +220,48 @@ const AIAssistant: React.FC = () => {
 
         // 处理完整的行
         for (let i = 0; i < lines.length - 1; i++) {
-          const line = lines[i];
+          const line = lines[i].trim();
+
+          // 跳过空行
+          if (!line) {
+            continue;
+          }
 
           if (line.startsWith('data: ')) {
             try {
               const jsonStr = line.substring(6);
               const data = JSON.parse(jsonStr);
 
-              if (data.type === 'chunk') {
+              if (data.type === 'chunk' && data.data) {
                 currentContent += data.data;
                 
-                // 更新消息内容
-                setMessages(prev =>
-                  prev.map(msg =>
-                    msg.id === aiMessageId
-                      ? { ...msg, content: currentContent }
-                      : msg
-                  )
-                );
+                // 更新或创建消息内容
+                setMessages(prev => {
+                  const messageExists = prev.some(msg => msg.id === aiMessageId);
+                  
+                  if (messageExists) {
+                    // 更新现有消息
+                    return prev.map(msg =>
+                      msg.id === aiMessageId
+                        ? { ...msg, content: currentContent }
+                        : msg
+                    );
+                  } else {
+                    // 创建新的AI消息（首次接收到内容时）
+                    return [...prev, {
+                      id: aiMessageId,
+                      role: 'assistant',
+                      content: currentContent,
+                      timestamp: new Date(),
+                      sources: [],
+                    }];
+                  }
+                });
               } else if (data.type === 'done') {
-                currentSources = data.data.sources || [];
-                const newSessionId = data.data.sessionId;
+                currentSources = data.data?.sources || [];
+                const newSessionId = data.data?.sessionId;
 
-                if (!sessionId) {
+                if (!sessionId && newSessionId) {
                   setSessionId(newSessionId);
                 }
 
