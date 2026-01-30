@@ -188,69 +188,21 @@ export class AIAssistantService {
     }
   }
 
-  /**
-   * 处理用户消息并生成 AI 回复
-   */
-  async processMessage(
-    userId: string,
-    message: string,
-    sessionId?: string,
-    useRAG: boolean = true,
-    topK: number = 5,
-    threshold: number = 0.5,
-  ): Promise<{
-    answer: string;
-    sources: Array<{ title: string; score: number }>;
-    sessionId: string;
-  }> {
-    try {
-      // 创建或获取会话
-      let currentSessionId = sessionId;
-      if (!currentSessionId) {
-        const session = await this.createSession(userId, message);
-        currentSessionId = session.id;
-      }
-
-      // 存储用户消息
-      await this.addMessage(currentSessionId, userId, message, 'user');
-
-      // 生成 AI 回复
-      const { answer, sources } = await this.generateAnswer(
-        message,
-        userId,
-        useRAG,
-        topK,
-        threshold,
-      );
-
-      // 存储 AI 回复
-      await this.addMessage(currentSessionId, userId, answer, 'assistant', sources);
-
-      return {
-        answer,
-        sources,
-        sessionId: currentSessionId,
-      };
-    } catch (error) {
-      this.logger.error('处理消息失败:', error);
-      throw error;
-    }
-  }
 
   /**
-   * 生成 AI 答案
+   * 流式生成 AI 答案
    */
-  private async generateAnswer(
+  async generateAnswerStream(
     message: string,
     userId: string,
     useRAG: boolean = true,
     topK: number = 5,
     threshold: number = 0.5,
+    onChunk: (chunk: string) => void,
   ): Promise<{
     answer: string;
     sources: Array<{ title: string; score: number }>;
   }> {
-    let answer = '';
     let sources: Array<{ title: string; score: number }> = [];
 
     try {
@@ -265,16 +217,14 @@ export class AIAssistantService {
             userId,
           );
         } catch (ragError) {
-          // RAG 查询失败，自动降级到直接调用 LLM
           this.logger.warn('RAG 查询失败，自动降级到直接调用 LLM:', ragError);
           hasRagError = true;
         }
 
-        // 使用知识库作为补充资料
+        // 构建 RAG 提示词
         let ragPrompt = '';
         
         if (!hasRagError && ragResult?.contexts && ragResult.contexts.length > 0) {
-          // 有相关资料，将其作为补充背景信息
           const contextsText = ragResult.contexts
             .map((ctx: any, idx: number) => `[${idx + 1}] ${ctx.title}:\n${ctx.content}`)
             .join('\n\n');
@@ -293,7 +243,6 @@ ${contextsText}
             score: ctx.score,
           }));
         } else {
-          // 知识库中没有相关资料或查询失败，直接使用 LLM 回答
           if (hasRagError) {
             this.logger.log('知识库查询失败，使用 LLM 通用知识回答');
           }
@@ -301,44 +250,96 @@ ${contextsText}
           sources = [];
         }
 
-        // 调用 LLM 生成答案
+        // 调用 LLM 进行流式生成
         try {
-          const response = await this.llmIntegrationService.generateRAGAnswer({
-            query: message,
-            contexts: ragResult?.contexts || [],
-            ragPrompt,
-          });
-          answer = response.answer;
+          const response = await this.llmIntegrationService.generateRAGAnswerStream(
+            {
+              query: message,
+              contexts: ragResult?.contexts || [],
+              ragPrompt,
+            },
+            onChunk,
+          );
+          return { answer: response.answer, sources };
         } catch (error) {
-          this.logger.warn('LLM 调用失败，错误信息:', error);
-          if (ragResult?.contexts && ragResult.contexts.length > 0) {
-            const contextsText = ragResult.contexts
-              .map((ctx: any, idx: number) => `[${idx + 1}] ${ctx.title}:\n${ctx.content}`)
-              .join('\n\n');
-            answer = `模型调用失败，以下是我从知识库搜索到的相关信息，请参考：\n\n${contextsText}`;
-          } else {
-            answer = `我收到了你的问题："${message}"，但暂时无法给出回答。`;
-          }
+          this.logger.warn('LLM 流式调用失败，错误信息:', error);
+          const errorMessage = `我收到了你的问题："${message}"，但暂时无法给出回答。`;
+          onChunk(errorMessage);
+          return { answer: errorMessage, sources };
         }
       } else {
         // 不使用知识库，直接调用LLM
         try {
-          const response = await this.llmIntegrationService.generateRAGAnswer({
-            query: message,
-            contexts: [],
-            ragPrompt: `${message}\n\n请直接回答上述问题。`,
-          });
-          answer = response.answer;
+          const response = await this.llmIntegrationService.generateRAGAnswerStream(
+            {
+              query: message,
+              contexts: [],
+              ragPrompt: `${message}\n\n请直接回答上述问题。`,
+            },
+            onChunk,
+          );
+          return { answer: response.answer, sources };
         } catch (error) {
-          this.logger.warn('LLM 调用失败，错误信息:', error);
-          answer = `我收到了你的问题："${message}"，但暂时无法给出回答。`;
+          this.logger.warn('LLM 流式调用失败，错误信息:', error);
+          const errorMessage = `我收到了你的问题："${message}"，但暂时无法给出回答。`;
+          onChunk(errorMessage);
+          return { answer: errorMessage, sources };
         }
       }
-
-      return { answer, sources };
     } catch (error) {
-      this.logger.error('生成答案失败:', error);
-      throw new BadRequestException('生成答案失败');
+      this.logger.error('流式生成答案失败:', error);
+      throw new BadRequestException('流式生成答案失败');
+    }
+  }
+
+  /**
+   * 处理流式用户消息
+   */
+  async processMessageStream(
+    userId: string,
+    message: string,
+    sessionId?: string,
+    useRAG: boolean = true,
+    topK: number = 5,
+    threshold: number = 0.5,
+    onChunk?: (chunk: string) => void,
+  ): Promise<{
+    answer: string;
+    sources: Array<{ title: string; score: number }>;
+    sessionId: string;
+  }> {
+    try {
+      // 创建或获取会话
+      let currentSessionId = sessionId;
+      if (!currentSessionId) {
+        const session = await this.createSession(userId, message);
+        currentSessionId = session.id;
+      }
+
+      // 存储用户消息
+      await this.addMessage(currentSessionId, userId, message, 'user');
+
+      // 流式生成 AI 回复
+      const { answer, sources } = await this.generateAnswerStream(
+        message,
+        userId,
+        useRAG,
+        topK,
+        threshold,
+        onChunk || (() => {}),
+      );
+
+      // 存储 AI 回复
+      await this.addMessage(currentSessionId, userId, answer, 'assistant', sources);
+
+      return {
+        answer,
+        sources,
+        sessionId: currentSessionId,
+      };
+    } catch (error) {
+      this.logger.error('流式处理消息失败:', error);
+      throw error;
     }
   }
 }

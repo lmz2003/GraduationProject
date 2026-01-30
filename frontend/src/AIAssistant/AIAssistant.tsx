@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './AIAssistant.scss';
+import MarkdownRenderer from './MarkdownRenderer';
 import type { Message, Session } from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
@@ -28,8 +29,11 @@ const AIAssistant: React.FC = () => {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [showHistory, setShowHistory] = useState(false);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [useRAG, setUseRAG] = useState(true); // 是否使用知识库
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -134,7 +138,7 @@ const AIAssistant: React.FC = () => {
     }
   }, [token, sessionId, loadSessions, createNewSession]);
 
-  // 发送消息
+  // 发送消息（流式）
   const handleSend = useCallback(async () => {
     if (!input.trim() || isTyping || !token) return;
 
@@ -150,65 +154,143 @@ const AIAssistant: React.FC = () => {
 
     // 添加用户消息到消息列表
     setMessages(prev => [...prev, userMessage]);
+    const userInput = input.trim();
     setInput('');
     setIsTyping(true);
 
     try {
-      const response = await fetch(`${API_BASE}/ai-assistant/message`, {
+      // 创建AI回复消息的ID
+      const aiMessageId = (Date.now() + 1).toString();
+      setStreamingMessageId(aiMessageId);
+
+      // 创建初始的AI消息
+      const aiMessage: Message = {
+        id: aiMessageId,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date(),
+        sources: [],
+      };
+      setMessages(prev => [...prev, aiMessage]);
+
+      // 关闭之前的请求
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      const abortController = new AbortController();
+      abortControllerRef.current = abortController;
+
+      let currentContent = '';
+      let currentSources: Array<{ title: string; score: number }> = [];
+
+      // 使用 fetch 和 ReadableStream 来处理流式响应
+      const response = await fetch(`${API_BASE}/ai-assistant/message/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
-          message: input.trim(),
+          message: userInput,
           sessionId: sessionId || undefined,
-          useRAG: true,
+          useRAG,
           topK: 5,
           threshold: 0.5,
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.message || '消息处理失败');
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      if (data.success) {
-        // 设置会话ID
-        if (!sessionId) {
-          setSessionId(data.data.sessionId);
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error('无法读取响应流');
+      }
+
+      // 逐行读取SSE数据
+      let buffer = '';
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          setStreamingMessageId(null);
+          loadSessions();
+          break;
         }
 
-        // 创建AI回复消息
-        const aiMessage: Message = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: data.data.answer,
-          timestamp: new Date(data.data.timestamp),
-          sources: data.data.sources?.map((s: any) => ({
-            title: s.title,
-            score: s.score,
-          })) || [],
-        };
-        
-        // 更新消息列表，添加AI回复
-        setMessages(prev => [...prev, aiMessage]);
-        
-        // 更新会话列表
-        loadSessions();
-      } else {
-        throw new Error(data.message || '消息处理失败');
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+
+        // 保留最后一个不完整的行
+        buffer = lines[lines.length - 1];
+
+        // 处理完整的行
+        for (let i = 0; i < lines.length - 1; i++) {
+          const line = lines[i];
+
+          if (line.startsWith('data: ')) {
+            try {
+              const jsonStr = line.substring(6);
+              const data = JSON.parse(jsonStr);
+
+              if (data.type === 'chunk') {
+                currentContent += data.data;
+                
+                // 更新消息内容
+                setMessages(prev =>
+                  prev.map(msg =>
+                    msg.id === aiMessageId
+                      ? { ...msg, content: currentContent }
+                      : msg
+                  )
+                );
+              } else if (data.type === 'done') {
+                currentSources = data.data.sources || [];
+                const newSessionId = data.data.sessionId;
+
+                if (!sessionId) {
+                  setSessionId(newSessionId);
+                }
+
+                // 更新消息的sources
+                setMessages(prev =>
+                  prev.map(msg =>
+                    msg.id === aiMessageId
+                      ? { ...msg, sources: currentSources }
+                      : msg
+                  )
+                );
+              } else if (data.type === 'error') {
+                throw new Error(data.message || '流式处理失败');
+              }
+            } catch (err) {
+              console.error('解析事件数据失败:', err);
+            }
+          }
+        }
       }
-     } catch (err) {
-       const errorMessage = err instanceof Error ? err.message : '发送消息失败，请重试';
-       setError(errorMessage);
-       console.error('发送消息失败:', err);
-     } finally {
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '发送消息失败，请重试';
+      setError(errorMessage);
+      console.error('发送消息失败:', err);
+      setStreamingMessageId(null);
+    } finally {
       setIsTyping(false);
     }
-  }, [input, isTyping, token, sessionId, loadSessions]);
+  }, [input, isTyping, token, sessionId, loadSessions, useRAG]);
+
+  // 清理 AbortController
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -328,9 +410,18 @@ const AIAssistant: React.FC = () => {
             </div>
             <div>
               <div className={`message-bubble ${msg.role === 'user' ? 'user-message' : ''}`}>
-                {msg.content.split('\n').map((line, i) => (
-                  <p key={i}>{line}</p>
-                ))}
+                {msg.role === 'user' ? (
+                  // 用户消息：普通文本显示
+                  msg.content.split('\n').map((line, i) => (
+                    <p key={i}>{line}</p>
+                  ))
+                ) : (
+                  // AI助手消息：使用Markdown渲染器
+                  <MarkdownRenderer 
+                    content={msg.content} 
+                    isStreaming={streamingMessageId === msg.id}
+                  />
+                )}
                 {msg.sources && msg.sources.length > 0 && msg.role === 'assistant' && (
                   <div className="sources-container">
                     <p>📚 知识库来源</p>
@@ -373,6 +464,25 @@ const AIAssistant: React.FC = () => {
       
       {/* 输入区域 */}
       <div className="input-area">
+        {/* 知识库开关 */}
+        <div className="rag-toggle">
+          <button 
+            className={`rag-button ${useRAG ? 'active' : ''}`}
+            onClick={() => setUseRAG(!useRAG)}
+            title={useRAG ? '知识库（开启）' : '知识库（关闭）'}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+              <line x1="9" y1="6" x2="15" y2="6" />
+              <line x1="9" y1="10" x2="15" y2="10" />
+              <line x1="9" y1="14" x2="13" y2="14" />
+            </svg>
+            <span className="rag-label">{useRAG ? '知识库' : '普通模式'}</span>
+          </button>
+        </div>
+
+        {/* 输入框和发送按钮 */}
         <div className="input-wrapper">
           <input 
             value={input}
@@ -381,17 +491,17 @@ const AIAssistant: React.FC = () => {
             placeholder="输入消息..."
             disabled={isTyping || !token}
           />
+          <button 
+            aria-label="发送消息"
+            className="send-button" 
+            onClick={handleSend} 
+            disabled={!input.trim() || isTyping || !token}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+            </svg>
+          </button>
         </div>
-        <button 
-          aria-label="发送消息"
-          className="send-button" 
-          onClick={handleSend} 
-          disabled={!input.trim() || isTyping || !token}
-        >
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-          </svg>
-        </button>
       </div>
     </div>
   );

@@ -4,6 +4,7 @@ import { ChatOpenAI } from '@langchain/openai';
 import { PromptTemplate } from '@langchain/core/prompts';
 import { LLMChain } from 'langchain/chains';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
+import { Readable } from 'stream';
 
 interface RAGContext {
   query: string;
@@ -290,6 +291,89 @@ export class LLMIntegrationService {
       this.logger.error('答案评估失败:', error);
       throw error;
     }
+  }
+
+  /**
+   * 流式生成 RAG 答案
+   * @param ragContext RAG 上下文
+   * @param onChunk 每次接收到数据块时的回调
+   * @returns Promise<LLMResponse>
+   */
+  async generateRAGAnswerStream(
+    ragContext: RAGContext,
+    onChunk: (chunk: string) => void,
+  ): Promise<LLMResponse> {
+    try {
+      if (!this.llm) {
+        throw new Error('LLM 未正确初始化');
+      }
+
+      let fullAnswer = '';
+
+      // 调用 LLM 并使用流式处理
+      const stream = await this.llm.stream([
+        new HumanMessage(ragContext.ragPrompt),
+      ]);
+
+      // 逐块处理响应
+      for await (const chunk of stream) {
+        if (chunk.content && typeof chunk.content === 'string') {
+          fullAnswer += chunk.content;
+          onChunk(chunk.content);
+        }
+      }
+
+      return {
+        query: ragContext.query,
+        answer: fullAnswer,
+        contexts: ragContext.contexts.map((c) => ({
+          title: c.title,
+          score: c.score,
+        })),
+        model: this.modelName,
+      };
+    } catch (error) {
+      this.logger.error('LLM 流式调用失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 创建流式响应对象
+   */
+  createStreamResponse(ragContext: RAGContext): Readable {
+    const llm = this.llm;
+    const logger = this.logger;
+
+    const readable = new Readable({
+      async read() {
+        try {
+          if (!llm) {
+            throw new Error('LLM 未正确初始化');
+          }
+
+          const stream = await llm.stream([
+            new HumanMessage(ragContext.ragPrompt),
+          ]);
+
+          for await (const chunk of stream) {
+            if (chunk.content && typeof chunk.content === 'string') {
+              readable.push(JSON.stringify({
+                type: 'chunk',
+                data: chunk.content,
+              }) + '\n');
+            }
+          }
+
+          readable.push(null); // 标记流结束
+        } catch (error) {
+          logger.error('创建流响应失败:', error);
+          readable.push(null);
+        }
+      },
+    });
+
+    return readable;
   }
 
   /**

@@ -1,7 +1,8 @@
-import { Controller, Get, Post, Delete, Param, Body, UseGuards, Request, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, UseGuards, Request, Logger, Res } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { AIAssistantService } from './services/ai-assistant.service';
 import { QueryKnowledgeDto } from '../knowledge-base/dto/query-knowledge.dto';
+import { Response } from 'express';
 
 interface CreateSessionBody {
   initialMessage?: string;
@@ -121,43 +122,71 @@ export class AIAssistantController {
     }
   }
 
-  // 发送消息
+
+  // 流式发送消息
   @UseGuards(AuthGuard('jwt'))
-  @Post('message')
-  async sendMessage(@Request() req: any, @Body() body: SendMessageBody) {
+  @Post('message/stream')
+  async sendMessageStream(@Request() req: any, @Body() body: SendMessageBody, @Res() res: Response) {
     try {
       const userId = req.user.id;
       const { message, sessionId, useRAG = true, topK = 5, threshold = 0.5 } = body;
 
       if (!message || message.trim().length === 0) {
-        throw new Error('消息内容不能为空');
+        res.status(400).json({
+          success: false,
+          message: '消息内容不能为空',
+        });
+        return;
       }
 
-      // 使用服务处理消息
-      const result = await this.aiAssistantService.processMessage(
-        userId,
-        message,
-        sessionId,
-        useRAG,
-        topK,
-        threshold,
-      );
+      // 设置 SSE 响应头
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('Connection', 'keep-alive');
+      res.setHeader('Access-Control-Allow-Origin', '*');
 
-      return {
-        success: true,
-        data: {
-          answer: result.answer,
-          sessionId: result.sessionId,
-          sources: result.sources,
-          timestamp: new Date(),
-        },
-      };
+      // 流式处理消息
+      try {
+        const result = await this.aiAssistantService.processMessageStream(
+          userId,
+          message,
+          sessionId,
+          useRAG,
+          topK,
+          threshold,
+          (chunk: string) => {
+            // 每次收到数据块时发送 SSE 事件
+            res.write(`data: ${JSON.stringify({
+              type: 'chunk',
+              data: chunk,
+            })}\n\n`);
+          },
+        );
+
+        // 发送最终响应
+        res.write(`data: ${JSON.stringify({
+          type: 'done',
+          data: {
+            sessionId: result.sessionId,
+            sources: result.sources,
+          },
+        })}\n\n`);
+
+        res.end();
+      } catch (error: any) {
+        this.logger.error('流式处理消息失败:', error);
+        res.write(`data: ${JSON.stringify({
+          type: 'error',
+          message: error.message || '流式处理失败',
+        })}\n\n`);
+        res.end();
+      }
     } catch (error: any) {
-      this.logger.error('发送消息失败:', error);
-      return {
+      this.logger.error('发送流式消息失败:', error);
+      res.status(500).json({
         success: false,
-        message: error.message || '发送消息失败',
-      };
+        message: error.message || '发送流式消息失败',
+      });
     }
   }
 }
