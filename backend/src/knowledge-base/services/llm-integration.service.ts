@@ -369,6 +369,10 @@ export class LLMIntegrationService {
     
     if ('kwargs' in chunkObj && chunkObj.kwargs && typeof chunkObj.kwargs === 'object') {
       const kwargs = chunkObj.kwargs as Record<string, unknown>;
+      if ('response_metadata' in kwargs && kwargs.response_metadata && typeof kwargs.response_metadata === 'object') {
+        if('usage' in kwargs.response_metadata)
+         delete kwargs.response_metadata.usage;
+      }
       if ('content' in kwargs && typeof kwargs.content === 'string') {
         return kwargs.content;
       }
