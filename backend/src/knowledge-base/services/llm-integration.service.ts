@@ -323,7 +323,10 @@ export class LLMIntegrationService {
             typeof chunk === 'object' &&
             'content' in chunk &&
             typeof chunk.content === 'string' &&
-            chunk.content.trim().length > 0
+            chunk.content.trim().length > 0 &&
+            !('reasoning_tokens' in chunk) &&
+            !('completion_tokens' in chunk) &&
+            !('total_tokens' in chunk)
           ) {
             const content = chunk.content;
             fullAnswer += content;
@@ -375,7 +378,10 @@ export class LLMIntegrationService {
                 typeof chunk === 'object' &&
                 'content' in chunk &&
                 typeof chunk.content === 'string' &&
-                chunk.content.length > 0
+                chunk.content.length > 0 &&
+                !('reasoning_tokens' in chunk) &&
+                !('completion_tokens' in chunk) &&
+                !('total_tokens' in chunk)
               ) {
                 readable.push(JSON.stringify({
                   type: 'chunk',

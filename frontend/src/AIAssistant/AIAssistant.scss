@@ -347,6 +347,8 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   gap: 10px;
   align-items: flex-end;
   animation: fadeIn 0.3s ease-out;
+  min-width: 0;
+  width: 100%;
   
   &.user-message {
     @include user-message;
@@ -380,7 +382,9 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
 // 消息气泡
 .message-bubble {
-  max-width: calc(85% - 42px);
+  max-width: 100%;
+  flex: 1;
+  min-width: 0;
   padding: 14px 16px;
   border-radius: 4px 16px 16px 16px;
   font-size: 14px;
@@ -694,7 +698,7 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
   .message-bubble {
-    max-width: calc(90% - 42px);
+    max-width: 100%;
   }
   
   .input-area {

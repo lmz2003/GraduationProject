@@ -455,7 +455,7 @@ const AIAssistant: React.FC = () => {
           </div>
         ))}
         
-        {isTyping && (
+        {isTyping && !streamingMessageId && (
           <div className="message-wrapper">
             <div className="avatar assistant-avatar">🤖</div>
             <div className="typing-indicator">
