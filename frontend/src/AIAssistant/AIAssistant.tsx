@@ -171,6 +171,15 @@ const AIAssistant: React.FC = () => {
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
 
+      // 立即创建一个空的AI消息气泡，以便用户能看到AI正在回答
+      setMessages(prev => [...prev, {
+        id: aiMessageId,
+        role: 'assistant',
+        content: '',
+        timestamp: new Date(),
+        sources: [],
+      }]);
+
       let currentContent = '';
       let currentSources: Array<{ title: string; score: number }> = [];
 
@@ -235,28 +244,12 @@ const AIAssistant: React.FC = () => {
               if (data.type === 'chunk' && data.data) {
                 currentContent += data.data;
                 
-                // 更新或创建消息内容
-                setMessages(prev => {
-                  const messageExists = prev.some(msg => msg.id === aiMessageId);
-                  
-                  if (messageExists) {
-                    // 更新现有消息
-                    return prev.map(msg =>
-                      msg.id === aiMessageId
-                        ? { ...msg, content: currentContent }
-                        : msg
-                    );
-                  } else {
-                    // 创建新的AI消息（首次接收到内容时）
-                    return [...prev, {
-                      id: aiMessageId,
-                      role: 'assistant',
-                      content: currentContent,
-                      timestamp: new Date(),
-                      sources: [],
-                    }];
-                  }
-                });
+                // 直接更新现有消息的内容
+                setMessages(prev => prev.map(msg =>
+                  msg.id === aiMessageId
+                    ? { ...msg, content: currentContent }
+                    : msg
+                ));
               } else if (data.type === 'done') {
                 currentSources = data.data?.sources || [];
                 const newSessionId = data.data?.sessionId;
@@ -455,7 +448,7 @@ const AIAssistant: React.FC = () => {
           </div>
         ))}
         
-        {isTyping && !streamingMessageId && (
+        {isTyping && (
           <div className="message-wrapper">
             <div className="avatar assistant-avatar">🤖</div>
             <div className="typing-indicator">

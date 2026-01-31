@@ -3,6 +3,7 @@
   word-wrap: break-word;
   overflow-wrap: break-word;
   line-height: 1.6;
+  min-height: 20px; /* 确保空内容时也能显示气泡 */
 
   &.streaming {
     animation: pulse 1s ease-in-out infinite;

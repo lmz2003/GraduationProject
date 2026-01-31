@@ -325,12 +325,13 @@ $radius-md: 10px;
 
 .rightSidebar {
   grid-area: right;
-  width: 100%;
+  width: var(--right-width);
   background: $surface-color;
   border-left: 1px solid $border-color;
   display: flex;
   flex-direction: column;
   min-width: 280px;
+  max-width: 420px;
   box-shadow: $shadow-sm;
   min-height: 0;
   height: 100%;

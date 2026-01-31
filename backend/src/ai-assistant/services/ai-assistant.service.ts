@@ -205,6 +205,8 @@ export class AIAssistantService {
   }> {
     let sources: Array<{ title: string; score: number }> = [];
 
+    this.logger.log(`[流式生成] 开始生成答案 - 用户: ${userId}, RAG: ${useRAG}`);
+
     try {
       if (useRAG) {
         // 使用知识库增强
@@ -212,10 +214,12 @@ export class AIAssistantService {
         let hasRagError = false;
 
         try {
+          this.logger.log('[流式生成] 开始 RAG 查询...');
           ragResult = await this.knowledgeBaseService.ragQuery(
             { query: message, topK, threshold },
             userId,
           );
+          this.logger.log(`[流式生成] RAG 查询完成，找到 ${ragResult?.contexts?.length || 0} 个相关文档`);
         } catch (ragError) {
           this.logger.warn('RAG 查询失败，自动降级到直接调用 LLM:', ragError);
           hasRagError = true;
@@ -242,16 +246,19 @@ ${contextsText}
             title: ctx.title,
             score: ctx.score,
           }));
+          this.logger.log(`[流式生成] RAG 提示词构建完成，使用 ${sources.length} 个来源`);
         } else {
           if (hasRagError) {
             this.logger.log('知识库查询失败，使用 LLM 通用知识回答');
           }
           ragPrompt = `${message}\n\n请直接回答上述问题。`;
           sources = [];
+          this.logger.log('[流式生成] 使用通用知识模式回答');
         }
 
         // 调用 LLM 进行流式生成
         try {
+          this.logger.log('[流式生成] 开始调用 LLM 流式生成...');
           const response = await this.llmIntegrationService.generateRAGAnswerStream(
             {
               query: message,
@@ -260,6 +267,7 @@ ${contextsText}
             },
             onChunk,
           );
+          this.logger.log(`[流式生成] LLM 流式生成完成，答案长度: ${response.answer.length}`);
           return { answer: response.answer, sources };
         } catch (error) {
           this.logger.warn('LLM 流式调用失败，错误信息:', error);
@@ -269,6 +277,7 @@ ${contextsText}
         }
       } else {
         // 不使用知识库，直接调用LLM
+        this.logger.log('[流式生成] 不使用知识库，直接调用 LLM...');
         try {
           const response = await this.llmIntegrationService.generateRAGAnswerStream(
             {
@@ -278,6 +287,7 @@ ${contextsText}
             },
             onChunk,
           );
+          this.logger.log(`[流式生成] LLM 流式生成完成，答案长度: ${response.answer.length}`);
           return { answer: response.answer, sources };
         } catch (error) {
           this.logger.warn('LLM 流式调用失败，错误信息:', error);
@@ -308,15 +318,22 @@ ${contextsText}
     sources: Array<{ title: string; score: number }>;
     sessionId: string;
   }> {
+    this.logger.log(`[流式处理] 开始处理消息 - 用户: ${userId}, 消息: "${message.substring(0, 50)}..."`);
+    
     try {
       // 创建或获取会话
       let currentSessionId = sessionId;
       if (!currentSessionId) {
+        this.logger.log('[流式处理] 创建新会话...');
         const session = await this.createSession(userId, message);
         currentSessionId = session.id;
+        this.logger.log(`[流式处理] 新会话创建成功: ${currentSessionId}`);
+      } else {
+        this.logger.log(`[流式处理] 使用现有会话: ${currentSessionId}`);
       }
 
       // 存储用户消息
+      this.logger.log('[流式处理] 存储用户消息...');
       await this.addMessage(currentSessionId, userId, message, 'user');
 
       // 流式生成 AI 回复
@@ -337,7 +354,9 @@ ${contextsText}
       );
 
       // 存储 AI 回复
+      this.logger.log('[流式处理] 存储 AI 回复...');
       await this.addMessage(currentSessionId, userId, answer, 'assistant', sources);
+      this.logger.log('[流式处理] AI 回复存储成功');
 
       return {
         answer,

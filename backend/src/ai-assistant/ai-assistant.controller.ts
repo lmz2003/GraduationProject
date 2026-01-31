@@ -131,6 +131,8 @@ export class AIAssistantController {
       const userId = req.user.id;
       const { message, sessionId, useRAG = true, topK = 5, threshold = 0.5 } = body;
 
+      this.logger.log(`[流式消息] 收到请求 - 用户: ${userId}, 消息: "${message.substring(0, 50)}...", 会话: ${sessionId || '新会话'}, RAG: ${useRAG}`);
+
       if (!message || message.trim().length === 0) {
         res.status(400).json({
           success: false,
@@ -145,8 +147,11 @@ export class AIAssistantController {
       res.setHeader('Connection', 'keep-alive');
       res.setHeader('Access-Control-Allow-Origin', '*');
 
+      this.logger.log('[流式消息] SSE 响应头设置完成，开始流式处理...');
+
       // 流式处理消息
       try {
+        let chunkCount = 0;
         const result = await this.aiAssistantService.processMessageStream(
           userId,
           message,
@@ -159,6 +164,13 @@ export class AIAssistantController {
             // 确保 chunk 是有效的非空字符串
             if (chunk && typeof chunk === 'string' && chunk.length > 0) {
               try {
+                chunkCount++;
+                
+                // 每5个chunk记录一次日志
+                if (chunkCount % 5 === 0) {
+                  this.logger.debug(`[流式消息] 已发送 ${chunkCount} 个数据块到前端`);
+                }
+
                 res.write(`data: ${JSON.stringify({
                   type: 'chunk',
                   data: chunk,
@@ -169,6 +181,8 @@ export class AIAssistantController {
             }
           },
         );
+
+        this.logger.log(`[流式消息] 流式处理完成，共发送 ${chunkCount} 个数据块，会话: ${result.sessionId}`);
 
         // 发送最终响应
         res.write(`data: ${JSON.stringify({

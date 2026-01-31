@@ -309,29 +309,43 @@ export class LLMIntegrationService {
       }
 
       let fullAnswer = '';
+      let chunkCount = 0;
 
       // 使用 stream 方式，并严格验证数据
       const stream = await this.llm.stream([
         new HumanMessage(ragContext.ragPrompt),
       ]);
 
+      this.logger.log('[LLM流式输出] 开始流式生成答案...');
+
       for await (const chunk of stream) {
         try {
-          // 只处理包含有效 content 的块，严格过滤 token 统计字段
-          if (chunk && typeof chunk === 'object' && 'content' in chunk) {
+          // 只处理包含有效 content 的块
+          if (
+            chunk &&
+            typeof chunk === 'object' &&
+            'content' in chunk &&
+            typeof chunk.content === 'string' &&
+            chunk.content.trim().length > 0
+          ) {
             const content = chunk.content;
-            
-            // 确保 content 是字符串且非空
-            if (typeof content === 'string' && content.trim().length > 0) {
-              fullAnswer += content;
-              onChunk(content);
+            fullAnswer += content;
+            chunkCount++;
+
+            // 每10个chunk记录一次日志
+            if (chunkCount % 10 === 0) {
+              this.logger.debug(`[LLM流式输出] 已收到 ${chunkCount} 个数据块，当前内容长度: ${fullAnswer.length}`);
             }
+
+            onChunk(content);
           }
         } catch (parseError) {
           // 静默忽略处理错误
-          this.logger.debug('数据块处理错误，已忽略');
+          this.logger.debug('数据块处理错误，已忽略', parseError);
         }
       }
+
+      this.logger.log(`[LLM流式输出] 流式生成完成，共收到 ${chunkCount} 个数据块，总长度: ${fullAnswer.length}`);
 
       return {
         query: ragContext.query,
@@ -354,6 +368,7 @@ export class LLMIntegrationService {
   createStreamResponse(ragContext: RAGContext): Readable {
     const llm = this.llm;
     const logger = this.logger;
+    let chunkCount = 0;
 
     const readable = new Readable({
       async read() {
@@ -362,30 +377,40 @@ export class LLMIntegrationService {
             throw new Error('LLM 未正确初始化');
           }
 
+          logger.log('[LLM流式输出] 开始创建流响应...');
+
           const stream = await llm.stream([
             new HumanMessage(ragContext.ragPrompt),
           ]);
 
           for await (const chunk of stream) {
             try {
-              // 只处理包含有效 content 的块，严格过滤 token 统计字段
-              if (chunk && typeof chunk === 'object' && 'content' in chunk) {
-                const content = chunk.content;
-                
-                // 确保 content 是字符串且非空
-                if (typeof content === 'string' && content.length > 0) {
-                  readable.push(JSON.stringify({
-                    type: 'chunk',
-                    data: content,
-                  }) + '\n');
+              if (
+                chunk &&
+                typeof chunk === 'object' &&
+                'content' in chunk &&
+                typeof chunk.content === 'string' &&
+                chunk.content.length > 0
+              ) {
+                chunkCount++;
+
+                // 每10个chunk记录一次日志
+                if (chunkCount % 10 === 0) {
+                  logger.debug(`[LLM流式输出] 已发送 ${chunkCount} 个数据块`);
                 }
+
+                readable.push(JSON.stringify({
+                  type: 'chunk',
+                  data: chunk.content,
+                }) + '\n');
               }
             } catch (parseError) {
               // 静默忽略无法处理的块
-              logger.debug('跳过无效的数据块');
+              logger.debug('跳过无效的数据块', parseError);
             }
           }
 
+          logger.log(`[LLM流式输出] 流响应创建完成，共发送 ${chunkCount} 个数据块`);
           readable.push(null); // 标记流结束
         } catch (error) {
           logger.error('创建流响应失败:', error);
