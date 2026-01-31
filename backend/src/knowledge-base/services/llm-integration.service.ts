@@ -319,6 +319,7 @@ export class LLMIntegrationService {
       this.logger.log('[LLM流式输出] 开始流式生成答案...');
 
       for await (const chunk of stream) {
+        this.logger.log('[LLM流式输出] 收到数据块:', chunk);
         try {
           // 只处理包含有效 content 的块
           if (
