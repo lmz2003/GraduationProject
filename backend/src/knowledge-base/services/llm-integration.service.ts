@@ -311,7 +311,6 @@ export class LLMIntegrationService {
       let fullAnswer = '';
       let chunkCount = 0;
 
-      // 使用 stream 方式，并严格验证数据
       const stream = await this.llm.stream([
         new HumanMessage(ragContext.ragPrompt),
       ]);
@@ -321,19 +320,20 @@ export class LLMIntegrationService {
       for await (const chunk of stream) {
         this.logger.log('[LLM流式输出] 收到数据块:', JSON.stringify(chunk));
         try {
-          // 只处理包含有效 content 的块
           if (
             chunk &&
             typeof chunk === 'object' &&
-            'content' in chunk &&
-            typeof chunk.content === 'string' &&
-            chunk.content.trim().length > 0
+            'kwargs' in chunk &&
+            chunk.kwargs &&
+            typeof chunk.kwargs === 'object' &&
+            'content' in chunk.kwargs &&
+            typeof chunk.kwargs.content === 'string' &&
+            chunk.kwargs.content.trim().length > 0
           ) {
-            const content = chunk.content;
+            const content = chunk.kwargs.content;
             fullAnswer += content;
             chunkCount++;
 
-            // 每10个chunk记录一次日志
             if (chunkCount % 10 === 0) {
               this.logger.debug(`[LLM流式输出] 已收到 ${chunkCount} 个数据块，当前内容长度: ${fullAnswer.length}`);
             }
@@ -341,7 +341,6 @@ export class LLMIntegrationService {
             onChunk(content);
           }
         } catch (parseError) {
-          // 静默忽略处理错误
           this.logger.debug('数据块处理错误，已忽略', parseError);
         }
       }
