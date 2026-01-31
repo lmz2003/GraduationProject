@@ -21,8 +21,8 @@ $radius-md: 10px;
 
 .layoutContainer {
   display: grid;
-  grid-template-columns: var(--sidebar-width) 1fr var(--right-width);
-  grid-template-areas: 'sidebar main right';
+  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-areas: 'sidebar main';
   height: 100dvh;
   min-height: 100dvh;
   max-height: 100dvh;
@@ -54,8 +54,8 @@ $radius-md: 10px;
 }
 
 .layoutContainer.sidebarCollapsed {
-  grid-template-columns: var(--sidebar-collapsed) 1fr var(--right-width);
-  grid-template-areas: 'sidebar main right';
+  grid-template-columns: var(--sidebar-collapsed) 1fr;
+  grid-template-areas: 'sidebar main';
 }
 
 .layoutContainer.sidebarCollapsed.aiClosed {
@@ -316,28 +316,29 @@ $radius-md: 10px;
 .mainWrapper {
   grid-area: main;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   min-width: 0;
   min-height: 0;
   background: $surface-color;
   height: 100%;
   max-height: 100%;
   overflow: hidden;
+  flex: 1;
 }
 
 .rightSidebar {
-  grid-area: right;
+  flex: 0 0 auto;
   background: $surface-color;
   border-left: 1px solid $border-color;
   display: flex;
   flex-direction: column;
   min-width: 280px;
-  max-width: 420px;
   box-shadow: $shadow-sm;
   min-height: 0;
   height: 100%;
   max-height: 100%;
   overflow: hidden;
+  transition: flex-basis 0.0s ease;
 }
 
 .rightSidebar.aiHidden {
@@ -479,14 +480,16 @@ $radius-md: 10px;
 @media (max-width: 1024px) {
   .layoutContainer {
     grid-template-columns: var(--sidebar-width) 1fr;
-    grid-template-areas:
-      'sidebar main'
-      'sidebar right';
+    grid-template-areas: 'sidebar main';
   }
 
   .layoutContainer.aiClosed {
     grid-template-columns: var(--sidebar-width) 1fr;
     grid-template-areas: 'sidebar main';
+  }
+
+  .mainWrapper {
+    flex-direction: column;
   }
 
   .divider {
@@ -495,27 +498,26 @@ $radius-md: 10px;
 
   .rightSidebar {
     width: 100%;
+    flex: 0 0 auto;
     min-width: 0;
-    max-width: none;
     border-left: none;
     border-top: 1px solid $border-color;
+    height: auto;
+    max-height: 40%;
   }
 }
 
 @media (max-width: 900px) {
   .layoutContainer {
     grid-template-columns: 1fr;
-    grid-template-areas:
-      'main'
-      'right';
+    grid-template-areas: 'main';
     height: 100dvh;
     max-height: 100dvh;
   }
 
    .layoutContainer.aiClosed {
      grid-template-columns: 1fr;
-     grid-template-areas:
-       'main';
+     grid-template-areas: 'main';
    }
 
   .sidebar {
@@ -526,6 +528,7 @@ $radius-md: 10px;
     width: var(--sidebar-width);
     transform: translateX(-100%);
     box-shadow: $shadow-md;
+    z-index: 20;
 
     &.collapsed {
       transform: translateX(-100%);
@@ -546,11 +549,14 @@ $radius-md: 10px;
   }
 
   .mainWrapper {
-    grid-area: main;
+    flex-direction: column;
   }
 
   .rightSidebar {
-    grid-area: right;
+    width: 100%;
+    height: auto;
+    max-height: 40%;
+    flex: 0 0 auto;
   }
 
   .header {

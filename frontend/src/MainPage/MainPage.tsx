@@ -51,7 +51,7 @@ const MainPageLayout: React.FC = () => {
   const { isOpen: isAssistantOpen } = useAIAssistant();
   const [mainWidthPercent, setMainWidthPercent] = useState<number>(() => {
     const saved = localStorage.getItem('mainLayoutWidth');
-    return saved ? parseInt(saved) : 65;
+    return saved ? parseInt(saved) : 60;
   });
   const [isDragging, setIsDragging] = useState(false);
 
@@ -79,29 +79,28 @@ const MainPageLayout: React.FC = () => {
     if (!isDragging) return;
 
     const handleMouseMove = (e: MouseEvent) => {
-      const container = document.querySelector(`.${styles.layoutContainer}`) as HTMLElement;
-      if (!container) return;
+      const mainWrapper = document.querySelector(`.${styles.mainWrapper}`) as HTMLElement;
+      if (!mainWrapper) return;
 
-      const containerRect = container.getBoundingClientRect();
-      const sidebar = document.querySelector(`.${styles.sidebar}`) as HTMLElement;
-      if (!sidebar) return;
+      const mainWrapperRect = mainWrapper.getBoundingClientRect();
+      const mainWrapperWidth = mainWrapperRect.width;
+      
+      // 计算鼠标在 mainWrapper 内的相对位置
+      const mouseXRelative = e.clientX - mainWrapperRect.left;
+      
+      // 计算新的百分比
+      const newMainWidthPercent = (mouseXRelative / mainWrapperWidth) * 100;
 
-      const sidebarWidth = sidebar.offsetWidth;
-      const containerWidth = containerRect.width;
-
-      const mouseX = e.clientX - containerRect.left;
-      const availableWidth = containerWidth - sidebarWidth;
-      const mainAreaWidth = mouseX - sidebarWidth;
-      const newMainWidthPercent = (mainAreaWidth / availableWidth) * 100;
-
-      if (newMainWidthPercent >= 40 && newMainWidthPercent <= 80) {
+      // 限制最小 35% 和最大 80%
+      if (newMainWidthPercent >= 35 && newMainWidthPercent <= 80) {
         setMainWidthPercent(newMainWidthPercent);
-        localStorage.setItem('mainLayoutWidth', Math.round(newMainWidthPercent).toString());
       }
     };
 
     const handleMouseUp = () => {
       setIsDragging(false);
+      // 保存最终的宽度
+      localStorage.setItem('mainLayoutWidth', Math.round(mainWidthPercent).toString());
     };
 
     document.addEventListener('mousemove', handleMouseMove);
@@ -111,7 +110,7 @@ const MainPageLayout: React.FC = () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging]);
+  }, [isDragging, mainWidthPercent]);
 
   // User data state
   const [userData, setUserData] = useState<{
@@ -192,14 +191,10 @@ const MainPageLayout: React.FC = () => {
   };
 
   const aiWidthPercent = 100 - mainWidthPercent;
-  const gridTemplate = isAssistantOpen 
-    ? `var(--sidebar-width) ${mainWidthPercent}% 4px ${aiWidthPercent}%`
-    : `var(--sidebar-width) 1fr`;
 
   return (
     <div 
       className={`${styles.layoutContainer} ${!isAssistantOpen ? styles.aiClosed : ''} ${isSidebarCollapsed ? styles.sidebarCollapsed : ''} ${isDragging ? styles.dragging : ''}`}
-      style={isAssistantOpen ? { gridTemplateColumns: gridTemplate } : {}}
     >
       {/* Mobile Overlay for Left Sidebar */}
       {!isSidebarCollapsed && (
@@ -293,37 +288,60 @@ const MainPageLayout: React.FC = () => {
         </div>
       </aside>
 
-      {/* Center Column */}
-      <div className={styles.mainWrapper}>
-        <Header activeModule={activeModule} userData={userData} />
+      {/* Center Column - Contains main content and right sidebar */}
+      <div 
+        className={styles.mainWrapper}
+        style={isAssistantOpen ? { 
+          display: 'flex',
+          width: '100%',
+          flex: 1,
+          minWidth: 0
+        } : { flex: 1, minWidth: 0 }}
+      >
+        {/* Main Content Area */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          flex: `0 0 ${isAssistantOpen ? mainWidthPercent : 100}%`,
+          minWidth: 0,
+          height: '100%'
+        }}>
+          <Header activeModule={activeModule} userData={userData} />
 
-        {/* Main Content */}
-        <main className={styles.mainContent}>
-          {activeModule === 'home' && (
-            <div className={styles.placeholderContent}>
-              欢迎使用 AI 面试官平台，请从左侧选择一个模块开始吧。
-            </div>
-          )}
-          {activeModule === 'notes' && <NotesListPage />}
-          {activeModule === 'resume' && <ResumeAnalysisModule />}
-          {activeModule === 'interview' && <AIIInterviewModule />}
-          {activeModule === 'knowledge' && <KnowledgeBase />}
-        </main>
+          {/* Main Content */}
+          <main className={styles.mainContent}>
+            {activeModule === 'home' && (
+              <div className={styles.placeholderContent}>
+                欢迎使用 AI 面试官平台，请从左侧选择一个模块开始吧。
+              </div>
+            )}
+            {activeModule === 'notes' && <NotesListPage />}
+            {activeModule === 'resume' && <ResumeAnalysisModule />}
+            {activeModule === 'interview' && <AIIInterviewModule />}
+            {activeModule === 'knowledge' && <KnowledgeBase />}
+          </main>
+        </div>
+
+        {/* Divider between Main and AI Assistant */}
+        {isAssistantOpen && (
+          <div 
+            className={styles.divider}
+            onMouseDown={handleDividerMouseDown}
+            title="拖动来调整区域大小"
+          />
+        )}
+
+        {/* Right Sidebar */}
+        <aside 
+          className={`${styles.rightSidebar} ${!isAssistantOpen ? styles.aiHidden : ''}`}
+          style={isAssistantOpen ? {
+            flex: `0 0 ${aiWidthPercent}%`,
+            minWidth: 0
+          } : { display: 'none' }}
+        >
+          <AIAssistant />
+        </aside>
       </div>
-
-      {/* Divider between Main and AI Assistant */}
-      {isAssistantOpen && (
-        <div 
-          className={styles.divider}
-          onMouseDown={handleDividerMouseDown}
-          title="拖动来调整区域大小"
-        />
-      )}
-
-      {/* Right Sidebar */}
-      <aside className={`${styles.rightSidebar} ${!isAssistantOpen ? styles.aiHidden : ''}`}>
-        <AIAssistant />
-      </aside>
     </div>
   );
 };
