@@ -199,15 +199,43 @@ export class AIAssistantService {
     topK: number = 5,
     threshold: number = 0.5,
     onChunk: (chunk: string) => void,
+    sessionId?: string,
   ): Promise<{
     answer: string;
     sources: Array<{ title: string; score: number }>;
   }> {
     let sources: Array<{ title: string; score: number }> = [];
 
-    this.logger.log(`[流式生成] 开始生成答案 - 用户: ${userId}, RAG: ${useRAG}`);
+    this.logger.log(`[流式生成] 开始生成答案 - 用户: ${userId}, 会话: ${sessionId || '无'}, RAG: ${useRAG}`);
 
     try {
+      // 获取会话历史（如果存在会话 ID）
+      let conversationHistory = '';
+      if (sessionId) {
+        try {
+          this.logger.log('[流式生成] 获取会话历史...');
+          const { messages: sessionMessages } = await this.getSession(sessionId, userId);
+          
+          // 构建对话历史（只保留用户和助手的消息，排除当前消息）
+          if (sessionMessages && sessionMessages.length > 0) {
+            // 排除最后一条（当前用户消息）
+            const historyMessages = sessionMessages.slice(0, -1);
+            
+            if (historyMessages.length > 0) {
+              conversationHistory = '## 以前的对话记录\n';
+              historyMessages.forEach((msg, index) => {
+                const role = msg.role === 'user' ? '用户' : 'AI助手';
+                conversationHistory += `\n${role}：${msg.content}\n`;
+              });
+              conversationHistory += '\n## 当前对话\n';
+              this.logger.log(`[流式生成] 获取了 ${historyMessages.length} 条历史消息`);
+            }
+          }
+        } catch (error) {
+          this.logger.warn('获取会话历史失败，继续不使用历史:', error);
+        }
+      }
+
       if (useRAG) {
         // 使用知识库增强
         let ragResult: any = null;
@@ -235,6 +263,8 @@ export class AIAssistantService {
 
           ragPrompt = `你是一个有帮助的AI助手。
 
+${conversationHistory}
+
 用户问题：${message}
 
 以下是一些可能相关的参考资料（作为补充信息）：
@@ -251,7 +281,7 @@ ${contextsText}
           if (hasRagError) {
             this.logger.log('知识库查询失败，使用 LLM 通用知识回答');
           }
-          ragPrompt = `${message}\n\n请直接回答上述问题。`;
+          ragPrompt = `${conversationHistory}${message}\n\n请直接回答上述问题。`;
           sources = [];
           this.logger.log('[流式生成] 使用通用知识模式回答');
         }
@@ -283,7 +313,7 @@ ${contextsText}
             {
               query: message,
               contexts: [],
-              ragPrompt: `${message}\n\n请直接回答上述问题。`,
+              ragPrompt: `${conversationHistory}${message}\n\n请直接回答上述问题。`,
             },
             onChunk,
           );
@@ -351,6 +381,7 @@ ${contextsText}
             }
           }
         },
+        currentSessionId, // 传递会话 ID，以便获取历史对话
       );
 
       // 存储 AI 回复

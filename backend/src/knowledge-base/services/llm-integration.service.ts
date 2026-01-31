@@ -44,7 +44,7 @@ export class LLMIntegrationService {
           baseURL: baseUrl || 'https://api.siliconflow.cn/v1',
         },
         temperature: 0.7,
-        maxTokens: 1000,
+        maxTokens: 4000, // 增加最大 token 数量，允许更长的回答
       });
     } else {
       this.logger.log(`使用 OpenAI LLM: ${this.modelName}`);
@@ -55,7 +55,7 @@ export class LLMIntegrationService {
           baseURL: baseUrl,
         } : undefined,
         temperature: 0.7,
-        maxTokens: 1000,
+        maxTokens: 4000, // 增加最大 token 数量，允许更长的回答
       });
     }
   }

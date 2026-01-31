@@ -350,6 +350,9 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   
   &.user-message {
     @include user-message;
+    justify-content: flex-end;
+    margin-left: auto;
+    width: auto;
   }
 }
 
@@ -380,7 +383,7 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 
 // 消息气泡
 .message-bubble {
-  max-width: calc(85% - 42px);
+  max-width: 85%;
   padding: 14px 16px;
   border-radius: 4px 16px 16px 16px;
   font-size: 14px;
@@ -392,8 +395,11 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   transition: $transition;
   animation: fadeIn 0.3s ease-out;
   word-break: break-word;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
   min-height: 44px; /* 确保空内容时也能显示气泡 */
-  min-width: 60px; /* 确保气泡有最小宽度 */
+  min-width: auto;
+  display: inline-block;
   
   &.user-message {
     border-radius: 16px 4px 16px 16px;
@@ -696,7 +702,7 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
   .message-bubble {
-    max-width: calc(90% - 42px);
+    max-width: 90%;
   }
   
   .input-area {
