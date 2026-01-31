@@ -317,20 +317,15 @@ export class LLMIntegrationService {
 
       for await (const chunk of stream) {
         try {
-          // 只处理包含有效 content 的块
-          if (
-            chunk &&
-            typeof chunk === 'object' &&
-            'content' in chunk &&
-            typeof chunk.content === 'string' &&
-            chunk.content.trim().length > 0 &&
-            !('reasoning_tokens' in chunk) &&
-            !('completion_tokens' in chunk) &&
-            !('total_tokens' in chunk)
-          ) {
+          // 只处理包含有效 content 的块，严格过滤 token 统计字段
+          if (chunk && typeof chunk === 'object' && 'content' in chunk) {
             const content = chunk.content;
-            fullAnswer += content;
-            onChunk(content);
+            
+            // 确保 content 是字符串且非空
+            if (typeof content === 'string' && content.trim().length > 0) {
+              fullAnswer += content;
+              onChunk(content);
+            }
           }
         } catch (parseError) {
           // 静默忽略处理错误
@@ -373,20 +368,17 @@ export class LLMIntegrationService {
 
           for await (const chunk of stream) {
             try {
-              if (
-                chunk &&
-                typeof chunk === 'object' &&
-                'content' in chunk &&
-                typeof chunk.content === 'string' &&
-                chunk.content.length > 0 &&
-                !('reasoning_tokens' in chunk) &&
-                !('completion_tokens' in chunk) &&
-                !('total_tokens' in chunk)
-              ) {
-                readable.push(JSON.stringify({
-                  type: 'chunk',
-                  data: chunk.content,
-                }) + '\n');
+              // 只处理包含有效 content 的块，严格过滤 token 统计字段
+              if (chunk && typeof chunk === 'object' && 'content' in chunk) {
+                const content = chunk.content;
+                
+                // 确保 content 是字符串且非空
+                if (typeof content === 'string' && content.length > 0) {
+                  readable.push(JSON.stringify({
+                    type: 'chunk',
+                    data: content,
+                  }) + '\n');
+                }
               }
             } catch (parseError) {
               // 静默忽略无法处理的块
