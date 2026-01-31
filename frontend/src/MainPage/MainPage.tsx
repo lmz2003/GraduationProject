@@ -49,9 +49,9 @@ const MainPageLayout: React.FC = () => {
   const [activeModule, setActiveModule] = useState<string>(module || 'home');
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false);
   const { isOpen: isAssistantOpen } = useAIAssistant();
-  const [mainWidth, setMainWidth] = useState<number>(() => {
+  const [mainWidthPercent, setMainWidthPercent] = useState<number>(() => {
     const saved = localStorage.getItem('mainLayoutWidth');
-    return saved ? parseInt(saved) : 65; // 默认 65% 宽度
+    return saved ? parseInt(saved) : 65;
   });
   const [isDragging, setIsDragging] = useState(false);
 
@@ -89,14 +89,14 @@ const MainPageLayout: React.FC = () => {
       const sidebarWidth = sidebar.offsetWidth;
       const containerWidth = containerRect.width;
 
-      // 计算鼠标相对于 sidebar 右边的位置
-      const mainAndDividerWidth = e.clientX - (containerRect.left + sidebarWidth);
-      const newMainWidth = (mainAndDividerWidth / (containerWidth - sidebarWidth)) * 100;
+      const mouseX = e.clientX - containerRect.left;
+      const availableWidth = containerWidth - sidebarWidth;
+      const mainAreaWidth = mouseX - sidebarWidth;
+      const newMainWidthPercent = (mainAreaWidth / availableWidth) * 100;
 
-      // 限制主区域宽度在 40% - 80% 之间
-      if (newMainWidth >= 40 && newMainWidth <= 80) {
-        setMainWidth(newMainWidth);
-        localStorage.setItem('mainLayoutWidth', Math.round(newMainWidth).toString());
+      if (newMainWidthPercent >= 40 && newMainWidthPercent <= 80) {
+        setMainWidthPercent(newMainWidthPercent);
+        localStorage.setItem('mainLayoutWidth', Math.round(newMainWidthPercent).toString());
       }
     };
 
@@ -191,12 +191,9 @@ const MainPageLayout: React.FC = () => {
     navigate('/login');
   };
 
-  const aiWidth = 100 - mainWidth;
-  // 计算 flex 值，4px 的分隔线宽度相对较小，直接用百分比表示
-  const mainFlex = mainWidth;
-  const aiFlex = aiWidth;
+  const aiWidthPercent = 100 - mainWidthPercent;
   const gridTemplate = isAssistantOpen 
-    ? `var(--sidebar-width) ${mainFlex}fr 4px ${aiFlex}fr`
+    ? `var(--sidebar-width) ${mainWidthPercent}% 4px ${aiWidthPercent}%`
     : `var(--sidebar-width) 1fr`;
 
   return (
