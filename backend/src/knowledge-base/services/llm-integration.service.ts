@@ -320,17 +320,8 @@ export class LLMIntegrationService {
       for await (const chunk of stream) {
         this.logger.log('[LLM流式输出] 收到数据块:', JSON.stringify(chunk));
         try {
-          if (
-            chunk &&
-            typeof chunk === 'object' &&
-            'kwargs' in chunk &&
-            chunk.kwargs &&
-            typeof chunk.kwargs === 'object' &&
-            'content' in chunk.kwargs &&
-            typeof chunk.kwargs.content === 'string' &&
-            chunk.kwargs.content.trim().length > 0
-          ) {
-            const content = chunk.kwargs.content;
+          const content = this.extractChunkContent(chunk);
+          if (content && content.length > 0) {
             fullAnswer += content;
             chunkCount++;
 
@@ -363,69 +354,30 @@ export class LLMIntegrationService {
   }
 
   /**
-   * 创建流式响应对象
-   */
-  createStreamResponse(ragContext: RAGContext): Readable {
-    const llm = this.llm;
-    const logger = this.logger;
-    let chunkCount = 0;
-
-    const readable = new Readable({
-      async read() {
-        try {
-          if (!llm) {
-            throw new Error('LLM 未正确初始化');
-          }
-
-          logger.log('[LLM流式输出] 开始创建流响应...');
-
-          const stream = await llm.stream([
-            new HumanMessage(ragContext.ragPrompt),
-          ]);
-
-          for await (const chunk of stream) {
-            try {
-              if (
-                chunk &&
-                typeof chunk === 'object' &&
-                'content' in chunk &&
-                typeof chunk.content === 'string' &&
-                chunk.content.length > 0
-              ) {
-                chunkCount++;
-
-                // 每10个chunk记录一次日志
-                if (chunkCount % 10 === 0) {
-                  logger.debug(`[LLM流式输出] 已发送 ${chunkCount} 个数据块`);
-                }
-
-                readable.push(JSON.stringify({
-                  type: 'chunk',
-                  data: chunk.content,
-                }) + '\n');
-              }
-            } catch (parseError) {
-              // 静默忽略无法处理的块
-              logger.debug('跳过无效的数据块', parseError);
-            }
-          }
-
-          logger.log(`[LLM流式输出] 流响应创建完成，共发送 ${chunkCount} 个数据块`);
-          readable.push(null); // 标记流结束
-        } catch (error) {
-          logger.error('创建流响应失败:', error);
-          readable.push(null);
-        }
-      },
-    });
-
-    return readable;
-  }
-
-  /**
    * 获取 LLM 实例
    */
   getLLM(): ChatOpenAI {
     return this.llm;
+  }
+
+  private extractChunkContent(chunk: unknown): string | null {
+    if (!chunk || typeof chunk !== 'object') {
+      return null;
+    }
+    
+    const chunkObj = chunk as Record<string, unknown>;
+    
+    if ('kwargs' in chunkObj && chunkObj.kwargs && typeof chunkObj.kwargs === 'object') {
+      const kwargs = chunkObj.kwargs as Record<string, unknown>;
+      if ('content' in kwargs && typeof kwargs.content === 'string') {
+        return kwargs.content;
+      }
+    }
+    
+    if ('content' in chunkObj && typeof chunkObj.content === 'string') {
+      return chunkObj.content;
+    }
+    
+    return null;
   }
 }
