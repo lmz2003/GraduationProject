@@ -448,6 +448,89 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 
+// 消息内容包装器
+.message-content-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+// 消息操作区域
+.message-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: space-between;
+  
+  .timestamp {
+    font-size: 11px;
+    color: $text-secondary;
+    display: block;
+  }
+  
+  .action-btn {
+    @include flex-center;
+    width: 28px;
+    height: 28px;
+    border-radius: $border-radius-full;
+    border: none;
+    background: transparent;
+    color: $text-secondary;
+    cursor: pointer;
+    transition: $transition;
+    opacity: 0;
+    pointer-events: none;
+    
+    svg {
+      width: 14px;
+      height: 14px;
+      stroke-width: 2;
+    }
+    
+    &:not(:disabled) {
+      &:hover {
+        background: rgba(79, 70, 229, 0.1);
+        color: $primary-color;
+      }
+      
+      &:active {
+        transform: scale(0.92);
+      }
+    }
+    
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  }
+}
+
+// 消息包装器悬停时显示操作按钮
+.message-wrapper:hover .message-actions .action-btn {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+// 重新发送按钮
+.resend-btn {
+  color: $accent-color;
+  
+  &:hover:not(:disabled) {
+    background: rgba(16, 185, 129, 0.1);
+    color: $accent-color;
+  }
+}
+
+// 删除按钮
+.delete-btn {
+  color: $error-color;
+  
+  &:hover:not(:disabled) {
+    background: rgba(220, 38, 38, 0.1);
+    color: $error-color;
+  }
+}
+
 // 时间戳
 .timestamp {
   font-size: 11px;
@@ -625,6 +708,37 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     
     &:hover:not(:disabled) svg {
       transform: translateX(2px);
+    }
+  }
+  
+  .stop-button {
+    @include flex-center;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    border-radius: $border-radius-full;
+    border: none;
+    background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+    color: white;
+    cursor: pointer;
+    transition: $transition;
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+    flex-shrink: 0;
+    animation: slideUp 0.2s ease-out;
+    
+    &:hover {
+      transform: scale(1.08);
+      box-shadow: 0 6px 20px rgba(220, 38, 38, 0.4);
+    }
+    
+    &:active {
+      transform: scale(0.94);
+      box-shadow: 0 2px 8px rgba(220, 38, 38, 0.3);
+    }
+    
+    svg {
+      width: 20px;
+      height: 20px;
     }
   }
 }

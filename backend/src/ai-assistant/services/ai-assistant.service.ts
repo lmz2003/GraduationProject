@@ -222,12 +222,16 @@ export class AIAssistantService {
             const historyMessages = sessionMessages.slice(0, -1);
             
             if (historyMessages.length > 0) {
-              conversationHistory = '## 以前的对话记录\n';
+              conversationHistory = '以前的对话记录如下：\n\n';
               historyMessages.forEach((msg, index) => {
                 const role = msg.role === 'user' ? '用户' : 'AI助手';
-                conversationHistory += `\n${role}：${msg.content}\n`;
+                // 限制每条消息的长度，避免过长的历史影响生成效率
+                const content = msg.content.length > 500 
+                  ? msg.content.substring(0, 500) + '...' 
+                  : msg.content;
+                conversationHistory += `${role}：${content}\n\n`;
               });
-              conversationHistory += '\n## 当前对话\n';
+              conversationHistory += '---\n\n当前用户的新问题：\n';
               this.logger.log(`[流式生成] 获取了 ${historyMessages.length} 条历史消息`);
             }
           }

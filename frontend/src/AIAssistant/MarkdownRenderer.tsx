@@ -17,14 +17,34 @@ interface MarkdownRendererProps {
  * - 链接、图片、强调
  * - 表格、引用、分割线
  */
-const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreaming = false }) => {
+const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreaming = false }: MarkdownRendererProps) => {
   const memoizedMarkdown = useMemo(() => {
-    return content;
+    // 预处理 Markdown 内容，确保格式正确
+    let processed = content;
+    
+    // 修复 Markdown 标题格式：确保标题前后有换行
+    processed = processed.replace(/([^\n])(#{1,6}\s+)/g, '\n$2');
+    processed = processed.replace(/(#{1,6}\s+[^\n]*\n)([^\n])/g, '$1\n$2');
+    
+    // 修复列表格式：确保列表前有空行
+    processed = processed.replace(/([^\n])([\n]\s*[-*+]\s+)/g, '$1\n$2');
+    processed = processed.replace(/([^\n])([\n]\s*\d+\.\s+)/g, '$1\n$2');
+    
+    // 修复代码块格式
+    processed = processed.replace(/([^\n])(\n```)/g, '$1\n$2');
+    processed = processed.replace(/(```[^\n]*\n)([\s\S]*?)(```\n)([^\n])/g, '$1$2$3\n$4');
+    
+    // 修复段落之间的间距
+    processed = processed.replace(/\n{3,}/g, '\n\n');
+    
+    return processed.trim();
   }, [content]);
+
+  const MarkdownComponent = ReactMarkdown as any;
 
   return (
     <div className={`markdown-renderer ${isStreaming ? 'streaming' : ''}`}>
-      <ReactMarkdown
+      <MarkdownComponent
         components={{
           // 代码块渲染
           code: ({ node, inline, className, children, ...props }: any) => {
@@ -58,37 +78,37 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreamin
           h6: ({ children }: any) => <h6 className="markdown-h6">{children}</h6>,
 
           // 段落渲染
-          p: ({ children }) => <p className="markdown-paragraph">{children}</p>,
+          p: ({ children }: any) => <p className="markdown-paragraph">{children}</p>,
 
           // 列表渲染
-          ul: ({ children }) => <ul className="markdown-ul">{children}</ul>,
-          ol: ({ children }) => <ol className="markdown-ol">{children}</ol>,
-          li: ({ children }) => <li className="markdown-li">{children}</li>,
+          ul: ({ children }: any) => <ul className="markdown-ul">{children}</ul>,
+          ol: ({ children }: any) => <ol className="markdown-ol">{children}</ol>,
+          li: ({ children }: any) => <li className="markdown-li">{children}</li>,
 
           // 引用渲染
-          blockquote: ({ children }) => (
+          blockquote: ({ children }: any) => (
             <blockquote className="markdown-blockquote">{children}</blockquote>
           ),
 
           // 表格渲染
-          table: ({ children }) => (
+          table: ({ children }: any) => (
             <div className="markdown-table-wrapper">
               <table className="markdown-table">{children}</table>
             </div>
           ),
-          thead: ({ children }) => <thead className="markdown-thead">{children}</thead>,
-          tbody: ({ children }) => <tbody className="markdown-tbody">{children}</tbody>,
-          tr: ({ children }) => <tr className="markdown-tr">{children}</tr>,
-          th: ({ children }) => <th className="markdown-th">{children}</th>,
-          td: ({ children }) => <td className="markdown-td">{children}</td>,
+          thead: ({ children }: any) => <thead className="markdown-thead">{children}</thead>,
+          tbody: ({ children }: any) => <tbody className="markdown-tbody">{children}</tbody>,
+          tr: ({ children }: any) => <tr className="markdown-tr">{children}</tr>,
+          th: ({ children }: any) => <th className="markdown-th">{children}</th>,
+          td: ({ children }: any) => <td className="markdown-td">{children}</td>,
 
           // 链接和图片渲染
-          a: ({ href, children }) => (
+          a: ({ href, children }: any) => (
             <a href={href} className="markdown-link" target="_blank" rel="noopener noreferrer">
               {children}
             </a>
           ),
-          img: ({ src, alt }) => (
+          img: ({ src, alt }: any) => (
             <img src={src} alt={alt} className="markdown-image" />
           ),
 
@@ -96,15 +116,15 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreamin
           hr: () => <hr className="markdown-hr" />,
 
           // 强调渲染
-          strong: ({ children }) => <strong className="markdown-strong">{children}</strong>,
-          em: ({ children }) => <em className="markdown-em">{children}</em>,
+          strong: ({ children }: any) => <strong className="markdown-strong">{children}</strong>,
+          em: ({ children }: any) => <em className="markdown-em">{children}</em>,
 
           // 删除线渲染
-          del: ({ children }) => <del className="markdown-del">{children}</del>,
+          del: ({ children }: any) => <del className="markdown-del">{children}</del>,
         }}
       >
         {memoizedMarkdown}
-      </ReactMarkdown>
+      </MarkdownComponent>
     </div>
   );
 };

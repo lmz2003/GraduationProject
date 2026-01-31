@@ -294,6 +294,48 @@ const AIAssistant: React.FC = () => {
     };
   }, []);
 
+  // 终止当前对话
+  const handleStopGeneration = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    setIsTyping(false);
+    setStreamingMessageId(null);
+  }, []);
+
+  // 重新发送最后一条用户消息
+  const handleResendLastMessage = useCallback(() => {
+    if (messages.length === 0 || isTyping) return;
+
+    // 找到最后一条用户消息
+    let lastUserMessageIndex = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') {
+        lastUserMessageIndex = i;
+        break;
+      }
+    }
+
+    if (lastUserMessageIndex === -1) return;
+
+    const lastUserMessage = messages[lastUserMessageIndex];
+    
+    // 移除该用户消息之后的所有消息（包括AI回复）
+    const messagesBeforeResend = messages.slice(0, lastUserMessageIndex);
+    setMessages(messagesBeforeResend);
+    
+    // 重新发送这条消息
+    setInput(lastUserMessage.content);
+    setTimeout(() => {
+      handleSend();
+    }, 0);
+  }, [messages, isTyping, handleSend]);
+
+  // 删除单条消息（用户或AI消息）
+  const handleDeleteMessage = useCallback((messageId: string) => {
+    setMessages(prev => prev.filter(msg => msg.id !== messageId));
+  }, []);
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -402,7 +444,7 @@ const AIAssistant: React.FC = () => {
           </div>
         )}
         
-        {messages.map(msg => (
+        {messages.map((msg, idx) => (
           <div 
             key={msg.id} 
             className={`message-wrapper ${msg.role === 'user' ? 'user-message' : ''}`}
@@ -410,7 +452,7 @@ const AIAssistant: React.FC = () => {
             <div className={`avatar ${msg.role === 'user' ? 'user-avatar' : 'assistant-avatar'}`}>
               {msg.role === 'user' ? '👤' : '🤖'}
             </div>
-            <div>
+            <div className="message-content-wrapper">
               <div className={`message-bubble ${msg.role === 'user' ? 'user-message' : ''}`}>
                 {msg.role === 'user' ? (
                   // 用户消息：普通文本显示
@@ -441,9 +483,34 @@ const AIAssistant: React.FC = () => {
                   </div>
                 )}
               </div>
-              <span className={`timestamp ${msg.role === 'user' ? 'user-timestamp' : ''}`}>
-                {formatTime(msg.timestamp)}
-              </span>
+              <div className="message-actions">
+                <span className={`timestamp ${msg.role === 'user' ? 'user-timestamp' : ''}`}>
+                  {formatTime(msg.timestamp)}
+                </span>
+                {idx === messages.length - 1 && msg.role === 'user' && (
+                  <button 
+                    className="action-btn resend-btn"
+                    onClick={handleResendLastMessage}
+                    title="重新发送"
+                    disabled={isTyping}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <polyline points="23 4 23 10 17 10" />
+                      <path d="M20.49 15a9 9 0 1 1-2-8.83" />
+                    </svg>
+                  </button>
+                )}
+                <button 
+                  className="action-btn delete-btn"
+                  onClick={() => handleDeleteMessage(msg.id)}
+                  title="删除"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
         ))}
@@ -493,16 +560,29 @@ const AIAssistant: React.FC = () => {
             placeholder="输入消息..."
             disabled={isTyping || !token}
           />
-          <button 
-            aria-label="发送消息"
-            className="send-button" 
-            onClick={handleSend} 
-            disabled={!input.trim() || isTyping || !token}
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
-            </svg>
-          </button>
+          {isTyping ? (
+            <button 
+              aria-label="停止生成"
+              className="stop-button" 
+              onClick={handleStopGeneration}
+              title="停止生成"
+            >
+              <svg viewBox="0 0 24 24" fill="currentColor">
+                <rect x="6" y="6" width="12" height="12" />
+              </svg>
+            </button>
+          ) : (
+            <button 
+              aria-label="发送消息"
+              className="send-button" 
+              onClick={handleSend} 
+              disabled={!input.trim() || isTyping || !token}
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z" />
+              </svg>
+            </button>
+          )}
         </div>
       </div>
     </div>
