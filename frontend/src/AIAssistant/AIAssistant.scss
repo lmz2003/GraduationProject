@@ -400,6 +400,10 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   min-height: 44px; /* 确保空内容时也能显示气泡 */
   min-width: auto;
   display: inline-block;
+  transition: all 0.2s ease-in-out;
+  transform: translateY(0);
+  opacity: 1;
+  will-change: height, width;
   
   &.user-message {
     border-radius: 16px 4px 16px 16px;

@@ -37,8 +37,13 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreamin
     // 修复段落之间的间距
     processed = processed.replace(/\n{3,}/g, '\n\n');
     
-    return processed.trim();
-  }, [content]);
+    let result = processed.trim();
+    // 添加流式加载省略号
+    if (isStreaming) {
+      result += '...';
+    }
+    return result;
+  }, [content, isStreaming]);
 
   const MarkdownComponent = ReactMarkdown as any;
 
