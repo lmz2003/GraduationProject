@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, Request, Query } from '@nestjs/common';
+import { Controller, Get, Post, Put, Delete, Param, Body, UseGuards, Request, Query, HttpException, HttpStatus } from '@nestjs/common';
 import { Request as ExpressRequest } from 'express';
 import { AuthGuard } from '@nestjs/passport';
 import { NotesService } from './notes.service';
@@ -114,6 +114,57 @@ export class NotesController {
   @Delete(':id/comments/:commentId')
   async deleteComment(@Param('commentId') commentId: string) {
     return this.notesService.deleteComment(commentId);
+  }
+
+  // Upload note to knowledge base
+  @Post(':id/upload-to-knowledge')
+  async uploadToKnowledgeBase(@Param('id') id: string, @Request() req: ExpressRequest) {
+    const userId = req.user?.id as string;
+    try {
+      const result = await this.notesService.uploadToKnowledgeBase(id, userId);
+      return {
+        code: 0,
+        message: result.message,
+        data: {
+          success: result.success,
+          documentId: result.documentId,
+        },
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        {
+          code: 1,
+          message: error.message || '上传到知识库失败',
+          data: null,
+        },
+        error.status || HttpStatus.BAD_REQUEST
+      );
+    }
+  }
+
+  // Sync note to knowledge base
+  @Post(':id/sync-to-knowledge')
+  async syncToKnowledgeBase(@Param('id') id: string, @Request() req: ExpressRequest) {
+    const userId = req.user?.id as string;
+    try {
+      const result = await this.notesService.syncToKnowledgeBase(id, userId);
+      return {
+        code: 0,
+        message: result.message,
+        data: {
+          success: result.success,
+        },
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        {
+          code: 1,
+          message: error.message || '同步到知识库失败',
+          data: null,
+        },
+        error.status || HttpStatus.BAD_REQUEST
+      );
+    }
   }
 
 

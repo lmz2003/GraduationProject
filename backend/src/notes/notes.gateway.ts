@@ -103,14 +103,23 @@ export class NotesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('note-update')
-  handleNoteUpdate(@MessageBody() data: NoteUpdate) {
+  async handleNoteUpdate(@MessageBody() data: NoteUpdate) {
     const { noteId, content, title, userId } = data;
     
     // Broadcast the update to all users in the note
     this.server.to(noteId).emit('note-updated', { content, title, userId });
     
     // Save the update to the database
-    this.notesService.updateNoteContent(noteId, content, title, userId);
+    const updatedNote = await this.notesService.updateNoteContent(noteId, content, title, userId);
+    
+    // Notify if the note needs sync to knowledge base
+    if (updatedNote.needsSync && updatedNote.knowledgeDocumentId) {
+      this.server.to(noteId).emit('note-needs-sync', { 
+        noteId,
+        needsSync: true,
+        message: '笔记内容已更新，建议同步到知识库'
+      });
+    }
   }
 
   @SubscribeMessage('cursor-update')

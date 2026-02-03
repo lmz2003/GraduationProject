@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
 import { Note } from './entities/note.entity';
@@ -8,6 +8,8 @@ import { CreateNoteDto } from './dto/create-note.dto';
 import { UpdateNoteDto } from './dto/update-note.dto';
 import { QueryNotesDto } from './dto/query-notes.dto';
 import { UsersService } from '../users/users.service';
+import { KnowledgeBaseService } from '../knowledge-base/services/knowledge-base.service';
+import { CreateDocumentDto } from '../knowledge-base/dto/create-document.dto';
 
 @Injectable()
 export class NotesService {
@@ -16,6 +18,7 @@ export class NotesService {
     @InjectRepository(NoteVersion) private noteVersionRepository: Repository<NoteVersion>,
     @InjectRepository(NoteComment) private noteCommentRepository: Repository<NoteComment>,
     private readonly usersService: UsersService,
+    private readonly knowledgeBaseService: KnowledgeBaseService,
   ) {}
 
   // Create a new note
@@ -135,11 +138,18 @@ export class NotesService {
         : updateNoteDto.content;
     }
 
+    // 检查是否需要标记为需要同步
+    let needsSync = note.needsSync;
+    if (note.knowledgeDocumentId && (updateNoteDto.content || updateNoteDto.title)) {
+      needsSync = true;
+    }
+
     // Update note
     const updatedNote = await this.noteRepository.save({
       ...note,
       ...updateNoteDto,
       summary: summary || note.summary,
+      needsSync,
     });
 
     // Create new version
@@ -155,15 +165,22 @@ export class NotesService {
   }
 
   // Update note content (for real-time editing)
-  async updateNoteContent(noteId: string, content: string, title: string, userId: string): Promise<void> {
+  async updateNoteContent(noteId: string, content: string, title: string, userId: string): Promise<Note> {
     const note = await this.getNoteById(noteId);
     const user = await this.usersService.getUserById(userId);
 
+    // 检查是否需要标记为需要同步
+    let needsSync = note.needsSync;
+    if (note.knowledgeDocumentId && (content !== note.content || title !== note.title)) {
+      needsSync = true;
+    }
+
     // Update note
-    await this.noteRepository.save({
+    const updatedNote = await this.noteRepository.save({
       ...note,
       content,
       title,
+      needsSync,
     });
 
     // Create new version
@@ -171,9 +188,11 @@ export class NotesService {
       content,
       title,
       description: note.description,
-      note,
+      note: updatedNote,
       updatedBy: user,
     });
+
+    return updatedNote;
   }
 
   // Delete a note (逻辑删除)
@@ -279,6 +298,105 @@ export class NotesService {
       throw new NotFoundException(`Comment with id ${commentId} not found`);
     }
     await this.noteCommentRepository.remove(comment);
+  }
+
+  /**
+   * 上传笔记到知识库
+   */
+  async uploadToKnowledgeBase(noteId: string, userId: string): Promise<{ success: boolean; message: string; documentId?: string }> {
+    try {
+      const note = await this.getNoteById(noteId);
+
+      if (note.owner.id !== userId) {
+        throw new BadRequestException('无权操作此笔记');
+      }
+
+      if (note.knowledgeDocumentId) {
+        return {
+          success: false,
+          message: '该笔记已上传到知识库',
+        };
+      }
+
+      const createDocumentDto: CreateDocumentDto = {
+        title: note.title,
+        content: note.content,
+        source: `笔记: ${note.title}`,
+        documentType: 'text',
+        metadata: {
+          noteId: note.id,
+          noteTitle: note.title,
+          tags: note.tags,
+          createdAt: note.createdAt,
+        },
+        uploadType: 'input',
+      };
+
+      const document = await this.knowledgeBaseService.addDocument(createDocumentDto, userId);
+
+      await this.noteRepository.save({
+        ...note,
+        knowledgeDocumentId: document.id,
+        syncedToKnowledgeAt: new Date(),
+        needsSync: false,
+      });
+
+      return {
+        success: true,
+        message: '笔记已成功上传到知识库',
+        documentId: document.id,
+      };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+      throw new BadRequestException(`上传到知识库失败: ${errorMsg}`);
+    }
+  }
+
+  /**
+   * 同步笔记到知识库
+   */
+  async syncToKnowledgeBase(noteId: string, userId: string): Promise<{ success: boolean; message: string }> {
+    try {
+      const note = await this.getNoteById(noteId);
+
+      if (note.owner.id !== userId) {
+        throw new BadRequestException('无权操作此笔记');
+      }
+
+      if (!note.knowledgeDocumentId) {
+        return {
+          success: false,
+          message: '该笔记未上传到知识库，请先上传',
+        };
+      }
+
+      const updateData: Partial<CreateDocumentDto> = {
+        title: note.title,
+        content: note.content,
+        metadata: {
+          noteId: note.id,
+          noteTitle: note.title,
+          tags: note.tags,
+          updatedAt: note.updatedAt,
+        },
+      };
+
+      await this.knowledgeBaseService.updateDocument(note.knowledgeDocumentId, updateData, userId);
+
+      await this.noteRepository.save({
+        ...note,
+        syncedToKnowledgeAt: new Date(),
+        needsSync: false,
+      });
+
+      return {
+        success: true,
+        message: '笔记已成功同步到知识库',
+      };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+      throw new BadRequestException(`同步到知识库失败: ${errorMsg}`);
+    }
   }
 
 

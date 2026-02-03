@@ -4,6 +4,7 @@ import RichTextEditor from './RichTextEditor';
 import PdfExportModal from '../components/PdfExportModal';
 import AIAssistant from '../AIAssistant/AIAssistant';
 import { AIAssistantProvider } from '../context/AIAssistantContext';
+import { useWebSocket } from '../hooks/useWebSocket';
 import styles from './NoteDetailPage.module.scss';
 
 interface Note {
@@ -15,6 +16,9 @@ interface Note {
   status: string;
   createdAt: string;
   updatedAt: string;
+  knowledgeDocumentId?: string;
+  syncedToKnowledgeAt?: string;
+  needsSync?: boolean;
 }
 
 const NoteDetailPage: React.FC = () => {
@@ -34,6 +38,8 @@ const NoteDetailPage: React.FC = () => {
   const [showAI, setShowAI] = useState(true);
   const [aiWidth, setAiWidth] = useState(350);
   const [isDragging, setIsDragging] = useState(false);
+  const [needsSync, setNeedsSync] = useState(false);
+  const [showSyncButton, setShowSyncButton] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
@@ -83,6 +89,28 @@ const NoteDetailPage: React.FC = () => {
     fetchNote();
   }, [id]);
 
+  const token = localStorage.getItem('token');
+  const userId = token ? JSON.parse(atob(token.split('.')[1])).userId : undefined;
+  const { on, off } = useWebSocket(isNewNote ? undefined : id, userId);
+
+  useEffect(() => {
+    if (isNewNote) return;
+
+    const handleNeedsSync = (data: any) => {
+      console.log('收到同步提示:', data);
+      if (data.noteId === id) {
+        setNeedsSync(true);
+        setShowSyncButton(true);
+      }
+    };
+
+    on('note-needs-sync', handleNeedsSync);
+
+    return () => {
+      off('note-needs-sync', handleNeedsSync);
+    };
+  }, [id, isNewNote, on, off]);
+
   useEffect(() => {
     if (note) {
       const changed =
@@ -91,8 +119,12 @@ const NoteDetailPage: React.FC = () => {
         JSON.stringify(tags) !== JSON.stringify(note.tags) ||
         status !== note.status;
       setHasChanges(changed);
+      
+      setNeedsSync(note.needsSync || false);
+      setShowSyncButton(note.knowledgeDocumentId ? note.needsSync || false : false);
     } else if (isNewNote) {
       setHasChanges(title.length > 0 || content.length > 0 || tags.length > 0);
+      setShowSyncButton(false);
     }
   }, [title, content, tags, status, note]);
 
@@ -255,6 +287,35 @@ const NoteDetailPage: React.FC = () => {
     window.addEventListener('mouseup', handleMouseUp);
   };
 
+  const handleSyncToKnowledge = async () => {
+    if (!confirm('确认将更新后的笔记内容同步到知识库吗？')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE}/notes/${id}/sync-to-knowledge`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const result = await response.json();
+      if (result.code === 0) {
+        alert('笔记已成功同步到知识库');
+        setNeedsSync(false);
+        setShowSyncButton(false);
+        await fetchNote();
+      } else {
+        throw new Error(result.message || '同步到知识库失败');
+      }
+    } catch (error) {
+      console.error('同步到知识库失败:', error);
+      alert('同步到知识库失败，请稍后重试');
+    }
+  };
+
   if (loading) {
     return (
       <div className={styles.pageContainer}>
@@ -285,6 +346,17 @@ const NoteDetailPage: React.FC = () => {
             <div className={`${styles.saveIndicator} ${saving ? styles.saving : ''}`}>
               {saving ? '保存中...' : hasChanges ? '有未保存的修改' : '已保存'}
             </div>
+
+            {showSyncButton && (
+              <button
+                className={`${styles.button} ${styles.syncButton}`}
+                onClick={handleSyncToKnowledge}
+                disabled={!needsSync}
+                title={needsSync ? '需要同步到知识库' : '已同步到知识库'}
+              >
+                📚 {needsSync ? '同步到知识库' : '已同步'}
+              </button>
+            )}
 
             <select
               className={styles.statusSelect}

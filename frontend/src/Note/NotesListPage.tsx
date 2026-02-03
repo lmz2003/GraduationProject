@@ -12,6 +12,9 @@ interface Note {
   status: string;
   createdAt: string;
   updatedAt: string;
+  knowledgeDocumentId?: string;
+  syncedToKnowledgeAt?: string;
+  needsSync?: boolean;
 }
 
 interface QueryParams {
@@ -195,6 +198,66 @@ const NotesListPage: React.FC = () => {
       }
       return newSet;
     });
+  };
+
+  // 上传笔记到知识库
+  const handleUploadToKnowledge = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!confirm('确认将此笔记上传到知识库吗？上传后可在 AI 助手中使用此笔记内容。')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE}/notes/${id}/upload-to-knowledge`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const result = await response.json();
+      if (result.code === 0) {
+        alert('笔记已成功上传到知识库');
+        fetchNotes();
+      } else {
+        throw new Error(result.message || '上传到知识库失败');
+      }
+    } catch (error) {
+      console.error('上传到知识库失败:', error);
+      alert('上传到知识库失败，请稍后重试');
+    }
+  };
+
+  // 同步笔记到知识库
+  const handleSyncToKnowledge = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!confirm('确认将更新后的笔记内容同步到知识库吗？')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE}/notes/${id}/sync-to-knowledge`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const result = await response.json();
+      if (result.code === 0) {
+        alert('笔记已成功同步到知识库');
+        fetchNotes();
+      } else {
+        throw new Error(result.message || '同步到知识库失败');
+      }
+    } catch (error) {
+      console.error('同步到知识库失败:', error);
+      alert('同步到知识库失败，请稍后重试');
+    }
   };
 
   // 进入批量删除模式
@@ -389,6 +452,24 @@ const NotesListPage: React.FC = () => {
                         >
                           🗑️ 删除
                         </button>
+                        {note.knowledgeDocumentId ? (
+                          <button
+                            className={`${styles.actionButton} ${styles.actionSync}`}
+                            onClick={(e) => handleSyncToKnowledge(note.id, e)}
+                            disabled={!note.needsSync}
+                            title={note.needsSync ? '需要同步到知识库' : '已同步到知识库'}
+                          >
+                            📚 {note.needsSync ? '需同步' : '已同步'}
+                          </button>
+                        ) : (
+                          <button
+                            className={`${styles.actionButton} ${styles.actionUpload}`}
+                            onClick={(e) => handleUploadToKnowledge(note.id, e)}
+                            title="上传到知识库"
+                          >
+                            ⬆️ 上传
+                          </button>
+                        )}
                       </div>
                     </div>
                     

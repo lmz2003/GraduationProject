@@ -319,19 +319,6 @@ const SupportedFormats = styled.div`
   color: #475569;
 `;
 
-const Select = styled.select`
-  padding: 10px;
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  
-  &:focus {
-    outline: none;
-    border-color: #4f46e5;
-    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
-  }
-`;
-
 interface Document {
   id: string;
   title: string;

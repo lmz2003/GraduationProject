@@ -99,6 +99,7 @@
   align-items: center;
   gap: 8px;
   cursor: pointer;
+  -webkit-user-select: none;
   user-select: none;
 }
 
@@ -259,14 +260,29 @@
   cursor: pointer;
   transition: all 0.2s;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: #e2e8f0;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 }
 
-.actionDelete:hover {
+.actionDelete:hover:not(:disabled) {
   background: #ffeeee;
   color: #dc2626;
+}
+
+.actionUpload:hover:not(:disabled) {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.actionSync:hover:not(:disabled) {
+  background: #fef3c7;
+  color: #d97706;
 }
 
 .noteContent {

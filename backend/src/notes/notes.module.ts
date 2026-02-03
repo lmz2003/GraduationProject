@@ -7,11 +7,13 @@ import { NoteVersion } from './entities/note-version.entity';
 import { NoteComment } from './entities/note-comment.entity';
 import { NotesGateway } from './notes.gateway';
 import { UsersModule } from '../users/users.module';
+import { KnowledgeBaseModule } from '../knowledge-base/knowledge-base.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Note, NoteVersion, NoteComment]),
     UsersModule,
+    KnowledgeBaseModule,
   ],
   controllers: [NotesController],
   providers: [NotesService, NotesGateway],

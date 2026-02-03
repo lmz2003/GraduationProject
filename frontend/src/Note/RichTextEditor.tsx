@@ -34,7 +34,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   useEffect(() => {
     const editor = quillRef.current?.getEditor?.();
     if (editor) {
-      const toolbar = editor.getModule('toolbar');
+      const toolbar = editor.getModule('toolbar') as any;
       if (toolbar) {
         toolbar.addHandler('image', handleImageUpload);
       }

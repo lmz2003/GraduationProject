@@ -24,7 +24,7 @@ export class Note {
   tags!: string[];
 
   @Column({ default: 'draft' })
-  status!: string; // draft | published
+  status!: string;
 
   @Column({ default: false })
   deleted!: boolean;
@@ -40,6 +40,15 @@ export class Note {
 
   @OneToMany(() => NoteComment, (comment) => comment.note, { cascade: true })
   comments!: NoteComment[];
+
+  @Column({ nullable: true })
+  knowledgeDocumentId?: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  syncedToKnowledgeAt?: Date;
+
+  @Column({ default: false })
+  needsSync!: boolean;
 
   @CreateDateColumn()
   createdAt!: Date;
