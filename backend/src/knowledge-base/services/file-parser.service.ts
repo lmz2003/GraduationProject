@@ -5,6 +5,7 @@ import pdfParse from 'pdf-parse';
 import * as mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 import csv from 'csv-parser';
+import * as iconv from 'iconv-lite';
 
 export interface ParsedDocument {
   title: string;
@@ -79,10 +80,13 @@ export class FileParserService {
       const buffer = fs.readFileSync(filePath);
       const data = await pdfParse(buffer);
 
-      const content = data.text;
+      let content = data.text;
+
       if (!content || content.trim().length === 0) {
         throw new BadRequestException('PDF 文件为空或无法提取文本');
       }
+
+      content = this.fixEncoding(content);
 
       return {
         title: baseName,
@@ -98,6 +102,56 @@ export class FileParserService {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
       throw new BadRequestException(`PDF 解析失败: ${errorMsg}`);
+    }
+  }
+
+  /**
+   * 修复文本编码问题
+   */
+  private fixEncoding(text: string): string {
+    try {
+      const hasGarbledChars = /[^\x00-\x7F]/.test(text) && /[\u00E4\u00E5\u00F6\u00FC\u00C4\u00C5\u00D6\u00DC]/.test(text);
+      
+      if (hasGarbledChars) {
+        try {
+          const decoded = iconv.decode(iconv.encode(text, 'latin1'), 'utf8');
+          if (this.isValidUTF8(decoded)) {
+            return decoded;
+          }
+        } catch (e) {
+          this.logger.warn('编码转换失败，使用原始文本');
+        }
+      }
+
+      const hasChinese = /[\u4e00-\u9fa5]/.test(text);
+      if (!hasChinese && text.length > 0) {
+        try {
+          const decoded = iconv.decode(iconv.encode(text, 'latin1'), 'utf8');
+          if (this.isValidUTF8(decoded) && /[\u4e00-\u9fa5]/.test(decoded)) {
+            return decoded;
+          }
+        } catch (e) {
+          this.logger.warn('编码转换失败，使用原始文本');
+        }
+      }
+
+      return text;
+    } catch (error) {
+      this.logger.warn('编码修复失败，使用原始文本', error);
+      return text;
+    }
+  }
+
+  /**
+   * 检查文本是否为有效的 UTF-8
+   */
+  private isValidUTF8(text: string): boolean {
+    try {
+      const buffer = Buffer.from(text, 'utf8');
+      const decoded = buffer.toString('utf8');
+      return decoded === text;
+    } catch {
+      return false;
     }
   }
 
