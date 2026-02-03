@@ -12,7 +12,7 @@ export class KnowledgeDocument {
   content!: string;
 
   @Column({ nullable: true })
-  source?: string; // 文档来源（URL、文件路径等）
+  source?: string; // 文档来源（URL、文件路径、原始文件名等）
 
   @Column({ type: 'jsonb', nullable: true })
   metadata?: Record<string, any>; // 存储元数据
@@ -21,13 +21,29 @@ export class KnowledgeDocument {
   vectorId?: string; // Milvus 中的向量 ID
 
   @Column({ default: 'text' })
-  documentType!: string; // text, pdf, markdown 等
+  documentType!: string; // text, pdf, markdown, docx, xlsx, csv, json 等
 
   @Column({ default: false })
   isProcessed!: boolean; // 是否已处理为向量
 
   @Column({ type: 'varchar', length: 100 })
   ownerId!: string; // 用户ID，存储字符串类型
+
+  // 文件相关字段
+  @Column({ nullable: true })
+  fileName?: string; // 原始文件名
+
+  @Column({ nullable: true })
+  fileSize?: number; // 文件大小（字节）
+
+  @Column({ nullable: true })
+  fileMimeType?: string; // 文件 MIME 类型（application/pdf, application/vnd.openxmlformats-officedocument.wordprocessingml.document 等）
+
+  @Column({ nullable: true })
+  fileUrl?: string; // 服务器上保存的文件路径
+
+  @Column({ default: 'input' })
+  uploadType!: string; // input（文本输入）或 file（文件上传）
 
   @CreateDateColumn()
   createdAt!: Date;

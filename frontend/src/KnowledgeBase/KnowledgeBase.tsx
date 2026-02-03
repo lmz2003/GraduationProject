@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 
 // Styled Components
@@ -180,6 +180,158 @@ const StatLabel = styled.div`
   margin-top: 5px;
 `;
 
+const Tabs = styled.div`
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #e2e8f0;
+`;
+
+const Tab = styled.button<{ $active?: boolean }>`
+  padding: 10px 15px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid ${props => props.$active ? '#4f46e5' : 'transparent'};
+  color: ${props => props.$active ? '#4f46e5' : '#64748b'};
+  font-weight: ${props => props.$active ? '600' : '500'};
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    color: #4f46e5;
+  }
+`;
+
+const DropZone = styled.div<{ $isDragging?: boolean }>`
+  border: 2px dashed ${props => props.$isDragging ? '#4f46e5' : '#cbd5e1'};
+  border-radius: 8px;
+  padding: 30px;
+  text-align: center;
+  background: ${props => props.$isDragging ? '#f0f4ff' : '#f8fafc'};
+  transition: all 0.2s;
+  cursor: pointer;
+  
+  &:hover {
+    border-color: #4f46e5;
+    background: #f0f4ff;
+  }
+`;
+
+const DropZoneText = styled.p`
+  margin: 0;
+  color: #475569;
+  font-size: 0.95rem;
+  margin-bottom: 8px;
+`;
+
+const DropZoneSubtext = styled.p`
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.85rem;
+`;
+
+const FileInput = styled.input`
+  display: none;
+`;
+
+const FileList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 15px;
+`;
+
+const FileItem = styled.div`
+  padding: 10px 15px;
+  background: #f0f4ff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const FileName = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+`;
+
+const FileIcon = styled.span`
+  font-size: 1.2rem;
+`;
+
+const FileNameText = styled.div`
+  display: flex;
+  flex-direction: column;
+`;
+
+const FileNameMain = styled.div`
+  color: #0f172a;
+  font-weight: 500;
+  font-size: 0.9rem;
+`;
+
+const FileSize = styled.div`
+  color: #94a3b8;
+  font-size: 0.8rem;
+`;
+
+const FileRemoveBtn = styled.button`
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  border-radius: 4px;
+  padding: 5px 10px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 500;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: #fecaca;
+  }
+`;
+
+const ProgressBar = styled.div`
+  width: 100%;
+  height: 6px;
+  background: #e2e8f0;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 15px;
+`;
+
+const ProgressFill = styled.div<{ $progress: number }>`
+  height: 100%;
+  width: ${props => props.$progress}%;
+  background: linear-gradient(90deg, #4f46e5, #7c3aed);
+  transition: width 0.3s ease;
+`;
+
+const SupportedFormats = styled.div`
+  margin-top: 15px;
+  padding: 10px;
+  background: #f0f4ff;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  color: #475569;
+`;
+
+const Select = styled.select`
+  padding: 10px;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  
+  &:focus {
+    outline: none;
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.1);
+  }
+`;
+
 interface Document {
   id: string;
   title: string;
@@ -201,6 +353,13 @@ const KnowledgeBase: React.FC = () => {
   const [stats, setStats] = useState({ totalDocuments: 0, processedDocuments: 0, pendingDocuments: 0 });
   const [loadingAdd, setLoadingAdd] = useState(false);  // 添加文档的 loading 状态
   const [loadingQuery, setLoadingQuery] = useState(false);  // 查询的 loading 状态
+  const [loadingUpload, setLoadingUpload] = useState(false);  // 文件上传的 loading 状态
+
+  // 选项卡状态
+  const [activeTab, setActiveTab] = useState<'text' | 'file'>('text');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropZoneRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // 表单状态
   const [newDoc, setNewDoc] = useState({
@@ -208,6 +367,9 @@ const KnowledgeBase: React.FC = () => {
     content: '',
     source: '',
   });
+
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   const [query, setQuery] = useState('');
 
@@ -391,6 +553,134 @@ const KnowledgeBase: React.FC = () => {
     }
   };
 
+  // 获取文件图标
+  const getFileIcon = (fileName: string): string => {
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    const iconMap: Record<string, string> = {
+      'pdf': '📄',
+      'docx': '📝',
+      'doc': '📝',
+      'xlsx': '📊',
+      'xls': '📊',
+      'csv': '📊',
+      'md': '✍️',
+      'txt': '📋',
+      'json': '⚙️',
+    };
+    return iconMap[ext] || '📎';
+  };
+
+  // 格式化文件大小
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  };
+
+  // 处理文件选择
+  const handleFileSelect = (files: FileList) => {
+    if (!files) return;
+    
+    const newFiles = Array.from(files);
+    const maxFileSize = 50 * 1024 * 1024; // 50MB
+    const supportedFormats = ['.pdf', '.docx', '.doc', '.xlsx', '.xls', '.csv', '.md', '.txt', '.json'];
+
+    const validFiles: File[] = [];
+    for (const file of newFiles) {
+      const ext = '.' + file.name.split('.').pop()?.toLowerCase();
+      
+      if (!supportedFormats.includes(ext)) {
+        alert(`不支持的文件类型: ${ext}。支持的类型: ${supportedFormats.join(', ')}`);
+        continue;
+      }
+
+      if (file.size > maxFileSize) {
+        alert(`文件 ${file.name} 过大，最大支持 50MB`);
+        continue;
+      }
+
+      validFiles.push(file);
+    }
+
+    if (validFiles.length > 0) {
+      setSelectedFiles([...selectedFiles, ...validFiles]);
+    }
+  };
+
+  // 移除选中的文件
+  const handleRemoveFile = (index: number) => {
+    setSelectedFiles(selectedFiles.filter((_, i) => i !== index));
+  };
+
+  // 处理拖拽
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.currentTarget === dropZoneRef.current) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    handleFileSelect(e.dataTransfer.files);
+  };
+
+  // 上传文件
+  const handleUploadFiles = async () => {
+    if (selectedFiles.length === 0) {
+      alert('请选择至少一个文件');
+      return;
+    }
+
+    setLoadingUpload(true);
+    setUploadProgress(0);
+
+    try {
+      const formData = new FormData();
+      selectedFiles.forEach((file) => {
+        formData.append('files', file);
+      });
+
+      const response = await fetch(`${API_BASE}/upload-documents`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert(`成功上传 ${data.data?.length || 0} 个文档`);
+        setSelectedFiles([]);
+        setUploadProgress(0);
+        fetchDocuments();
+        fetchStats();
+      } else {
+        const errorMsg = data.message || '上传失败';
+        alert(`上传失败: ${errorMsg}`);
+        console.error('上传文档错误:', errorMsg);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : '网络错误';
+      console.error('上传文档失败:', error);
+      alert(`上传文档失败: ${errorMsg}。请检查服务器连接`);
+    } finally {
+      setLoadingUpload(false);
+    }
+  };
+
   return (
     <Container>
       {/* 统计信息 */}
@@ -415,35 +705,122 @@ const KnowledgeBase: React.FC = () => {
       {/* 添加文档 */}
       <Section>
         <SectionTitle>📄 添加新文档</SectionTitle>
-        <FormGroup>
-          <Label>文档标题</Label>
-          <Input
-            type="text"
-            placeholder="输入文档标题"
-            value={newDoc.title}
-            onChange={(e) => setNewDoc({ ...newDoc, title: e.target.value })}
-          />
-        </FormGroup>
-        <FormGroup>
-          <Label>文档内容</Label>
-          <Textarea
-            placeholder="输入文档内容"
-            value={newDoc.content}
-            onChange={(e) => setNewDoc({ ...newDoc, content: e.target.value })}
-          />
-        </FormGroup>
-        <FormGroup>
-          <Label>来源（可选）</Label>
-          <Input
-            type="text"
-            placeholder="输入文档来源 URL 或路径"
-            value={newDoc.source}
-            onChange={(e) => setNewDoc({ ...newDoc, source: e.target.value })}
-          />
-        </FormGroup>
-        <Button onClick={handleAddDocument} disabled={loadingAdd}>
-          {loadingAdd ? '处理中...' : '添加文档'}
-        </Button>
+        
+        <Tabs>
+          <Tab $active={activeTab === 'text'} onClick={() => setActiveTab('text')}>
+            ✍️ 文本输入
+          </Tab>
+          <Tab $active={activeTab === 'file'} onClick={() => setActiveTab('file')}>
+            📁 文件上传
+          </Tab>
+        </Tabs>
+
+        {activeTab === 'text' ? (
+          <>
+            <FormGroup>
+              <Label>文档标题</Label>
+              <Input
+                type="text"
+                placeholder="输入文档标题"
+                value={newDoc.title}
+                onChange={(e) => setNewDoc({ ...newDoc, title: e.target.value })}
+              />
+            </FormGroup>
+            <FormGroup>
+              <Label>文档内容</Label>
+              <Textarea
+                placeholder="输入文档内容"
+                value={newDoc.content}
+                onChange={(e) => setNewDoc({ ...newDoc, content: e.target.value })}
+              />
+            </FormGroup>
+            <FormGroup>
+              <Label>来源（可选）</Label>
+              <Input
+                type="text"
+                placeholder="输入文档来源 URL 或路径"
+                value={newDoc.source}
+                onChange={(e) => setNewDoc({ ...newDoc, source: e.target.value })}
+              />
+            </FormGroup>
+            <Button onClick={handleAddDocument} disabled={loadingAdd}>
+              {loadingAdd ? '处理中...' : '添加文档'}
+            </Button>
+          </>
+        ) : (
+          <>
+            <DropZone
+              ref={dropZoneRef}
+              $isDragging={isDragging}
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <DropZoneText>📁 拖拽文件到此或点击选择</DropZoneText>
+              <DropZoneSubtext>支持 PDF、Word、Excel、Markdown、JSON、CSV、TXT 等格式</DropZoneSubtext>
+            </DropZone>
+            <FileInput
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.md,.txt,.json"
+              onChange={(e) => handleFileSelect(e.target.files!)}
+            />
+
+            {selectedFiles.length > 0 && (
+              <>
+                <div style={{ marginTop: '20px' }}>
+                  <Label>已选择 {selectedFiles.length} 个文件</Label>
+                  <FileList>
+                    {selectedFiles.map((file, index) => (
+                      <FileItem key={index}>
+                        <FileName>
+                          <FileIcon>{getFileIcon(file.name)}</FileIcon>
+                          <FileNameText>
+                            <FileNameMain>{file.name}</FileNameMain>
+                            <FileSize>{formatFileSize(file.size)}</FileSize>
+                          </FileNameText>
+                        </FileName>
+                        <FileRemoveBtn onClick={() => handleRemoveFile(index)}>
+                          移除
+                        </FileRemoveBtn>
+                      </FileItem>
+                    ))}
+                  </FileList>
+                </div>
+
+                {uploadProgress > 0 && uploadProgress < 100 && (
+                  <div style={{ marginBottom: '15px' }}>
+                    <Label>上传进度: {uploadProgress}%</Label>
+                    <ProgressBar>
+                      <ProgressFill $progress={uploadProgress} />
+                    </ProgressBar>
+                  </div>
+                )}
+
+                <ButtonGroup>
+                  <Button onClick={handleUploadFiles} disabled={loadingUpload}>
+                    {loadingUpload ? '上传中...' : '上传文件'}
+                  </Button>
+                  <Button
+                    $variant="secondary"
+                    onClick={() => setSelectedFiles([])}
+                    disabled={loadingUpload}
+                  >
+                    清空列表
+                  </Button>
+                </ButtonGroup>
+              </>
+            )}
+
+            <SupportedFormats>
+              ✅ 支持的文件格式: PDF, Word (docx/doc), Excel (xlsx/xls), CSV, Markdown, JSON, 纯文本
+              <br />
+              📦 最大单个文件: 50 MB | 最多批量上传: 10 个文件
+            </SupportedFormats>
+          </>
+        )}
       </Section>
 
       {/* 查询知识库 */}
