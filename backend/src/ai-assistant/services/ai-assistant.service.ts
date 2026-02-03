@@ -342,23 +342,15 @@ ${contextsText}
         try {
           this.logger.log('[流式生成] 开始调用 LLM 流式生成...');
           
-          // 包装 onChunk 回调，检查中止状态
-          const wrappedOnChunk = (chunk: string) => {
-            // 检查请求是否已中止
-            if (requestId && this.isAborted(userId, requestId)) {
-              this.logger.log(`[流式生成] 检测到中止请求，停止发送数据块`);
-              return; // 停止发送数据
-            }
-            onChunk(chunk);
-          };
-
           const response = await this.llmIntegrationService.generateRAGAnswerStream(
             {
               query: message,
               contexts: ragResult?.contexts || [],
               ragPrompt,
             },
-            wrappedOnChunk,
+            onChunk,
+            // 中止检查函数：在 LLM 流中直接检查中止状态
+            requestId ? () => this.isAborted(userId, requestId) : undefined,
           );
           this.logger.log(`[流式生成] LLM 流式生成完成，答案长度: ${response.answer.length}`);
           return { answer: response.answer, sources };
@@ -378,23 +370,15 @@ ${contextsText}
         // 不使用知识库，直接调用LLM
         this.logger.log('[流式生成] 不使用知识库，直接调用 LLM...');
         try {
-          // 包装 onChunk 回调，检查中止状态
-          const wrappedOnChunk = (chunk: string) => {
-            // 检查请求是否已中止
-            if (requestId && this.isAborted(userId, requestId)) {
-              this.logger.log(`[流式生成] 检测到中止请求，停止发送数据块`);
-              return; // 停止发送数据
-            }
-            onChunk(chunk);
-          };
-
           const response = await this.llmIntegrationService.generateRAGAnswerStream(
             {
               query: message,
               contexts: [],
               ragPrompt: `${conversationHistory}${message}\n\n请直接回答上述问题。`,
             },
-            wrappedOnChunk,
+            onChunk,
+            // 中止检查函数：在 LLM 流中直接检查中止状态
+            requestId ? () => this.isAborted(userId, requestId) : undefined,
           );
           this.logger.log(`[流式生成] LLM 流式生成完成，答案长度: ${response.answer.length}`);
           return { answer: response.answer, sources };

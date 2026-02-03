@@ -297,11 +297,13 @@ export class LLMIntegrationService {
    * 流式生成 RAG 答案
    * @param ragContext RAG 上下文
    * @param onChunk 每次接收到数据块时的回调
+   * @param shouldAbort 中止检查函数
    * @returns Promise<LLMResponse>
    */
   async generateRAGAnswerStream(
     ragContext: RAGContext,
     onChunk: (chunk: string) => void,
+    shouldAbort?: () => boolean,
   ): Promise<LLMResponse> {
     try {
       if (!this.llm) {
@@ -318,6 +320,12 @@ export class LLMIntegrationService {
       this.logger.log('[LLM流式输出] 开始流式生成答案...');
 
       for await (const chunk of stream) {
+        // 检查是否需要中止
+        if (shouldAbort && shouldAbort()) {
+          this.logger.log('[LLM流式输出] 检测到中止信号，停止流式生成');
+          break;
+        }
+
         this.logger.log('[LLM流式输出] 收到数据块:', JSON.stringify(chunk));
         try {
           const content = this.extractChunkContent(chunk);
