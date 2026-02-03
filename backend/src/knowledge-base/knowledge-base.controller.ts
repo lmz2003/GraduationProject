@@ -22,6 +22,40 @@ import { DocumentUploadService } from './services/document-upload.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { QueryKnowledgeDto } from './dto/query-knowledge.dto';
 import * as path from 'path';
+import * as iconv from 'iconv-lite';
+
+const fixFileNameEncoding = (fileName: string): string => {
+  try {
+    const hasGarbledChars = /[\u00E4\u00E5\u00F6\u00FC\u00C4\u00C5\u00D6\u00DC]/.test(fileName);
+    
+    if (hasGarbledChars) {
+      try {
+        const decoded = iconv.decode(iconv.encode(fileName, 'latin1'), 'utf8');
+        if (decoded && decoded.length > 0) {
+          return decoded;
+        }
+      } catch (e) {
+        return fileName;
+      }
+    }
+
+    const hasChinese = /[\u4e00-\u9fa5]/.test(fileName);
+    if (!hasChinese && fileName.length > 0) {
+      try {
+        const decoded = iconv.decode(iconv.encode(fileName, 'latin1'), 'utf8');
+        if (decoded && /[\u4e00-\u9fa5]/.test(decoded)) {
+          return decoded;
+        }
+      } catch (e) {
+        return fileName;
+      }
+    }
+
+    return fileName;
+  } catch (error) {
+    return fileName;
+  }
+};
 
 const getMulterOptions = () => {
   return {
@@ -30,8 +64,9 @@ const getMulterOptions = () => {
       filename: (req: any, file: any, cb: any) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         const ext = path.extname(file.originalname);
-        const baseName = path.basename(file.originalname, ext);
-        cb(null, `${baseName}-${uniqueSuffix}${ext}`);
+        const originalBaseName = path.basename(file.originalname, ext);
+        const fixedBaseName = fixFileNameEncoding(originalBaseName);
+        cb(null, `${fixedBaseName}-${uniqueSuffix}${ext}`);
       },
     }),
     fileFilter: (req: any, file: any, cb: any) => {

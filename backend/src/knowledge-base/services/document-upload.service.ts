@@ -3,6 +3,40 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import { FileParserService, ParsedDocument } from './file-parser.service';
+import * as iconv from 'iconv-lite';
+
+const fixFileNameEncoding = (fileName: string): string => {
+  try {
+    const hasGarbledChars = /[\u00E4\u00E5\u00F6\u00FC\u00C4\u00C5\u00D6\u00DC]/.test(fileName);
+    
+    if (hasGarbledChars) {
+      try {
+        const decoded = iconv.decode(iconv.encode(fileName, 'latin1'), 'utf8');
+        if (decoded && decoded.length > 0) {
+          return decoded;
+        }
+      } catch (e) {
+        return fileName;
+      }
+    }
+
+    const hasChinese = /[\u4e00-\u9fa5]/.test(fileName);
+    if (!hasChinese && fileName.length > 0) {
+      try {
+        const decoded = iconv.decode(iconv.encode(fileName, 'latin1'), 'utf8');
+        if (decoded && /[\u4e00-\u9fa5]/.test(decoded)) {
+          return decoded;
+        }
+      } catch (e) {
+        return fileName;
+      }
+    }
+
+    return fileName;
+  } catch (error) {
+    return fileName;
+  }
+};
 
 export interface UploadedFile {
   fieldname: string;
@@ -54,6 +88,8 @@ export class DocumentUploadService {
         throw new BadRequestException('未收到文件');
       }
 
+      const fixedOriginalName = fixFileNameEncoding(file.originalname);
+
       // 验证文件大小
       if (file.size > this.maxFileSize) {
         throw new BadRequestException(
@@ -63,7 +99,7 @@ export class DocumentUploadService {
 
       // 验证文件类型
       const supportedFormats = this.fileParserService.getSupportedFormats();
-      const ext = path.extname(file.originalname).toLowerCase();
+      const ext = path.extname(fixedOriginalName).toLowerCase();
 
       if (!supportedFormats.includes(ext)) {
         throw new BadRequestException(
@@ -71,7 +107,7 @@ export class DocumentUploadService {
         );
       }
 
-      this.logger.log(`开始上传文件: ${file.originalname} (大小: ${file.size} 字节)`);
+      this.logger.log(`开始上传文件: ${fixedOriginalName} (大小: ${file.size} 字节)`);
 
       let filePath: string;
       let uniqueFileName: string;
@@ -82,7 +118,7 @@ export class DocumentUploadService {
         uniqueFileName = file.filename || path.basename(filePath);
       } else if (file.buffer) {
         // 内存模式，需要手动保存
-        uniqueFileName = this.generateUniqueFileName(file.originalname);
+        uniqueFileName = this.generateUniqueFileName(fixedOriginalName);
         filePath = path.join(this.uploadDir, uniqueFileName);
         fs.writeFileSync(filePath, file.buffer);
         this.logger.log(`文件已保存: ${filePath}`);
@@ -91,16 +127,16 @@ export class DocumentUploadService {
       }
 
       // 解析文件内容
-      this.logger.log(`开始解析文件: ${file.originalname}`);
-      const parsedDocument = await this.fileParserService.parseFile(filePath, file.originalname);
+      this.logger.log(`开始解析文件: ${fixedOriginalName}`);
+      const parsedDocument = await this.fileParserService.parseFile(filePath, fixedOriginalName);
 
-      this.logger.log(`文件解析完成: ${file.originalname}`);
+      this.logger.log(`文件解析完成: ${fixedOriginalName}`);
 
       const fileUrl = `/uploads/documents/${uniqueFileName}`;
 
       return {
         fileName: uniqueFileName,
-        originalFileName: file.originalname,
+        originalFileName: fixedOriginalName,
         fileSize: file.size,
         fileMimeType: file.mimetype,
         fileUrl: fileUrl,
@@ -138,11 +174,12 @@ export class DocumentUploadService {
         results.push(result);
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+        const fixedFileName = fixFileNameEncoding(file.originalname);
         errors.push({
-          fileName: file.originalname,
+          fileName: fixedFileName,
           error: errorMsg,
         });
-        this.logger.error(`文件 ${file.originalname} 上传失败: ${errorMsg}`);
+        this.logger.error(`文件 ${fixedFileName} 上传失败: ${errorMsg}`);
       }
     }
 

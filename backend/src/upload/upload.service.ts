@@ -1,6 +1,40 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
+import * as iconv from 'iconv-lite';
+
+const fixFileNameEncoding = (fileName: string): string => {
+  try {
+    const hasGarbledChars = /[\u00E4\u00E5\u00F6\u00FC\u00C4\u00C5\u00D6\u00DC]/.test(fileName);
+    
+    if (hasGarbledChars) {
+      try {
+        const decoded = iconv.decode(iconv.encode(fileName, 'latin1'), 'utf8');
+        if (decoded && decoded.length > 0) {
+          return decoded;
+        }
+      } catch (e) {
+        return fileName;
+      }
+    }
+
+    const hasChinese = /[\u4e00-\u9fa5]/.test(fileName);
+    if (!hasChinese && fileName.length > 0) {
+      try {
+        const decoded = iconv.decode(iconv.encode(fileName, 'latin1'), 'utf8');
+        if (decoded && /[\u4e00-\u9fa5]/.test(decoded)) {
+          return decoded;
+        }
+      } catch (e) {
+        return fileName;
+      }
+    }
+
+    return fileName;
+  } catch (error) {
+    return fileName;
+  }
+};
 
 interface UploadedFile {
   fieldname: string;
@@ -49,7 +83,8 @@ export class UploadService {
       } else if (file.buffer) {
         const timestamp = Date.now();
         const random = Math.random().toString(36).substring(2, 15);
-        const ext = path.extname(file.originalname);
+        const fixedOriginalName = fixFileNameEncoding(file.originalname);
+        const ext = path.extname(fixedOriginalName);
         filename = `${timestamp}-${random}${ext}`;
         const filepath = path.join(this.uploadDir, filename);
         fs.writeFileSync(filepath, file.buffer);
