@@ -31,6 +31,7 @@ const AIAssistant: React.FC = () => {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
   const [useRAG, setUseRAG] = useState(true); // 是否使用知识库
+  const [requestId, setRequestId] = useState<string | null>(null); // 后端请求 ID
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -212,11 +213,13 @@ const AIAssistant: React.FC = () => {
 
       // 逐行读取SSE数据
       let buffer = '';
+      
       while (true) {
         const { done, value } = await reader.read();
 
         if (done) {
           setStreamingMessageId(null);
+          setRequestId(null);
           loadSessions();
           break;
         }
@@ -241,7 +244,11 @@ const AIAssistant: React.FC = () => {
               const jsonStr = line.substring(6);
               const data = JSON.parse(jsonStr);
 
-              if (data.type === 'chunk' && data.data) {
+              if (data.type === 'request-id' && data.data?.requestId) {
+                // 保存后端返回的请求 ID
+                setRequestId(data.data.requestId);
+                console.log('📝 收到请求 ID:', data.data.requestId);
+              } else if (data.type === 'chunk' && data.data) {
                 currentContent += data.data;
                 
                 // 直接更新现有消息的内容
@@ -295,13 +302,37 @@ const AIAssistant: React.FC = () => {
   }, []);
 
   // 终止当前对话
-  const handleStopGeneration = useCallback(() => {
+  const handleStopGeneration = useCallback(async () => {
+    // 1. 中止客户端 HTTP 请求
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
     }
+
+    // 2. 通知后端中止 LLM 请求
+    if (requestId && token) {
+      try {
+        const response = await fetch(`${API_BASE}/ai-assistant/message/abort`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
+          body: JSON.stringify({ requestId }),
+        });
+
+        const data = await response.json();
+        if (data.success) {
+          console.log('✅ 后端请求已中止');
+        }
+      } catch (error) {
+        console.error('中止后端请求失败:', error);
+      }
+    }
+
     setIsTyping(false);
     setStreamingMessageId(null);
-  }, []);
+    setRequestId(null);
+  }, [requestId, token]);
 
   // 重新发送最后一条用户消息
   const handleResendLastMessage = useCallback(() => {

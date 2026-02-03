@@ -9,6 +9,9 @@ import { KnowledgeBaseService } from '../../knowledge-base/services/knowledge-ba
 @Injectable()
 export class AIAssistantService {
   private readonly logger = new Logger(AIAssistantService.name);
+  
+  // 存储用于中止流式生成的 AbortSignal，key 为 `${userId}:${sessionId}`
+  private abortSignals: Map<string, AbortController> = new Map();
 
   constructor(
     @InjectRepository(AIAssistantSession)
@@ -157,6 +160,50 @@ export class AIAssistantService {
     }
   }
 
+  /**
+   * 注册一个请求的中止控制器
+   */
+  registerAbortController(userId: string, requestId: string): AbortController {
+    const key = `${userId}:${requestId}`;
+    const controller = new AbortController();
+    this.abortSignals.set(key, controller);
+    this.logger.log(`[中止管理] 注册请求: ${key}`);
+    return controller;
+  }
+
+  /**
+   * 中止一个请求
+   */
+  abortRequest(userId: string, requestId: string): boolean {
+    const key = `${userId}:${requestId}`;
+    const controller = this.abortSignals.get(key);
+    if (controller) {
+      this.logger.log(`[中止管理] 中止请求: ${key}`);
+      controller.abort();
+      return true;
+    }
+    this.logger.warn(`[中止管理] 未找到请求: ${key}`);
+    return false;
+  }
+
+  /**
+   * 清理一个请求的资源
+   */
+  cleanupAbortController(userId: string, requestId: string): void {
+    const key = `${userId}:${requestId}`;
+    this.abortSignals.delete(key);
+    this.logger.debug(`[中止管理] 清理请求: ${key}`);
+  }
+
+  /**
+   * 检查一个请求是否已中止
+   */
+  isAborted(userId: string, requestId: string): boolean {
+    const key = `${userId}:${requestId}`;
+    const controller = this.abortSignals.get(key);
+    return controller?.signal.aborted ?? false;
+  }
+
   // 生成会话标题
   private async generateSessionTitle(message: string): Promise<string> {
     try {
@@ -200,6 +247,7 @@ export class AIAssistantService {
     threshold: number = 0.5,
     onChunk: (chunk: string) => void,
     sessionId?: string,
+    requestId?: string,
   ): Promise<{
     answer: string;
     sources: Array<{ title: string; score: number }>;
@@ -293,17 +341,34 @@ ${contextsText}
         // 调用 LLM 进行流式生成
         try {
           this.logger.log('[流式生成] 开始调用 LLM 流式生成...');
+          
+          // 包装 onChunk 回调，检查中止状态
+          const wrappedOnChunk = (chunk: string) => {
+            // 检查请求是否已中止
+            if (requestId && this.isAborted(userId, requestId)) {
+              this.logger.log(`[流式生成] 检测到中止请求，停止发送数据块`);
+              return; // 停止发送数据
+            }
+            onChunk(chunk);
+          };
+
           const response = await this.llmIntegrationService.generateRAGAnswerStream(
             {
               query: message,
               contexts: ragResult?.contexts || [],
               ragPrompt,
             },
-            onChunk,
+            wrappedOnChunk,
           );
           this.logger.log(`[流式生成] LLM 流式生成完成，答案长度: ${response.answer.length}`);
           return { answer: response.answer, sources };
         } catch (error) {
+          // 检查是否是由中止导致的错误
+          if (requestId && this.isAborted(userId, requestId)) {
+            this.logger.log('[流式生成] 请求已中止，不返回错误消息');
+            return { answer: '', sources };
+          }
+          
           this.logger.warn('LLM 流式调用失败，错误信息:', error);
           const errorMessage = `我收到了你的问题："${message}"，但暂时无法给出回答。`;
           onChunk(errorMessage);
@@ -313,17 +378,33 @@ ${contextsText}
         // 不使用知识库，直接调用LLM
         this.logger.log('[流式生成] 不使用知识库，直接调用 LLM...');
         try {
+          // 包装 onChunk 回调，检查中止状态
+          const wrappedOnChunk = (chunk: string) => {
+            // 检查请求是否已中止
+            if (requestId && this.isAborted(userId, requestId)) {
+              this.logger.log(`[流式生成] 检测到中止请求，停止发送数据块`);
+              return; // 停止发送数据
+            }
+            onChunk(chunk);
+          };
+
           const response = await this.llmIntegrationService.generateRAGAnswerStream(
             {
               query: message,
               contexts: [],
               ragPrompt: `${conversationHistory}${message}\n\n请直接回答上述问题。`,
             },
-            onChunk,
+            wrappedOnChunk,
           );
           this.logger.log(`[流式生成] LLM 流式生成完成，答案长度: ${response.answer.length}`);
           return { answer: response.answer, sources };
         } catch (error) {
+          // 检查是否是由中止导致的错误
+          if (requestId && this.isAborted(userId, requestId)) {
+            this.logger.log('[流式生成] 请求已中止，不返回错误消息');
+            return { answer: '', sources };
+          }
+          
           this.logger.warn('LLM 流式调用失败，错误信息:', error);
           const errorMessage = `我收到了你的问题："${message}"，但暂时无法给出回答。`;
           onChunk(errorMessage);
@@ -347,6 +428,7 @@ ${contextsText}
     topK: number = 5,
     threshold: number = 0.5,
     onChunk?: (chunk: string) => void,
+    requestId?: string,
   ): Promise<{
     answer: string;
     sources: Array<{ title: string; score: number }>;
@@ -386,12 +468,18 @@ ${contextsText}
           }
         },
         currentSessionId, // 传递会话 ID，以便获取历史对话
+        requestId, // 传递请求 ID，用于中止
       );
 
-      // 存储 AI 回复
-      this.logger.log('[流式处理] 存储 AI 回复...');
-      await this.addMessage(currentSessionId, userId, answer, 'assistant', sources);
-      this.logger.log('[流式处理] AI 回复存储成功');
+      // 只有当有实际内容时才存储 AI 回复
+      if (answer && answer.trim().length > 0) {
+        // 存储 AI 回复
+        this.logger.log('[流式处理] 存储 AI 回复...');
+        await this.addMessage(currentSessionId, userId, answer, 'assistant', sources);
+        this.logger.log('[流式处理] AI 回复存储成功');
+      } else if (requestId && this.isAborted(userId, requestId)) {
+        this.logger.log('[流式处理] 请求已被中止，跳过存储空消息');
+      }
 
       return {
         answer,

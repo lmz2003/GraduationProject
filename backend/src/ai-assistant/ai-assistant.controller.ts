@@ -127,11 +127,16 @@ export class AIAssistantController {
   @UseGuards(AuthGuard('jwt'))
   @Post('message/stream')
   async sendMessageStream(@Request() req: any, @Body() body: SendMessageBody, @Res() res: Response) {
+    let requestId: string | null = null;
+    
     try {
       const userId = req.user.id;
       const { message, sessionId, useRAG = true, topK = 5, threshold = 0.5 } = body;
+      
+      // 生成唯一的请求 ID
+      requestId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-      this.logger.log(`[流式消息] 收到请求 - 用户: ${userId}, 消息: "${message.substring(0, 50)}...", 会话: ${sessionId || '新会话'}, RAG: ${useRAG}`);
+      this.logger.log(`[流式消息] 收到请求 - 用户: ${userId}, 消息: "${message.substring(0, 50)}...", 会话: ${sessionId || '新会话'}, RAG: ${useRAG}, 请求ID: ${requestId}`);
 
       if (!message || message.trim().length === 0) {
         res.status(400).json({
@@ -141,11 +146,20 @@ export class AIAssistantController {
         return;
       }
 
+      // 注册中止控制器
+      this.aiAssistantService.registerAbortController(userId, requestId);
+
       // 设置 SSE 响应头
       res.setHeader('Content-Type', 'text/event-stream');
       res.setHeader('Cache-Control', 'no-cache');
       res.setHeader('Connection', 'keep-alive');
       res.setHeader('Access-Control-Allow-Origin', '*');
+      
+      // 发送请求 ID 给前端，用于后续中止
+      res.write(`data: ${JSON.stringify({
+        type: 'request-id',
+        data: { requestId },
+      })}\n\n`);
 
       this.logger.log('[流式消息] SSE 响应头设置完成，开始流式处理...');
 
@@ -180,6 +194,7 @@ export class AIAssistantController {
               }
             }
           },
+          requestId,
         );
 
         this.logger.log(`[流式消息] 流式处理完成，共发送 ${chunkCount} 个数据块，会话: ${result.sessionId}`);
@@ -201,6 +216,11 @@ export class AIAssistantController {
           message: error.message || '流式处理失败',
         })}\n\n`);
         res.end();
+      } finally {
+        // 清理中止控制器
+        if (requestId) {
+          this.aiAssistantService.cleanupAbortController(userId, requestId);
+        }
       }
     } catch (error: any) {
       this.logger.error('发送流式消息失败:', error);
@@ -208,6 +228,38 @@ export class AIAssistantController {
         success: false,
         message: error.message || '发送流式消息失败',
       });
+    }
+  }
+
+  // 中止流式消息
+  @UseGuards(AuthGuard('jwt'))
+  @Post('message/abort')
+  async abortMessage(@Request() req: any, @Body() body: any) {
+    try {
+      const userId = req.user.id;
+      const { requestId } = body;
+
+      if (!requestId) {
+        return {
+          success: false,
+          message: '缺少 requestId 参数',
+        };
+      }
+
+      this.logger.log(`[中止消息] 收到中止请求 - 用户: ${userId}, 请求ID: ${requestId}`);
+
+      const success = this.aiAssistantService.abortRequest(userId, requestId);
+
+      return {
+        success,
+        message: success ? '消息已中止' : '未找到对应的请求',
+      };
+    } catch (error: any) {
+      this.logger.error('中止消息失败:', error);
+      return {
+        success: false,
+        message: error.message || '中止消息失败',
+      };
     }
   }
 }
