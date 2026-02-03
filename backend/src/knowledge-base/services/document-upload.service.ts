@@ -10,7 +10,9 @@ export interface UploadedFile {
   encoding: string;
   mimetype: string;
   size: number;
-  buffer: Buffer;
+  filename?: string;
+  path?: string;
+  buffer?: Buffer;
 }
 
 export interface UploadResult {
@@ -71,13 +73,22 @@ export class DocumentUploadService {
 
       this.logger.log(`开始上传文件: ${file.originalname} (大小: ${file.size} 字节)`);
 
-      // 生成唯一的文件名
-      const uniqueFileName = this.generateUniqueFileName(file.originalname);
-      const filePath = path.join(this.uploadDir, uniqueFileName);
+      let filePath: string;
+      let uniqueFileName: string;
 
-      // 保存文件到磁盘
-      fs.writeFileSync(filePath, file.buffer);
-      this.logger.log(`文件已保存: ${filePath}`);
+      if (file.path) {
+        // 文件已经由 multer diskStorage 保存到磁盘
+        filePath = file.path;
+        uniqueFileName = file.filename || path.basename(filePath);
+      } else if (file.buffer) {
+        // 内存模式，需要手动保存
+        uniqueFileName = this.generateUniqueFileName(file.originalname);
+        filePath = path.join(this.uploadDir, uniqueFileName);
+        fs.writeFileSync(filePath, file.buffer);
+        this.logger.log(`文件已保存: ${filePath}`);
+      } else {
+        throw new BadRequestException('无效的文件对象');
+      }
 
       // 解析文件内容
       this.logger.log(`开始解析文件: ${file.originalname}`);

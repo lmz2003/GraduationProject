@@ -15,11 +15,39 @@ import {
   UploadedFiles,
 } from '@nestjs/common';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import { diskStorage } from 'multer';
 import { AuthGuard } from '@nestjs/passport';
 import { KnowledgeBaseService } from './services/knowledge-base.service';
 import { DocumentUploadService } from './services/document-upload.service';
 import { CreateDocumentDto } from './dto/create-document.dto';
 import { QueryKnowledgeDto } from './dto/query-knowledge.dto';
+import * as path from 'path';
+
+const getMulterOptions = () => {
+  return {
+    storage: diskStorage({
+      destination: path.join(process.cwd(), 'uploads', 'documents'),
+      filename: (req: any, file: any, cb: any) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        const ext = path.extname(file.originalname);
+        const baseName = path.basename(file.originalname, ext);
+        cb(null, `${baseName}-${uniqueSuffix}${ext}`);
+      },
+    }),
+    fileFilter: (req: any, file: any, cb: any) => {
+      const supportedFormats = ['.pdf', '.docx', '.xlsx', '.xls', '.csv', '.md', '.json', '.txt'];
+      const ext = path.extname(file.originalname).toLowerCase();
+      if (supportedFormats.includes(ext)) {
+        cb(null, true);
+      } else {
+        cb(new Error(`不支持的文件类型: ${ext}`), false);
+      }
+    },
+    limits: {
+      fileSize: 50 * 1024 * 1024,
+    },
+  };
+};
 
 interface AuthRequest extends Request {
   user?: {
@@ -44,7 +72,7 @@ export class KnowledgeBaseController {
    * 上传单个文档文件
    */
   @Post('upload-document')
-  @UseInterceptors(FileInterceptor('file'))
+  @UseInterceptors(FileInterceptor('file', getMulterOptions()))
   async uploadDocument(@UploadedFile() file: any, @Request() req: AuthRequest) {
     try {
       const userId = req.user?.id;
@@ -68,10 +96,8 @@ export class KnowledgeBaseController {
         );
       }
 
-      // 上传并解析文件
       const uploadResult = await this.documentUploadService.uploadDocument(file);
 
-      // 创建文档记录
       const createDocumentDto: CreateDocumentDto = {
         title: uploadResult.parsedDocument.title,
         content: uploadResult.parsedDocument.content,
@@ -107,7 +133,7 @@ export class KnowledgeBaseController {
    * 批量上传文档文件
    */
   @Post('upload-documents')
-  @UseInterceptors(FilesInterceptor('files', 10))
+  @UseInterceptors(FilesInterceptor('files', 10, getMulterOptions()))
   async uploadDocuments(@UploadedFiles() files: any[], @Request() req: AuthRequest) {
     try {
       const userId = req.user?.id;
@@ -131,10 +157,8 @@ export class KnowledgeBaseController {
         );
       }
 
-      // 上传并解析文件
       const uploadResults = await this.documentUploadService.uploadDocuments(files);
 
-      // 创建文档记录
       const documents = [];
       for (const uploadResult of uploadResults) {
         const createDocumentDto: CreateDocumentDto = {

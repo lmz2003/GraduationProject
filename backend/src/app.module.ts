@@ -27,7 +27,10 @@ import { UploadModule } from './upload/upload.module';
       password: process.env.DB_PASSWORD || '201966',
       database: process.env.DB_NAME || 'notes',
       autoLoadEntities: true,
-      synchronize: true, // Only use in development
+      synchronize: true,
+      extra: {
+        clientEncoding: 'utf8',
+      },
     }),
     AuthModule,
     NotesModule,
