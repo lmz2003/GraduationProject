@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import Prism from 'prismjs';
@@ -35,12 +35,17 @@ interface MarkdownRendererProps {
  * - 表格（GFM）、引用、分割线
  * - HTML 内容（带XSS安全防护）
  */
+// 全局Marked配置（只执行一次）
+let markedConfigured = false;
+
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreaming = false }: MarkdownRendererProps) => {
   const [copiedCodeIndex, setCopiedCodeIndex] = useState<number | null>(null);
-  const codeBlockIndexRef = React.useRef<number>(0);
+  const codeBlocksRef = React.useRef<Array<{ code: string; language: string }>>([]);
 
-  // 配置 marked 的渲染选项
-  useEffect(() => {
+  // 一次性配置 marked 的渲染选项
+  if (!markedConfigured) {
+    markedConfigured = true;
+
     // 使用 GFM 扩展并启用表格、任务列表等特性
     marked.setOptions({
       breaks: true,
@@ -50,13 +55,10 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreamin
     // 自定义代码块渲染器 - 用于保存原始代码和语言信息
     const renderer = new marked.Renderer();
 
-    // 存储代码块信息用于后续处理
-    const codeBlocks: Array<{ code: string; language: string }> = [];
-
     renderer.code = ({ text, lang }) => {
       const language = lang || 'text';
-      codeBlocks.push({ code: text, language });
-      const blockIndex = codeBlocks.length - 1;
+      codeBlocksRef.current.push({ code: text, language });
+      const blockIndex = codeBlocksRef.current.length - 1;
       
       // 返回特殊的占位符，便于后续替换为React组件
       return `<div class="markdown-code-block-marker" data-index="${blockIndex}" data-lang="${language}"></div>`;
@@ -125,10 +127,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreamin
     };
 
     marked.setOptions({ renderer });
-
-    // 将代码块信息保存到window对象，便于React组件访问
-    (window as any).__markdownCodeBlocks = codeBlocks;
-  }, []);
+  }
 
   const handleCopyCode = (code: string, index: number) => {
     copy(code);
@@ -137,8 +136,8 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreamin
   };
 
   const htmlContent = useMemo(() => {
-    // 重置代码块计数器
-    codeBlockIndexRef.current = 0;
+    // 清空代码块数组，为新的content准备
+    codeBlocksRef.current = [];
 
     let processed = content;
     
@@ -178,13 +177,14 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreamin
     return cleanHtml;
   }, [content, isStreaming]);
 
-   // 处理HTML中的代码块标记，替换为完整的代码块UI
-  const processedContent = (() => {
+  // 处理HTML中的代码块标记，替换为完整的代码块UI
+  const processedContent = useMemo(() => {
     const container = document.createElement('div');
     container.innerHTML = htmlContent;
     
-    const codeBlocks = (window as any).__markdownCodeBlocks || [];
+    const codeBlocks = codeBlocksRef.current;
     const markers = container.querySelectorAll('.markdown-code-block-marker');
+    let blockIndex = 0;
 
     markers.forEach((marker) => {
       const indexStr = marker.getAttribute('data-index');
@@ -193,8 +193,8 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreamin
       const codeBlock = codeBlocks[index];
 
       if (codeBlock) {
-        const currentIndex = codeBlockIndexRef.current++;
-        const isCopied = copiedCodeIndex === currentIndex;
+        const currentBlockIndex = blockIndex++;
+        const isCopied = copiedCodeIndex === currentBlockIndex;
 
         // 创建代码块HTML
         const wrapper = document.createElement('div');
@@ -214,7 +214,9 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreamin
         copyBtn.className = `markdown-copy-btn ${isCopied ? 'copied' : ''}`;
         copyBtn.textContent = isCopied ? '✓ 已复制' : '📋 复制';
         copyBtn.title = '复制代码';
-        copyBtn.onclick = () => handleCopyCode(codeBlock.code, currentIndex);
+        // 存储索引到data属性，避免闭包问题
+        copyBtn.setAttribute('data-code-index', currentBlockIndex.toString());
+        copyBtn.setAttribute('data-code', codeBlock.code);
         header.appendChild(copyBtn);
         
         wrapper.appendChild(header);
@@ -243,12 +245,24 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreamin
     });
 
     return container.innerHTML;
-  })();
+  }, [htmlContent, copiedCodeIndex]);
+
+  const handleCopyClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const target = e.target as HTMLElement;
+    if (target.classList.contains('markdown-copy-btn')) {
+      const codeIndex = target.getAttribute('data-code-index');
+      const codeContent = target.getAttribute('data-code');
+      if (codeIndex !== null && codeContent !== null) {
+        handleCopyCode(codeContent, parseInt(codeIndex, 10));
+      }
+    }
+  };
 
   return (
     <div
       className={`markdown-renderer ${isStreaming ? 'streaming' : ''}`}
       dangerouslySetInnerHTML={{ __html: processedContent }}
+      onClick={handleCopyClick}
     />
   );
 };
