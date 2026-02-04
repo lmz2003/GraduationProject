@@ -27,6 +27,20 @@ interface MarkdownRendererProps {
 }
 
 /**
+ * 流式加载指示器组件
+ * 显示三个省略号的渐隐渐现动画
+ */
+const StreamingIndicator: React.FC = () => {
+  return (
+    <span className="streaming-indicator">
+      <span className="dot">.</span>
+      <span className="dot">.</span>
+      <span className="dot">.</span>
+    </span>
+  );
+};
+
+/**
  * Markdown 实时渲染组件 (使用 Marked.js)
  * 支持：
  * - 标题、段落、列表（有序/无序/任务列表）
@@ -201,11 +215,6 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreamin
     
     let markdown = processed.trim();
     
-    // 添加流式加载省略号
-    if (isStreaming) {
-      markdown += '\n\n▌';
-    }
-    
     // 使用 marked 解析 Markdown
     const rawHtml = marked(markdown) as string;
 
@@ -313,9 +322,11 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreamin
   return (
     <div
       className={`markdown-renderer ${isStreaming ? 'streaming' : ''}`}
-      dangerouslySetInnerHTML={{ __html: processedContent }}
       onClick={handleCopyClick}
-    />
+    >
+      <div dangerouslySetInnerHTML={{ __html: processedContent }} />
+      {isStreaming && <StreamingIndicator />}
+    </div>
   );
 };
 
