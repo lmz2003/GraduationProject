@@ -113,7 +113,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreamin
     };
 
     // 自定义表格行渲染
-    renderer.tablerow = ({ text }) => {
+    renderer.tablerow = ({ text }: any) => {
       const textStr = typeof text === 'string' ? text : String(text || '');
       return `<tr class="markdown-tr">${textStr}</tr>`;
     };
@@ -123,23 +123,25 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreamin
       const textStr = typeof text === 'string' ? text : String(text || '');
       const tag = flags?.header ? 'th' : 'td';
       const className = flags?.header ? 'markdown-th' : 'markdown-td';
-      return `<${tag} class="${className}" style="text-align: ${align || 'left'}">${textStr}</${tag}>`;
+      const alignStr = typeof align === 'string' ? align : 'left';
+      return `<${tag} class="${className}" style="text-align: ${alignStr}">${textStr}</${tag}>`;
     };
 
     // 自定义标题渲染 - 添加对应的CSS类
     renderer.heading = ({ text, depth }: any) => {
       const textStr = typeof text === 'string' ? text : String(text || '');
-      return `<h${depth} class="markdown-h${depth}">${textStr}</h${depth}>`;
+      const depthNum = typeof depth === 'number' ? depth : 1;
+      return `<h${depthNum} class="markdown-h${depthNum}">${textStr}</h${depthNum}>`;
     };
 
     // 自定义段落渲染
-    renderer.paragraph = ({ text }) => {
+    renderer.paragraph = ({ text }: any) => {
       const textStr = typeof text === 'string' ? text : String(text || '');
       return `<p class="markdown-paragraph">${textStr}</p>`;
     };
 
     // 自定义列表项渲染 - 支持任务列表
-    renderer.listitem = ({ text, task, checked }) => {
+    renderer.listitem = ({ text, task, checked, depth }: any) => {
       const textStr = typeof text === 'string' ? text : String(text || '');
       if (task) {
         const checkboxHTML = `<input type="checkbox" ${checked ? 'checked' : ''} disabled />`;
@@ -149,15 +151,15 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreamin
     };
 
     // 自定义无序列表
-    renderer.list = ({ items, ordered }) => {
-      const itemsStr = typeof items === 'string' ? items : String(items || '');
+    renderer.list = ({ items, ordered, depth }: any) => {
+      const itemsStr = Array.isArray(items) ? items.join('') : String(items || '');
       const tag = ordered ? 'ol' : 'ul';
       const className = ordered ? 'markdown-ol' : 'markdown-ul';
       return `<${tag} class="${className}">${itemsStr}</${tag}>`;
     };
 
     // 自定义引用渲染
-    renderer.blockquote = ({ text }) => {
+    renderer.blockquote = ({ text }: any) => {
       const textStr = typeof text === 'string' ? text : String(text || '');
       return `<blockquote class="markdown-blockquote">${textStr}</blockquote>`;
     };
@@ -168,25 +170,25 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreamin
     };
 
     // 自定义强调（粗体）渲染
-    renderer.strong = ({ text }) => {
+    renderer.strong = ({ text }: any) => {
       const textStr = typeof text === 'string' ? text : String(text || '');
       return `<strong>${textStr}</strong>`;
     };
 
     // 自定义斜体渲染
-    renderer.em = ({ text }) => {
+    renderer.em = ({ text }: any) => {
       const textStr = typeof text === 'string' ? text : String(text || '');
       return `<em>${textStr}</em>`;
     };
 
     // 自定义删除线渲染
-    renderer.del = ({ text }) => {
+    renderer.del = ({ text }: any) => {
       const textStr = typeof text === 'string' ? text : String(text || '');
       return `<del>${textStr}</del>`;
     };
 
     // 自定义文本渲染
-    renderer.text = ({ text }) => {
+    renderer.text = ({ text }: any) => {
       const textStr = typeof text === 'string' ? text : String(text || '');
       return textStr;
     };
@@ -204,14 +206,23 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreamin
     // 清空代码块数组，为新的content准备
     codeBlocksRef.current = [];
 
+    // 预处理内容：确保 content 是字符串，处理对象情况
     let processed = content;
+    if (typeof processed !== 'string') {
+      // 如果 content 是对象或数组，尝试转换为字符串
+      try {
+        processed = JSON.stringify(processed, null, 2);
+      } catch (e) {
+        processed = String(processed);
+      }
+    }
     
     // 基础清理：移除多余的空行但保留段落间距
     processed = processed.replace(/\n{4,}/g, '\n\n');
     
     // 确保代码块前后有空行
-    processed = processed.replace(/([^\n])\n(```)/g, '$1\n\n$2');
-    processed = processed.replace(/(```)\n([^\n])/g, '$1\n\n$2');
+    processed = processed.replace(/([^\n])\n```/g, '$1\n\n```');
+    processed = processed.replace(/```\n([^\n])/g, '```\n\n$1');
     
     let markdown = processed.trim();
     

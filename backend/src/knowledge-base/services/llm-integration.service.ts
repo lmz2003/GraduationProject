@@ -369,27 +369,66 @@ export class LLMIntegrationService {
   }
 
   private extractChunkContent(chunk: unknown): string | null {
-    if (!chunk || typeof chunk !== 'object') {
+    if (!chunk) {
       return null;
     }
     
-    const chunkObj = chunk as Record<string, unknown>;
+    this.logger.debug('[extractChunkContent] 收到 chunk 类型:', typeof chunk, '内容:', JSON.stringify(chunk).substring(0, 200));
     
-    if ('kwargs' in chunkObj && chunkObj.kwargs && typeof chunkObj.kwargs === 'object') {
-      const kwargs = chunkObj.kwargs as Record<string, unknown>;
-      if ('response_metadata' in kwargs && kwargs.response_metadata && typeof kwargs.response_metadata === 'object') {
-        if('usage' in kwargs.response_metadata)
-         delete kwargs.response_metadata.usage;
+    try {
+      const chunkObj = chunk as Record<string, unknown>;
+      
+      // 尝试从 content 属性提取
+      if ('content' in chunkObj) {
+        const content = chunkObj.content;
+        if (typeof content === 'string') {
+          return content;
+        }
+        if (Array.isArray(content)) {
+          // 如果 content 是数组，提取所有文本内容
+          return content
+            .map((item: unknown) => {
+              if (typeof item === 'string') {
+                return item;
+              }
+              if (item && typeof item === 'object') {
+                const itemObj = item as Record<string, unknown>;
+                if ('text' in itemObj && typeof itemObj.text === 'string') {
+                  return itemObj.text;
+                }
+                if ('type' in itemObj && itemObj.type === 'text' && 'text' in itemObj) {
+                  return String(itemObj.text || '');
+                }
+              }
+              return '';
+            })
+            .join('');
+        }
       }
-      if ('content' in kwargs && typeof kwargs.content === 'string') {
-        return kwargs.content;
+      
+      // 尝试从 kwargs 中提取
+      if ('kwargs' in chunkObj && chunkObj.kwargs && typeof chunkObj.kwargs === 'object') {
+        const kwargs = chunkObj.kwargs as Record<string, unknown>;
+        if ('response_metadata' in kwargs && kwargs.response_metadata && typeof kwargs.response_metadata === 'object') {
+          const metadata = kwargs.response_metadata as Record<string, unknown>;
+          if('usage' in metadata)
+             delete metadata.usage;
+        }
+        if ('content' in kwargs && typeof kwargs.content === 'string') {
+          return kwargs.content;
+        }
       }
+      
+      // 尝试直接转换为字符串（作为最后的备选方案）
+      const stringContent = String(chunk);
+      if (stringContent !== '[object Object]' && stringContent !== '[object]') {
+        return stringContent;
+      }
+      
+      return null;
+    } catch (error) {
+      this.logger.warn('[extractChunkContent] 提取内容失败:', error);
+      return null;
     }
-    
-    if ('content' in chunkObj && typeof chunkObj.content === 'string') {
-      return chunkObj.content;
-    }
-    
-    return null;
   }
 }
