@@ -43,6 +43,7 @@ const NoteDetailPage: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [needsSync, setNeedsSync] = useState(false);
   const [showSyncButton, setShowSyncButton] = useState(false);
+  const [isCompactLayout, setIsCompactLayout] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
 
   const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
@@ -272,7 +273,7 @@ const NoteDetailPage: React.FC = () => {
 
       const newMainWidthPercent = (mouseXRelative / containerWidth) * 100;
 
-      if (newMainWidthPercent >= 40 && newMainWidthPercent <= 75) {
+      if (newMainWidthPercent >= 35 && newMainWidthPercent <= 80) {
         setMainWidthPercent(newMainWidthPercent);
       }
     };
@@ -293,7 +294,7 @@ const NoteDetailPage: React.FC = () => {
 
       const newMainWidthPercent = (touchXRelative / containerWidth) * 100;
 
-      if (newMainWidthPercent >= 40 && newMainWidthPercent <= 75) {
+      if (newMainWidthPercent >= 35 && newMainWidthPercent <= 80) {
         setMainWidthPercent(newMainWidthPercent);
       }
     };
@@ -315,6 +316,33 @@ const NoteDetailPage: React.FC = () => {
       document.removeEventListener('touchend', handleTouchEnd);
     };
   }, [isDragging, mainWidthPercent]);
+
+  useEffect(() => {
+    const checkLayout = () => {
+      const container = document.querySelector(`.${styles.header}`);
+      if (!container) return;
+
+      const containerWidth = container.getBoundingClientRect().width;
+      const COMPACT_BREAKPOINT = 1200;
+
+      setIsCompactLayout(containerWidth < COMPACT_BREAKPOINT);
+    };
+
+    checkLayout();
+
+    let resizeTimeout: NodeJS.Timeout;
+    const handleResize = () => {
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(checkLayout, 150);
+    };
+
+    window.addEventListener('resize', handleResize);
+
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(resizeTimeout);
+    };
+  }, []);
 
   const handleSyncToKnowledge = async () => {
     if (!confirm('确认将更新后的笔记内容同步到知识库吗？')) {
@@ -379,7 +407,7 @@ const NoteDetailPage: React.FC = () => {
             />
           </div>
 
-          <div className={styles.headerActions}>
+          <div className={`${styles.headerActions} ${isCompactLayout ? styles.compact : ''}`}>
             <div className={`${styles.saveIndicator} ${saving ? styles.saving : ''}`}>
               {saving ? '保存中...' : hasChanges ? '有未保存的修改' : '已保存'}
             </div>
