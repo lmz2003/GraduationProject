@@ -101,7 +101,7 @@ export class AuthService {
       userId: user.id,
       githubId: user.githubId,
       username: user.githubUsername,
-    });
+    }, '7d');
 
     return {
       token,
