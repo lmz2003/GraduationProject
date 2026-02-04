@@ -643,10 +643,11 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     flex: 1;
     position: relative;
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 12px;
+    min-height: fit-content;
     
-    input {
+    textarea {
       flex: 1;
       padding: 12px 16px;
       border: 2px solid $border-color;
@@ -656,6 +657,30 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       transition: $transition;
       background: $background-color;
       font-family: inherit;
+      resize: none;
+      line-height: 24px; /* 确保与行高一致 */
+      min-height: 48px; /* 最小高度 (一行) */
+      max-height: 120px; /* 最大高度 (四行: 4 * 24 + padding) */
+      overflow-y: auto;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+      
+      &::-webkit-scrollbar {
+        width: 4px;
+      }
+      
+      &::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      
+      &::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 2px;
+        
+        &:hover {
+          background: #94a3b8;
+        }
+      }
       
       &:focus {
         border-color: $primary-color;
@@ -689,6 +714,8 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border: none;
     @include button-primary;
     flex-shrink: 0;
+    align-self: flex-end;
+    margin-bottom: 2px;
     
     &:disabled {
       @include button-disabled;
@@ -729,6 +756,8 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
     flex-shrink: 0;
     animation: slideUp 0.2s ease-out;
+    align-self: flex-end;
+    margin-bottom: 2px;
     
     &:hover {
       transform: scale(1.08);
@@ -841,7 +870,16 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       }
     }
     
-    .send-button {
+    .input-wrapper {
+      textarea {
+        min-height: 40px;
+        padding: 8px 12px;
+        font-size: 13px;
+      }
+    }
+    
+    .send-button,
+    .stop-button {
       width: 40px;
       height: 40px;
     }

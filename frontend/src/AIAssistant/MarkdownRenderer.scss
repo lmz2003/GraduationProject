@@ -4,6 +4,23 @@
   overflow-wrap: break-word;
   line-height: 1.6;
   min-height: 20px; /* 确保空内容时也能显示气泡 */
+  color: #333;
+  font-size: 14px;
+
+  /* 链接样式 - 统一处理 */
+  a {
+    cursor: pointer;
+  }
+
+  /* 代码样式 - 内联和块级 */
+  code {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
+  }
+
+  /* 列表项优化 */
+  li {
+    margin: 0;
+  }
 
   &.streaming {
     animation: pulse 1.5s ease-in-out infinite;
@@ -92,9 +109,9 @@
     line-height: 1.8;
   }
 
-  // 代码块样式 - 增强版本
+  // 代码块样式 - 增强版本，优化对话UI
   .markdown-code-block-wrapper {
-    margin: 16px 0;
+    margin: 12px 0;
     border-radius: 8px;
     overflow: hidden;
     background: #1e1e1e;
@@ -110,8 +127,8 @@
       border-bottom: 1px solid #3a3a3a;
 
       .markdown-language-label {
-        font-size: 12px;
-        font-weight: 500;
+        font-size: 11px;
+        font-weight: 600;
         color: #888;
         text-transform: uppercase;
         letter-spacing: 0.5px;
@@ -123,17 +140,22 @@
         border: none;
         padding: 4px 8px;
         border-radius: 4px;
-        font-size: 12px;
+        font-size: 11px;
         cursor: pointer;
-        transition: all 0.3s ease;
+        transition: all 0.2s ease;
+        outline: none;
 
         &:hover {
           background: #4a4a4a;
           color: #fff;
         }
 
+        &:active {
+          transform: scale(0.95);
+        }
+
         &.copied {
-          background: #00c896;
+          background: #10b981;
           color: #fff;
         }
       }
@@ -142,13 +164,15 @@
 
   .markdown-code-block {
     overflow-x: auto;
+    background: #1e1e1e;
 
     pre {
-      margin: 0;
-      padding: 12px 12px !important;
+      margin: 0 !important;
+      padding: 12px !important;
       overflow-x: auto;
       font-size: 12px;
       line-height: 1.5;
+      font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
 
       &::-webkit-scrollbar {
         height: 6px;
@@ -169,21 +193,63 @@
     }
 
     code {
-      // 隐藏默认的语言标签
-      span[class*='language-'] {
-        display: none;
+      font-size: 12px;
+      line-height: 1.5;
+      
+      // Prism 语法高亮样式适配
+      .token {
+        &.tag,
+        &.selector {
+          color: #ff79c6;
+        }
+
+        &.attr-name,
+        &.property {
+          color: #8be9fd;
+        }
+
+        &.string,
+        &.attr-value {
+          color: #f1fa8c;
+        }
+
+        &.number,
+        &.builtin {
+          color: #bd93f9;
+        }
+
+        &.comment {
+          color: #6272a4;
+        }
+
+        &.keyword {
+          color: #ff79c6;
+        }
+
+        &.function {
+          color: #50fa7b;
+        }
+
+        &.operator {
+          color: #ff79c6;
+        }
+
+        &.punctuation {
+          color: #f8f8f2;
+        }
       }
     }
   }
 
   .markdown-inline-code {
     background: #f5f5f5;
-    color: #d63384;
-    padding: 3px 8px;
-    border-radius: 4px;
+    color: #c7254e;
+    padding: 2px 6px;
+    border-radius: 3px;
     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
-    font-size: 12px;
+    font-size: 13px;
     word-break: break-word;
+    border: 1px solid #f1c1d9;
   }
 
   .markdown-pre {
@@ -193,66 +259,78 @@
     border: none;
   }
 
-  // 列表样式
+  // 列表样式 - 优化对话显示
   .markdown-ul,
   .markdown-ol {
-    margin: 12px 0;
-    padding-left: 32px;
+    margin: 8px 0;
+    padding-left: 24px;
     font-size: 14px;
     color: #333;
   }
 
+  .markdown-ul {
+    list-style-type: disc;
+  }
+
+  .markdown-ol {
+    list-style-type: decimal;
+  }
+
   .markdown-li {
-    margin: 8px 0;
-    line-height: 1.8;
+    margin: 4px 0;
+    line-height: 1.6;
+    color: #333;
 
     &.task-list {
       list-style: none;
       padding-left: 0;
-      margin-left: 0;
+      margin-left: -24px;
 
       input[type='checkbox'] {
         margin-right: 8px;
         cursor: pointer;
-        vertical-align: middle;
+        vertical-align: text-bottom;
+        accent-color: #4f46e5;
       }
     }
 
     > p {
-      margin: 4px 0;
+      margin: 2px 0;
     }
 
     > ul,
     > ol {
-      margin-top: 8px;
+      margin-top: 4px;
+      margin-bottom: 4px;
     }
 
     // 嵌套列表样式
     > ul > .markdown-li,
     > ol > .markdown-li {
-      margin: 4px 0;
+      margin: 2px 0;
     }
   }
 
-  // 引用样式 - 增强版本
+  // 引用样式 - 增强版本，优化对话
   .markdown-blockquote {
-    margin: 12px 0;
-    padding: 12px 16px;
-    border-left: 4px solid #4a90e2;
-    background: #f0f5ff;
-    color: #555;
+    margin: 8px 0;
+    padding: 12px 12px 12px 16px;
+    border-left: 3px solid #4f46e5;
+    background: #f9f8ff;
+    color: #666;
     border-radius: 0 4px 4px 0;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
 
     &:hover {
-      border-left-color: #2e5c8a;
-      background: #e8f2ff;
+      border-left-color: #7c3aed;
+      background: #f3efff;
     }
 
     p {
-      margin: 8px 0;
+      margin: 4px 0;
       font-size: 14px;
       color: #666;
+      line-height: 1.6;
 
       &:first-child {
         margin-top: 0;
@@ -264,12 +342,12 @@
     }
   }
 
-  // 表格样式 - GFM 增强版本
+  // 表格样式 - GFM 增强版本，优化对话
   .markdown-table-wrapper {
-    margin: 16px 0;
+    margin: 8px 0;
     overflow-x: auto;
-    border-radius: 8px;
-    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    border-radius: 6px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 
     &::-webkit-scrollbar {
       height: 6px;
@@ -294,60 +372,66 @@
     width: 100%;
     font-size: 13px;
     background: #fff;
+    border: 1px solid #e5e7eb;
   }
 
   .markdown-thead {
-    background: #f5f7fa;
+    background: #f9fafb;
   }
 
   .markdown-th,
   .markdown-td {
-    border: 1px solid #ddd;
-    padding: 12px 16px;
+    border: 1px solid #e5e7eb;
+    padding: 10px 12px;
     text-align: left;
   }
 
   .markdown-th {
     font-weight: 600;
-    color: #333;
-    background: #f5f7fa;
+    color: #1f2937;
+    background: #f9fafb;
   }
 
   .markdown-tbody .markdown-tr {
-    transition: background-color 0.2s ease;
+    transition: background-color 0.15s ease;
 
     &:nth-child(even) {
       background: #fafbfc;
     }
 
     &:hover {
-      background: #f0f5ff;
+      background: #f3f4f6;
+    }
+
+    .markdown-td {
+      color: #374151;
     }
   }
 
-  // 链接样式 - 增强版本
+  // 链接样式 - 增强版本，优化对话
   .markdown-link {
-    color: #4a90e2;
+    color: #4f46e5;
     text-decoration: none;
     font-weight: 500;
-    transition: all 0.2s ease;
+    transition: all 0.15s ease;
     display: inline-flex;
     align-items: center;
-    gap: 4px;
+    gap: 3px;
+    border-bottom: 1px solid transparent;
 
     &:hover {
-      color: #357abd;
-      text-decoration: underline;
+      color: #7c3aed;
+      border-bottom-color: #7c3aed;
     }
 
     &:active {
-      color: #245a95;
+      color: #5b21b6;
     }
 
     .markdown-external-icon {
-      font-size: 12px;
+      font-size: 11px;
       opacity: 0.6;
-      transition: opacity 0.2s ease;
+      transition: opacity 0.15s ease;
     }
 
     &:hover .markdown-external-icon {
@@ -355,9 +439,9 @@
     }
   }
 
-  // 图片样式 - 增强版本
+  // 图片样式 - 增强版本，优化对话
   .markdown-image-wrapper {
-    margin: 16px 0;
+    margin: 12px 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -366,46 +450,65 @@
   .markdown-image {
     max-width: 100%;
     height: auto;
-    border-radius: 8px;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
-    transition: all 0.3s ease;
+    border-radius: 6px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease;
 
     &:hover {
-      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
-      transform: translateY(-2px);
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+      transform: translateY(-1px);
     }
   }
 
   .markdown-image-caption {
-    margin-top: 8px;
+    margin-top: 6px;
     font-size: 12px;
-    color: #888;
+    color: #9ca3af;
     font-style: italic;
     text-align: center;
   }
 
   // 分割线样式
   .markdown-hr {
-    margin: 24px 0;
+    margin: 12px 0;
     border: none;
-    border-top: 2px solid #e0e0e0;
+    border-top: 1px solid #e5e7eb;
     height: 0;
   }
 
   // 强调样式
   .markdown-strong {
     font-weight: 700;
-    color: #1a1a1a;
+    color: #1f2937;
   }
 
   .markdown-em {
     font-style: italic;
-    color: #666;
+    color: #6b7280;
   }
 
   .markdown-del {
     text-decoration: line-through;
-    color: #999;
-    opacity: 0.7;
+    color: #d1d5db;
+    opacity: 0.8;
+  }
+
+  // 标题样式微调
+  .markdown-h1,
+  .markdown-h2,
+  .markdown-h3,
+  .markdown-h4,
+  .markdown-h5,
+  .markdown-h6 {
+    color: #1f2937;
+  }
+
+  .markdown-h1 {
+    border-bottom-color: #e5e7eb;
+  }
+
+  // 段落样式
+  .markdown-paragraph {
+    color: #374151;
   }
 }

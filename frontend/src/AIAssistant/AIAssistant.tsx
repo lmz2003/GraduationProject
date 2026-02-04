@@ -35,10 +35,36 @@ const AIAssistant: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
+
+  // 自动调整 textarea 高度
+  const adjustTextareaHeight = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    // 重置高度以获取正确的 scrollHeight
+    textarea.style.height = 'auto';
+    
+    // 计算所需的高度，限制在四行以内
+    const lineHeight = 24; // 行高 (px)
+    const maxHeight = lineHeight * 4; // 四行的最大高度
+    const scrollHeight = textarea.scrollHeight;
+    
+    if (scrollHeight > maxHeight) {
+      textarea.style.height = maxHeight + 'px';
+    } else {
+      textarea.style.height = Math.max(scrollHeight, lineHeight) + 'px';
+    }
+  }, []);
+
+  // 监听输入变化，调整高度
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [input, adjustTextareaHeight]);
 
   useEffect(() => {
     scrollToBottom();
@@ -573,12 +599,15 @@ const AIAssistant: React.FC = () => {
 
         {/* 输入框和发送按钮 */}
         <div className="input-wrapper">
-          <input 
+          <textarea 
+            ref={textareaRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="输入消息..."
             disabled={isTyping || !token}
+            className="textarea-input"
+            rows={1}
           />
           {isTyping ? (
             <button 

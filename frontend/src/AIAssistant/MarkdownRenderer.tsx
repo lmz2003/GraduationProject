@@ -1,10 +1,23 @@
-import React, { useMemo, useState } from 'react';
-import ReactMarkdown from 'react-markdown';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { atomDark } from 'react-syntax-highlighter/dist/cjs/styles/prism';
-import remarkGfm from 'remark-gfm';
-import rehypeRaw from 'rehype-raw';
-import rehypeSanitize from 'rehype-sanitize';
+import React, { useMemo, useState, useEffect } from 'react';
+import { marked } from 'marked';
+import DOMPurify from 'dompurify';
+import Prism from 'prismjs';
+import 'prismjs/themes/prism-tomorrow.css';
+import 'prismjs/components/prism-bash';
+import 'prismjs/components/prism-javascript';
+import 'prismjs/components/prism-typescript';
+import 'prismjs/components/prism-jsx';
+import 'prismjs/components/prism-tsx';
+import 'prismjs/components/prism-python';
+import 'prismjs/components/prism-java';
+import 'prismjs/components/prism-c';
+import 'prismjs/components/prism-cpp';
+import 'prismjs/components/prism-sql';
+import 'prismjs/components/prism-json';
+import 'prismjs/components/prism-yaml';
+import 'prismjs/components/prism-markdown';
+import 'prismjs/components/prism-css';
+import 'prismjs/components/prism-scss';
 import copy from 'copy-to-clipboard';
 import './MarkdownRenderer.scss';
 
@@ -14,22 +27,119 @@ interface MarkdownRendererProps {
 }
 
 /**
- * Markdown 实时渲染组件 (增强版)
+ * Markdown 实时渲染组件 (使用 Marked.js)
  * 支持：
- * - 标题、段落、列表（有序/无序）
+ * - 标题、段落、列表（有序/无序/任务列表）
  * - 代码块（带语法高亮和一键复制）
  * - 链接、图片、强调、删除线
- * - 表格（GFM）、任务列表、引用、分割线
- * - HTML 内容（带安全转义）
+ * - 表格（GFM）、引用、分割线
+ * - HTML 内容（带XSS安全防护）
  */
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreaming = false }: MarkdownRendererProps) => {
   const [copiedCodeIndex, setCopiedCodeIndex] = useState<number | null>(null);
   const codeBlockIndexRef = React.useRef<number>(0);
 
-  // 重置代码块计数器
-  codeBlockIndexRef.current = 0;
+  // 配置 marked 的渲染选项
+  useEffect(() => {
+    // 使用 GFM 扩展并启用表格、任务列表等特性
+    marked.setOptions({
+      breaks: true,
+      gfm: true,
+    });
 
-  const memoizedMarkdown = useMemo(() => {
+    // 自定义代码块渲染器 - 用于保存原始代码和语言信息
+    const renderer = new marked.Renderer();
+
+    // 存储代码块信息用于后续处理
+    const codeBlocks: Array<{ code: string; language: string }> = [];
+
+    renderer.code = ({ text, lang }) => {
+      const language = lang || 'text';
+      codeBlocks.push({ code: text, language });
+      const blockIndex = codeBlocks.length - 1;
+      
+      // 返回特殊的占位符，便于后续替换为React组件
+      return `<div class="markdown-code-block-marker" data-index="${blockIndex}" data-lang="${language}"></div>`;
+    };
+
+    // 自定义链接渲染 - 添加外链图标
+    renderer.link = ({ href, title, text }) => {
+      const isExternal = href && (href.startsWith('http://') || href.startsWith('https://'));
+      const target = isExternal ? ' target="_blank" rel="noopener noreferrer"' : '';
+      const icon = isExternal ? ' <span class="markdown-external-icon">↗</span>' : '';
+      return `<a href="${href}" class="markdown-link" title="${title || ''}"${target}>${text}${icon}</a>`;
+    };
+
+    // 自定义图片渲染
+    renderer.image = ({ href, title, text }) => {
+      return `<div class="markdown-image-wrapper">
+        <img src="${href}" alt="${text}" title="${title || ''}" class="markdown-image" />
+        ${text ? `<p class="markdown-image-caption">${text}</p>` : ''}
+      </div>`;
+    };
+
+    // 自定义表格渲染 - 添加包装容器
+    renderer.table = ({ header, rows }) => {
+      return `<div class="markdown-table-wrapper">
+        <table class="markdown-table">
+          <thead class="markdown-thead">${header}</thead>
+          <tbody class="markdown-tbody">${rows}</tbody>
+        </table>
+      </div>`;
+    };
+
+    // 自定义标题渲染 - 添加对应的CSS类
+    renderer.heading = ({ text, depth }: any) => {
+      return `<h${depth} class="markdown-h${depth}">${text}</h${depth}>`;
+    };
+
+    // 自定义段落渲染
+    renderer.paragraph = ({ text }) => {
+      return `<p class="markdown-paragraph">${text}</p>`;
+    };
+
+    // 自定义列表项渲染 - 支持任务列表
+    renderer.listitem = ({ text, task, checked }) => {
+      if (task) {
+        const checkboxHTML = `<input type="checkbox" ${checked ? 'checked' : ''} disabled />`;
+        return `<li class="markdown-li task-list">${checkboxHTML}${text}</li>`;
+      }
+      return `<li class="markdown-li">${text}</li>`;
+    };
+
+    // 自定义无序列表
+    renderer.list = ({ items, ordered }) => {
+      const tag = ordered ? 'ol' : 'ul';
+      const className = ordered ? 'markdown-ol' : 'markdown-ul';
+      return `<${tag} class="${className}">${items}</${tag}>`;
+    };
+
+    // 自定义引用渲染
+    renderer.blockquote = ({ text }) => {
+      return `<blockquote class="markdown-blockquote">${text}</blockquote>`;
+    };
+
+    // 自定义分割线
+    renderer.hr = () => {
+      return '<hr class="markdown-hr" />';
+    };
+
+    marked.setOptions({ renderer });
+
+    // 将代码块信息保存到window对象，便于React组件访问
+    (window as any).__markdownCodeBlocks = codeBlocks;
+  }, []);
+
+  const handleCopyCode = (code: string, index: number) => {
+    copy(code);
+    setCopiedCodeIndex(index);
+    setTimeout(() => setCopiedCodeIndex(null), 2000);
+  };
+
+  const htmlContent = useMemo(() => {
+    // 重置代码块计数器
+    codeBlockIndexRef.current = 0;
+
     let processed = content;
     
     // 基础清理：移除多余的空行但保留段落间距
@@ -39,163 +149,107 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreamin
     processed = processed.replace(/([^\n])\n(```)/g, '$1\n\n$2');
     processed = processed.replace(/(```)\n([^\n])/g, '$1\n\n$2');
     
-    let result = processed.trim();
+    let markdown = processed.trim();
     
     // 添加流式加载省略号
     if (isStreaming) {
-      result += '\n\n▌';
+      markdown += '\n\n▌';
     }
     
-    return result;
+    // 使用 marked 解析 Markdown
+    const rawHtml = marked(markdown) as string;
+
+    // 使用 DOMPurify 清理 HTML，防止 XSS 攻击
+    const cleanHtml = DOMPurify.sanitize(rawHtml, {
+      ALLOWED_TAGS: [
+        'p', 'br', 'strong', 'em', 'del', 'u', 'code', 'pre',
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'ul', 'ol', 'li', 'blockquote', 'hr',
+        'table', 'thead', 'tbody', 'tr', 'th', 'td',
+        'a', 'img', 'div', 'span', 'input',
+      ],
+      ALLOWED_ATTR: [
+        'class', 'style', 'href', 'target', 'rel', 'alt', 'title', 'src',
+        'type', 'checked', 'disabled', 'data-index', 'data-lang',
+      ],
+      KEEP_CONTENT: true,
+    });
+
+    return cleanHtml;
   }, [content, isStreaming]);
 
-  const handleCopyCode = (code: string, index: number) => {
-    copy(code);
-    setCopiedCodeIndex(index);
-    setTimeout(() => setCopiedCodeIndex(null), 2000);
-  };
+   // 处理HTML中的代码块标记，替换为完整的代码块UI
+  const processedContent = (() => {
+    const container = document.createElement('div');
+    container.innerHTML = htmlContent;
+    
+    const codeBlocks = (window as any).__markdownCodeBlocks || [];
+    const markers = container.querySelectorAll('.markdown-code-block-marker');
 
-  const MarkdownComponent = ReactMarkdown as any;
+    markers.forEach((marker) => {
+      const indexStr = marker.getAttribute('data-index');
+      const language = marker.getAttribute('data-lang') || 'text';
+      const index = parseInt(indexStr || '0', 10);
+      const codeBlock = codeBlocks[index];
+
+      if (codeBlock) {
+        const currentIndex = codeBlockIndexRef.current++;
+        const isCopied = copiedCodeIndex === currentIndex;
+
+        // 创建代码块HTML
+        const wrapper = document.createElement('div');
+        wrapper.className = 'markdown-code-block-wrapper';
+        
+        const header = document.createElement('div');
+        header.className = 'markdown-code-header';
+        
+        if (language !== 'text') {
+          const langLabel = document.createElement('span');
+          langLabel.className = 'markdown-language-label';
+          langLabel.textContent = language;
+          header.appendChild(langLabel);
+        }
+        
+        const copyBtn = document.createElement('button');
+        copyBtn.className = `markdown-copy-btn ${isCopied ? 'copied' : ''}`;
+        copyBtn.textContent = isCopied ? '✓ 已复制' : '📋 复制';
+        copyBtn.title = '复制代码';
+        copyBtn.onclick = () => handleCopyCode(codeBlock.code, currentIndex);
+        header.appendChild(copyBtn);
+        
+        wrapper.appendChild(header);
+        
+        const codeBlockDiv = document.createElement('div');
+        codeBlockDiv.className = 'markdown-code-block';
+        
+        const pre = document.createElement('pre');
+        const code = document.createElement('code');
+        code.className = `language-${language}`;
+        code.textContent = codeBlock.code;
+        
+        // 应用 Prism 语法高亮
+        try {
+          code.innerHTML = Prism.highlight(codeBlock.code, Prism.languages[language] || Prism.languages.text, language);
+        } catch (e) {
+          code.textContent = codeBlock.code;
+        }
+        
+        pre.appendChild(code);
+        codeBlockDiv.appendChild(pre);
+        wrapper.appendChild(codeBlockDiv);
+        
+        marker.replaceWith(wrapper);
+      }
+    });
+
+    return container.innerHTML;
+  })();
 
   return (
-    <div className={`markdown-renderer ${isStreaming ? 'streaming' : ''}`}>
-      <MarkdownComponent
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeRaw, [rehypeSanitize]]}
-        components={{
-          // 代码块渲染 - 增强版本，支持复制
-          code: ({ node, inline, className, children, ...props }: any) => {
-            const match = /language-(\w+)/.exec(className || '');
-            const language = match ? match[1] : 'text';
-            const codeContent = String(children).replace(/\n$/, '');
-
-            if (inline) {
-              return (
-                <code className="markdown-inline-code" {...props}>
-                  {children}
-                </code>
-              );
-            }
-
-            const currentIndex = codeBlockIndexRef.current++;
-            const isCopied = copiedCodeIndex === currentIndex;
-
-            return (
-              <div className="markdown-code-block-wrapper">
-                <div className="markdown-code-header">
-                  {language !== 'text' && (
-                    <span className="markdown-language-label">{language}</span>
-                  )}
-                  <button
-                    className={`markdown-copy-btn ${isCopied ? 'copied' : ''}`}
-                    onClick={() => handleCopyCode(codeContent, currentIndex)}
-                    title="复制代码"
-                  >
-                    {isCopied ? '✓ 已复制' : '📋 复制'}
-                  </button>
-                </div>
-                <div className="markdown-code-block">
-                  <SyntaxHighlighter
-                    language={language}
-                    style={atomDark}
-                    showLineNumbers={true}
-                    wrapLines={true}
-                    lineProps={() => ({ style: { wordBreak: 'break-all', whiteSpace: 'pre-wrap' } })}
-                  >
-                    {codeContent}
-                  </SyntaxHighlighter>
-                </div>
-              </div>
-            );
-          },
-
-          // 标题渲染
-          h1: ({ children }: any) => <h1 className="markdown-h1">{children}</h1>,
-          h2: ({ children }: any) => <h2 className="markdown-h2">{children}</h2>,
-          h3: ({ children }: any) => <h3 className="markdown-h3">{children}</h3>,
-          h4: ({ children }: any) => <h4 className="markdown-h4">{children}</h4>,
-          h5: ({ children }: any) => <h5 className="markdown-h5">{children}</h5>,
-          h6: ({ children }: any) => <h6 className="markdown-h6">{children}</h6>,
-
-          // 段落渲染
-          p: ({ children }: any) => <p className="markdown-paragraph">{children}</p>,
-
-          // 列表渲染 - 支持有序、无序和任务列表
-          ul: ({ children }: any) => <ul className="markdown-ul">{children}</ul>,
-          ol: ({ children }: any) => <ol className="markdown-ol">{children}</ol>,
-          li: ({ children, className }: any) => {
-            const isTaskList = className && className.includes('task-list-item');
-            return (
-              <li className={`markdown-li ${isTaskList ? 'task-list' : ''}`}>
-                {children}
-              </li>
-            );
-          },
-
-          // 引用渲染
-          blockquote: ({ children }: any) => (
-            <blockquote className="markdown-blockquote">{children}</blockquote>
-          ),
-
-          // 表格渲染 - GFM 支持
-          table: ({ children }: any) => (
-            <div className="markdown-table-wrapper">
-              <table className="markdown-table">{children}</table>
-            </div>
-          ),
-          thead: ({ children }: any) => <thead className="markdown-thead">{children}</thead>,
-          tbody: ({ children }: any) => <tbody className="markdown-tbody">{children}</tbody>,
-          tr: ({ children }: any) => <tr className="markdown-tr">{children}</tr>,
-          th: ({ children, align }: any) => (
-            <th className="markdown-th" style={{ textAlign: align || 'left' }}>
-              {children}
-            </th>
-          ),
-          td: ({ children, align }: any) => (
-            <td className="markdown-td" style={{ textAlign: align || 'left' }}>
-              {children}
-            </td>
-          ),
-
-          // 链接和图片渲染
-          a: ({ href, children }: any) => {
-            const isExternal = href && (href.startsWith('http://') || href.startsWith('https://'));
-            return (
-              <a
-                href={href}
-                className="markdown-link"
-                target={isExternal ? '_blank' : undefined}
-                rel={isExternal ? 'noopener noreferrer' : undefined}
-              >
-                {children}
-                {isExternal && <span className="markdown-external-icon">↗</span>}
-              </a>
-            );
-          },
-          img: ({ src, alt, title }: any) => (
-            <div className="markdown-image-wrapper">
-              <img src={src} alt={alt} title={title} className="markdown-image" />
-              {alt && <p className="markdown-image-caption">{alt}</p>}
-            </div>
-          ),
-
-          // 分割线渲染
-          hr: () => <hr className="markdown-hr" />,
-
-          // 强调渲染
-          strong: ({ children }: any) => <strong className="markdown-strong">{children}</strong>,
-          em: ({ children }: any) => <em className="markdown-em">{children}</em>,
-
-          // 删除线渲染
-          del: ({ children }: any) => <del className="markdown-del">{children}</del>,
-
-          // 预格式化文本
-          pre: ({ children }: any) => <pre className="markdown-pre">{children}</pre>,
-        }}
-      >
-        {memoizedMarkdown}
-      </MarkdownComponent>
-    </div>
+    <div
+      className={`markdown-renderer ${isStreaming ? 'streaming' : ''}`}
+      dangerouslySetInnerHTML={{ __html: processedContent }}
+    />
   );
 };
 
