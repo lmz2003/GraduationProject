@@ -41,6 +41,7 @@
   min-width: 0;
   position: relative;
   z-index: 10;
+  gap: 20px;
 }
 
 .headerLeft {
@@ -48,6 +49,9 @@
   align-items: center;
   gap: 15px;
   flex-shrink: 0;
+  min-width: 0;
+  flex: 1;
+  max-width: calc(100% - 400px);
 }
 
 .backButton {
@@ -80,6 +84,7 @@
   color: #0f172a;
   transition: all 0.2s ease;
   flex: 1;
+  flex-shrink: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -105,9 +110,8 @@
   overflow-x: auto;
   padding-right: 0;
   min-width: 0;
-  flex: 1;
+  flex: 0 0 auto;
   justify-content: flex-end;
-  max-width: calc(100% - 200px);
 
   /* 隐藏滚动条 - Firefox */
   scrollbar-width: none;

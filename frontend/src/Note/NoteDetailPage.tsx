@@ -254,71 +254,67 @@ const NoteDetailPage: React.FC = () => {
     navigate('/dashboard/notes');
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
+  const handleMouseDown = () => {
+    setIsDragging(true);
+  };
+
+  useEffect(() => {
     if (!isDragging) return;
 
-    const container = document.querySelector(`.${styles.pageContainer}`);
-    if (!container) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      const container = document.querySelector(`.${styles.pageContainer}`);
+      if (!container) return;
 
-    const containerRect = container.getBoundingClientRect();
-    const containerWidth = containerRect.width;
+      const containerRect = container.getBoundingClientRect();
+      const containerWidth = containerRect.width;
 
-    const mouseXRelative = e.clientX - containerRect.left;
+      const mouseXRelative = e.clientX - containerRect.left;
 
-    const newMainWidthPercent = (mouseXRelative / containerWidth) * 100;
+      const newMainWidthPercent = (mouseXRelative / containerWidth) * 100;
 
-    if (newMainWidthPercent >= 35 && newMainWidthPercent <= 80) {
-      setMainWidthPercent(newMainWidthPercent);
-    }
-  };
+      if (newMainWidthPercent >= 35 && newMainWidthPercent <= 80) {
+        setMainWidthPercent(newMainWidthPercent);
+      }
+    };
 
-  const handleMouseUp = () => {
-    setIsDragging(false);
-    localStorage.setItem('noteLayoutWidth', Math.round(mainWidthPercent).toString());
-    window.removeEventListener('mousemove', handleMouseMove);
-    window.removeEventListener('mouseup', handleMouseUp);
-  };
+    const handleMouseUp = () => {
+      setIsDragging(false);
+      localStorage.setItem('noteLayoutWidth', Math.round(mainWidthPercent).toString());
+    };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-  };
+    const handleTouchMove = (e: TouchEvent) => {
+      const container = document.querySelector(`.${styles.pageContainer}`);
+      if (!container) return;
 
-  const handleTouchMove = (e: TouchEvent) => {
-    if (!isDragging) return;
+      const containerRect = container.getBoundingClientRect();
+      const containerWidth = containerRect.width;
 
-    const container = document.querySelector(`.${styles.pageContainer}`);
-    if (!container) return;
+      const touchXRelative = e.touches[0].clientX - containerRect.left;
 
-    const containerRect = container.getBoundingClientRect();
-    const containerWidth = containerRect.width;
+      const newMainWidthPercent = (touchXRelative / containerWidth) * 100;
 
-    const touchXRelative = e.touches[0].clientX - containerRect.left;
+      if (newMainWidthPercent >= 35 && newMainWidthPercent <= 80) {
+        setMainWidthPercent(newMainWidthPercent);
+      }
+    };
 
-    const newMainWidthPercent = (touchXRelative / containerWidth) * 100;
+    const handleTouchEnd = () => {
+      setIsDragging(false);
+      localStorage.setItem('noteLayoutWidth', Math.round(mainWidthPercent).toString());
+    };
 
-    if (newMainWidthPercent >= 35 && newMainWidthPercent <= 80) {
-      setMainWidthPercent(newMainWidthPercent);
-    }
-  };
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('touchmove', handleTouchMove);
+    document.addEventListener('touchend', handleTouchEnd);
 
-  const handleTouchEnd = () => {
-    setIsDragging(false);
-    localStorage.setItem('noteLayoutWidth', Math.round(mainWidthPercent).toString());
-    window.removeEventListener('touchmove', handleTouchMove);
-    window.removeEventListener('touchend', handleTouchEnd);
-  };
-
-  const handleTouchStart = (e: React.TouchEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(true);
-    window.addEventListener('touchmove', handleTouchMove);
-    window.addEventListener('touchend', handleTouchEnd);
-  };
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [isDragging, mainWidthPercent]);
 
   const handleSyncToKnowledge = async () => {
     if (!confirm('确认将更新后的笔记内容同步到知识库吗？')) {
@@ -489,7 +485,6 @@ const NoteDetailPage: React.FC = () => {
           <div
             className={`${styles.resizer} ${isDragging ? styles.resizing : ''}`}
             onMouseDown={handleMouseDown}
-            onTouchStart={handleTouchStart}
           />
           <div 
             className={styles.aiContainer}
