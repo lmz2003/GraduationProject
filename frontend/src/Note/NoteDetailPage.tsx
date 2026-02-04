@@ -272,7 +272,7 @@ const NoteDetailPage: React.FC = () => {
 
       const newMainWidthPercent = (mouseXRelative / containerWidth) * 100;
 
-      if (newMainWidthPercent >= 35 && newMainWidthPercent <= 80) {
+      if (newMainWidthPercent >= 40 && newMainWidthPercent <= 75) {
         setMainWidthPercent(newMainWidthPercent);
       }
     };
@@ -293,7 +293,7 @@ const NoteDetailPage: React.FC = () => {
 
       const newMainWidthPercent = (touchXRelative / containerWidth) * 100;
 
-      if (newMainWidthPercent >= 35 && newMainWidthPercent <= 80) {
+      if (newMainWidthPercent >= 40 && newMainWidthPercent <= 75) {
         setMainWidthPercent(newMainWidthPercent);
       }
     };

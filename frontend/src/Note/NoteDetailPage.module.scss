@@ -106,12 +106,13 @@
   display: flex;
   gap: 12px;
   align-items: center;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   overflow-x: auto;
   padding-right: 0;
   min-width: 0;
   flex: 0 0 auto;
   justify-content: flex-end;
+  max-height: 80px;
 
   /* 隐藏滚动条 - Firefox */
   scrollbar-width: none;
@@ -383,6 +384,7 @@
   background: #ffffff;
   border-left: 1px solid #e2e8f0;
   min-width: 280px;
+  max-width: 600px;
   box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   min-height: 0;
   height: 100%;
@@ -431,5 +433,99 @@
   }
   50% {
     opacity: 0.7;
+  }
+}
+
+@media (max-width: 1400px) {
+  .headerActions {
+    max-height: 120px;
+  }
+}
+
+@media (max-width: 1200px) {
+  .header {
+    padding: 18px 20px;
+  }
+
+  .headerLeft {
+    max-width: calc(100% - 350px);
+  }
+
+  .headerActions {
+    max-height: 120px;
+  }
+
+  .titleInput {
+    min-width: 150px;
+    max-width: 400px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .header {
+    padding: 14px 16px;
+  }
+
+  .headerLeft {
+    max-width: calc(100% - 300px);
+  }
+
+  .headerActions {
+    gap: 8px;
+    max-height: 140px;
+  }
+
+  .button {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .titleInput {
+    font-size: 18px;
+    min-width: 120px;
+    max-width: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .header {
+    padding: 12px;
+    flex-direction: column;
+    gap: 12px;
+    align-items: stretch;
+  }
+
+  .headerLeft {
+    width: 100%;
+    max-width: none;
+    flex: none;
+  }
+
+  .headerActions {
+    width: 100%;
+    max-height: none;
+    justify-content: flex-start;
+  }
+
+  .titleInput {
+    font-size: 16px;
+    min-width: 0;
+    max-width: none;
+  }
+
+  .backButton {
+    flex-shrink: 1;
+  }
+
+  .metaBar {
+    padding: 12px 16px;
+  }
+
+  .editorContainer {
+    padding: 16px;
+  }
+
+  .aiContainer {
+    min-width: 250px;
   }
 }
