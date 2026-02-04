@@ -578,6 +578,21 @@ const AIAssistant: React.FC = () => {
           </div>
         ))}
         
+        {isTyping && (
+          <div className="message-wrapper">
+            <div className="avatar assistant-avatar">🤖</div>
+            <div className="message-content-wrapper">
+              <div className="message-bubble">
+                <div className="typing-indicator">
+                  <span className="typing-dot"></span>
+                  <span className="typing-dot"></span>
+                  <span className="typing-dot"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {error && <div className="error-message">❌ {error}</div>}
         
         <div ref={messagesEndRef} className="scroll-indicator" />
