@@ -337,7 +337,6 @@ const NoteDetailPage: React.FC = () => {
         minWidth: 0,
         height: '100%'
       }}>
-        <div className={styles.mainContent}>
         <div className={styles.header}>
           <div className={styles.headerLeft}>
             <button className={styles.backButton} onClick={handleBack}>
