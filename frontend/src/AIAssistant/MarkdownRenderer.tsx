@@ -66,64 +66,115 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreamin
 
     // 自定义链接渲染 - 添加外链图标
     renderer.link = ({ href, title, text }) => {
-      const isExternal = href && (href.startsWith('http://') || href.startsWith('https://'));
+      const hrefStr = typeof href === 'string' ? href : String(href || '');
+      const titleStr = typeof title === 'string' ? title : String(title || '');
+      const textStr = typeof text === 'string' ? text : String(text || '');
+      const isExternal = hrefStr && (hrefStr.startsWith('http://') || hrefStr.startsWith('https://'));
       const target = isExternal ? ' target="_blank" rel="noopener noreferrer"' : '';
       const icon = isExternal ? ' <span class="markdown-external-icon">↗</span>' : '';
-      return `<a href="${href}" class="markdown-link" title="${title || ''}"${target}>${text}${icon}</a>`;
+      return `<a href="${hrefStr}" class="markdown-link" title="${titleStr}"${target}>${textStr}${icon}</a>`;
     };
 
     // 自定义图片渲染
     renderer.image = ({ href, title, text }) => {
+      const hrefStr = typeof href === 'string' ? href : String(href || '');
+      const titleStr = typeof title === 'string' ? title : String(title || '');
+      const textStr = typeof text === 'string' ? text : String(text || '');
       return `<div class="markdown-image-wrapper">
-        <img src="${href}" alt="${text}" title="${title || ''}" class="markdown-image" />
-        ${text ? `<p class="markdown-image-caption">${text}</p>` : ''}
+        <img src="${hrefStr}" alt="${textStr}" title="${titleStr}" class="markdown-image" />
+        ${textStr ? `<p class="markdown-image-caption">${textStr}</p>` : ''}
       </div>`;
     };
 
     // 自定义表格渲染 - 添加包装容器
     renderer.table = ({ header, rows }) => {
+      const headerStr = typeof header === 'string' ? header : String(header || '');
+      const rowsStr = typeof rows === 'string' ? rows : String(rows || '');
       return `<div class="markdown-table-wrapper">
         <table class="markdown-table">
-          <thead class="markdown-thead">${header}</thead>
-          <tbody class="markdown-tbody">${rows}</tbody>
+          <thead class="markdown-thead">${headerStr}</thead>
+          <tbody class="markdown-tbody">${rowsStr}</tbody>
         </table>
       </div>`;
     };
 
+    // 自定义表格行渲染
+    renderer.tablerow = ({ text }) => {
+      const textStr = typeof text === 'string' ? text : String(text || '');
+      return `<tr class="markdown-tr">${textStr}</tr>`;
+    };
+
+    // 自定义表格单元格渲染
+    renderer.tablecell = ({ text, align, flags }: any) => {
+      const textStr = typeof text === 'string' ? text : String(text || '');
+      const tag = flags?.header ? 'th' : 'td';
+      const className = flags?.header ? 'markdown-th' : 'markdown-td';
+      return `<${tag} class="${className}" style="text-align: ${align || 'left'}">${textStr}</${tag}>`;
+    };
+
     // 自定义标题渲染 - 添加对应的CSS类
     renderer.heading = ({ text, depth }: any) => {
-      return `<h${depth} class="markdown-h${depth}">${text}</h${depth}>`;
+      const textStr = typeof text === 'string' ? text : String(text || '');
+      return `<h${depth} class="markdown-h${depth}">${textStr}</h${depth}>`;
     };
 
     // 自定义段落渲染
     renderer.paragraph = ({ text }) => {
-      return `<p class="markdown-paragraph">${text}</p>`;
+      const textStr = typeof text === 'string' ? text : String(text || '');
+      return `<p class="markdown-paragraph">${textStr}</p>`;
     };
 
     // 自定义列表项渲染 - 支持任务列表
     renderer.listitem = ({ text, task, checked }) => {
+      const textStr = typeof text === 'string' ? text : String(text || '');
       if (task) {
         const checkboxHTML = `<input type="checkbox" ${checked ? 'checked' : ''} disabled />`;
-        return `<li class="markdown-li task-list">${checkboxHTML}${text}</li>`;
+        return `<li class="markdown-li task-list">${checkboxHTML}${textStr}</li>`;
       }
-      return `<li class="markdown-li">${text}</li>`;
+      return `<li class="markdown-li">${textStr}</li>`;
     };
 
     // 自定义无序列表
     renderer.list = ({ items, ordered }) => {
+      const itemsStr = typeof items === 'string' ? items : String(items || '');
       const tag = ordered ? 'ol' : 'ul';
       const className = ordered ? 'markdown-ol' : 'markdown-ul';
-      return `<${tag} class="${className}">${items}</${tag}>`;
+      return `<${tag} class="${className}">${itemsStr}</${tag}>`;
     };
 
     // 自定义引用渲染
     renderer.blockquote = ({ text }) => {
-      return `<blockquote class="markdown-blockquote">${text}</blockquote>`;
+      const textStr = typeof text === 'string' ? text : String(text || '');
+      return `<blockquote class="markdown-blockquote">${textStr}</blockquote>`;
     };
 
     // 自定义分割线
     renderer.hr = () => {
       return '<hr class="markdown-hr" />';
+    };
+
+    // 自定义强调（粗体）渲染
+    renderer.strong = ({ text }) => {
+      const textStr = typeof text === 'string' ? text : String(text || '');
+      return `<strong>${textStr}</strong>`;
+    };
+
+    // 自定义斜体渲染
+    renderer.em = ({ text }) => {
+      const textStr = typeof text === 'string' ? text : String(text || '');
+      return `<em>${textStr}</em>`;
+    };
+
+    // 自定义删除线渲染
+    renderer.del = ({ text }) => {
+      const textStr = typeof text === 'string' ? text : String(text || '');
+      return `<del>${textStr}</del>`;
+    };
+
+    // 自定义文本渲染
+    renderer.text = ({ text }) => {
+      const textStr = typeof text === 'string' ? text : String(text || '');
+      return textStr;
     };
 
     marked.setOptions({ renderer });
@@ -170,6 +221,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, isStreamin
       ALLOWED_ATTR: [
         'class', 'style', 'href', 'target', 'rel', 'alt', 'title', 'src',
         'type', 'checked', 'disabled', 'data-index', 'data-lang',
+        'data-code-index', 'data-code', 'colspan', 'rowspan',
       ],
       KEEP_CONTENT: true,
     });

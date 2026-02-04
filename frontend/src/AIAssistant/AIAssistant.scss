@@ -659,26 +659,34 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       font-family: inherit;
       resize: none;
       line-height: 24px; /* 确保与行高一致 */
-      min-height: 48px; /* 最小高度 (一行) */
-      max-height: 120px; /* 最大高度 (四行: 4 * 24 + padding) */
-      overflow-y: auto;
+      height: auto; /* 动态高度调整 */
+      max-height: 120px; /* 最大高度 (四行: 4 * 24 + 12 + 12 padding) */
+      overflow-y: hidden; /* 默认隐藏滚动条，JS 会根据内容动态显示 */
       word-wrap: break-word;
       white-space: pre-wrap;
+      box-sizing: border-box;
+      appearance: none;
+      -webkit-appearance: none; /* 移除浏览器默认样式 */
       
+      /* 滚动条美化 - 圆角内部 */
       &::-webkit-scrollbar {
-        width: 4px;
+        width: 5px;
       }
       
       &::-webkit-scrollbar-track {
         background: transparent;
+        border-radius: 12px;
       }
       
       &::-webkit-scrollbar-thumb {
-        background: #cbd5e1;
-        border-radius: 2px;
+        background: rgba($text-secondary, 0.4);
+        border-radius: 4px;
+        border: 1px solid transparent;
+        background-clip: content-box;
         
         &:hover {
-          background: #94a3b8;
+          background: rgba($text-secondary, 0.6);
+          background-clip: content-box;
         }
       }
       
@@ -872,9 +880,18 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     
     .input-wrapper {
       textarea {
-        min-height: 40px;
         padding: 8px 12px;
         font-size: 13px;
+        line-height: 20px;
+        max-height: 100px; /* 移动设备上的最大高度 */
+        
+        &::-webkit-scrollbar {
+          width: 4px;
+        }
+        
+        &::-webkit-scrollbar-thumb {
+          border-radius: 3px;
+        }
       }
     }
     

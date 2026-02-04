@@ -51,13 +51,19 @@ const AIAssistant: React.FC = () => {
     
     // 计算所需的高度，限制在四行以内
     const lineHeight = 24; // 行高 (px)
-    const maxHeight = lineHeight * 4; // 四行的最大高度
+    const paddingTop = 12; // padding-top (px)
+    const paddingBottom = 12; // padding-bottom (px)
+    const maxLinesHeight = lineHeight * 4; // 四行的最大内容高度
+    const maxHeight = maxLinesHeight + paddingTop + paddingBottom; // 总最大高度
     const scrollHeight = textarea.scrollHeight;
     
+    // 当内容超过四行时，显示滚动条；否则自适应高度
     if (scrollHeight > maxHeight) {
       textarea.style.height = maxHeight + 'px';
+      textarea.style.overflowY = 'auto';
     } else {
-      textarea.style.height = Math.max(scrollHeight, lineHeight) + 'px';
+      textarea.style.height = scrollHeight + 'px';
+      textarea.style.overflowY = 'hidden';
     }
   }, []);
 
