@@ -287,6 +287,39 @@ const NoteDetailPage: React.FC = () => {
     window.addEventListener('mouseup', handleMouseUp);
   };
 
+  const handleTouchMove = (e: TouchEvent) => {
+    if (!isDragging) return;
+
+    const container = document.querySelector(`.${styles.pageContainer}`);
+    if (!container) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const containerWidth = containerRect.width;
+
+    const touchXRelative = e.touches[0].clientX - containerRect.left;
+
+    const newMainWidthPercent = (touchXRelative / containerWidth) * 100;
+
+    if (newMainWidthPercent >= 35 && newMainWidthPercent <= 80) {
+      setMainWidthPercent(newMainWidthPercent);
+    }
+  };
+
+  const handleTouchEnd = () => {
+    setIsDragging(false);
+    localStorage.setItem('noteLayoutWidth', Math.round(mainWidthPercent).toString());
+    window.removeEventListener('touchmove', handleTouchMove);
+    window.removeEventListener('touchend', handleTouchEnd);
+  };
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    window.addEventListener('touchmove', handleTouchMove);
+    window.addEventListener('touchend', handleTouchEnd);
+  };
+
   const handleSyncToKnowledge = async () => {
     if (!confirm('确认将更新后的笔记内容同步到知识库吗？')) {
       return;
@@ -456,6 +489,7 @@ const NoteDetailPage: React.FC = () => {
           <div
             className={`${styles.resizer} ${isDragging ? styles.resizing : ''}`}
             onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
           />
           <div 
             className={styles.aiContainer}
