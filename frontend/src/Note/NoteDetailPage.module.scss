@@ -6,6 +6,18 @@
   background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
   overflow: hidden;
   position: relative;
+
+  &.dragging {
+    -webkit-user-select: none;
+    user-select: none;
+    cursor: col-resize;
+
+    * {
+      cursor: col-resize !important;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+  }
 }
 
 .mainContent {
@@ -13,7 +25,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  min-width: 300px;
+  min-width: 0;
   height: 100%;
 }
 
@@ -306,58 +318,46 @@
 }
 
 .resizer {
-  width: 16px;
-  background: #e2e8f0;
+  width: 8px;
+  height: 100%;
+  background: rgba(79, 70, 229, 0.03);
   cursor: col-resize;
+  border-left: 1px solid #e2e8f0;
+  border-right: 1px solid #e2e8f0;
+  transition: background 0.2s ease, border-color 0.2s ease;
   flex-shrink: 0;
-  transition: background 0.2s;
   position: relative;
   z-index: 1000;
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+
   &:hover {
-    background: #8b5cf6;
+    background: rgba(79, 70, 229, 0.1);
+    border-color: #4f46e5;
   }
 
   &.resizing {
-    background: #7c3aed;
-  }
-
-  &::before {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 4px;
-    height: 40px;
-    background: #94a3b8;
-    border-radius: 2px;
-    opacity: 0;
-    transition: opacity 0.2s;
-  }
-
-  &:hover::before,
-  &.resizing::before {
-    opacity: 1;
-    background: white;
+    background: rgba(79, 70, 229, 0.15);
+    border-color: #4f46e5;
   }
 }
 
 .aiContainer {
-  flex-shrink: 0;
+  flex: 0 0 auto;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   background: #ffffff;
   border-left: 1px solid #e2e8f0;
-  min-width: 250px;
-  max-width: 600px;
-  transition: width 0.1s ease-out;
+  min-width: 280px;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  min-height: 0;
   height: 100%;
-  position: relative;
+  max-height: 100%;
+  overflow: hidden;
+  transition: flex-basis 0.0s ease;
 }
 
 

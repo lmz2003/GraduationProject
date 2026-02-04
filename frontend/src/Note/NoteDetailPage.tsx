@@ -36,7 +36,10 @@ const NoteDetailPage: React.FC = () => {
   const [hasChanges, setHasChanges] = useState(false);
   const [showPdfSettings, setShowPdfSettings] = useState(false);
   const [showAI, setShowAI] = useState(true);
-  const [aiWidth, setAiWidth] = useState(350);
+  const [mainWidthPercent, setMainWidthPercent] = useState<number>(() => {
+    const saved = localStorage.getItem('noteLayoutWidth');
+    return saved ? parseInt(saved) : 60;
+  });
   const [isDragging, setIsDragging] = useState(false);
   const [needsSync, setNeedsSync] = useState(false);
   const [showSyncButton, setShowSyncButton] = useState(false);
@@ -253,27 +256,25 @@ const NoteDetailPage: React.FC = () => {
 
   const handleMouseMove = (e: MouseEvent) => {
     if (!isDragging) return;
-    
+
     const container = document.querySelector(`.${styles.pageContainer}`);
     if (!container) return;
-    
+
     const containerRect = container.getBoundingClientRect();
-    const newAiWidth = containerRect.right - e.clientX;
-    
-    console.log(`Mouse move: clientX=${e.clientX}, containerRect.right=${containerRect.right}, newAiWidth=${newAiWidth}`);
-    
-    // 调整范围，允许更大的AI助手宽度
-    if (newAiWidth >= 200 && newAiWidth <= 800) {
-      setAiWidth(newAiWidth);
-      console.log(`Set aiWidth: ${newAiWidth}`);
-    } else {
-      console.log(`newAiWidth out of range: ${newAiWidth}`);
+    const containerWidth = containerRect.width;
+
+    const mouseXRelative = e.clientX - containerRect.left;
+
+    const newMainWidthPercent = (mouseXRelative / containerWidth) * 100;
+
+    if (newMainWidthPercent >= 35 && newMainWidthPercent <= 80) {
+      setMainWidthPercent(newMainWidthPercent);
     }
   };
 
   const handleMouseUp = () => {
-    console.log('Mouse up');
     setIsDragging(false);
+    localStorage.setItem('noteLayoutWidth', Math.round(mainWidthPercent).toString());
     window.removeEventListener('mousemove', handleMouseMove);
     window.removeEventListener('mouseup', handleMouseUp);
   };
@@ -281,7 +282,6 @@ const NoteDetailPage: React.FC = () => {
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    console.log('Mouse down on resizer');
     setIsDragging(true);
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
@@ -327,8 +327,17 @@ const NoteDetailPage: React.FC = () => {
   }
 
   return (
-    <div className={styles.pageContainer}>
-      <div className={styles.mainContent}>
+    <div 
+      className={`${styles.pageContainer} ${isDragging ? styles.dragging : ''}`}
+    >
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        flex: `0 0 ${showAI ? mainWidthPercent : 100}%`,
+        minWidth: 0,
+        height: '100%'
+      }}>
+        <div className={styles.mainContent}>
         <div className={styles.header}>
           <div className={styles.headerLeft}>
             <button className={styles.backButton} onClick={handleBack}>
@@ -449,7 +458,13 @@ const NoteDetailPage: React.FC = () => {
             className={`${styles.resizer} ${isDragging ? styles.resizing : ''}`}
             onMouseDown={handleMouseDown}
           />
-          <div className={styles.aiContainer} style={{ width: `${aiWidth}px` }}>
+          <div 
+            className={styles.aiContainer}
+            style={{
+              flex: `0 0 ${100 - mainWidthPercent}%`,
+              minWidth: 0
+            }}
+          >
             <div className={styles.aiContent}>
               <AIAssistant />
             </div>
