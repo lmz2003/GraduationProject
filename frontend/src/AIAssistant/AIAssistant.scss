@@ -399,10 +399,10 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 // 消息气泡
 .message-bubble {
   max-width: 85%;
-  padding: 16px 20px;
+  padding: 20px 24px;
   border-radius: 12px;
   font-size: 14px;
-  line-height: 1.7;
+  line-height: 1.8;
   background: $card-background;
   color: $text-color;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
@@ -451,7 +451,7 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     margin: 0;
     
     &:not(:last-child) {
-      margin-bottom: 10px;
+      margin-bottom: 12px;
     }
   }
   
