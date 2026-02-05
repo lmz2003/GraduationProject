@@ -704,28 +704,48 @@
   .markdown-ul,
   .markdown-ol {
     margin: 14px 0;
-    padding-left: 26px;
+    padding-left: 0;
     font-size: 14px;
     color: #1e293b;
+    list-style: none;
   }
 
   .markdown-ul {
-    list-style-type: disc;
-    
     .markdown-li {
-      &::marker {
+      position: relative;
+      padding-left: 24px;
+      
+      &::before {
+        content: '•';
+        position: absolute;
+        left: 0;
+        top: 0;
         color: #4f46e5;
+        font-size: 16px;
+        font-weight: bold;
+        line-height: 1.8;
       }
     }
   }
 
   .markdown-ol {
-    list-style-type: decimal;
+    counter-reset: list-counter;
     
     .markdown-li {
-      &::marker {
+      position: relative;
+      padding-left: 32px;
+      counter-increment: list-counter;
+      
+      &::before {
+        content: counter(list-counter) '.';
+        position: absolute;
+        left: 0;
+        top: 0;
         color: #4f46e5;
         font-weight: 600;
+        line-height: 1.8;
+        width: 24px;
+        text-align: left;
       }
     }
   }
@@ -737,13 +757,15 @@
 
     &.task-list {
       list-style: none;
-      padding-left: 0;
-      margin-left: -26px;
+      padding-left: 24px;
+      margin-left: 0;
 
       input[type='checkbox'] {
-        margin-right: 10px;
+        position: absolute;
+        left: 0;
+        top: 6px;
+        margin-right: 0;
         cursor: pointer;
-        vertical-align: text-bottom;
         accent-color: #4f46e5;
         width: 16px;
         height: 16px;
