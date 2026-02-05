@@ -69,16 +69,263 @@
     margin: 0;
   }
 
-  &.streaming {
-    animation: pulse 1.5s ease-in-out infinite;
+  /* 新代码块结构样式 */
+  .code-block-wrapper {
+    margin: 16px 0;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #1e1e1e;
+    border: 1px solid #2d3748;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+
+    &:hover {
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+      border-color: #3a4a5a;
+    }
+
+    .code-block-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, #252526 0%, #2a2a2c 100%);
+      border-bottom: 1px solid #3a4a5a;
+      position: relative;
+
+      &::after {
+        content: '';
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background: linear-gradient(90deg, transparent 0%, #4a5568 50%, transparent 100%);
+        opacity: 0.5;
+      }
+
+      .code-language {
+        font-size: 13px;
+        font-weight: 700;
+        color: #e2e8f0;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 12px;
+        background: rgba(79, 70, 229, 0.15);
+        border-radius: 6px;
+        border: 1px solid rgba(79, 70, 229, 0.3);
+        transition: all 0.3s ease;
+
+        &::before {
+          content: '';
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+          box-shadow: 0 0 8px rgba(79, 70, 229, 0.6);
+        }
+
+        &:hover {
+          background: rgba(79, 70, 229, 0.25);
+          border-color: rgba(79, 70, 229, 0.5);
+          transform: translateX(2px);
+        }
+      }
+
+      .copy-button {
+        background: linear-gradient(135deg, #3a4a5a 0%, #4a5568 100%);
+        color: #ffffff;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 8px 16px;
+        border-radius: 8px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        outline: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        position: relative;
+        overflow: hidden;
+
+        &::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          left: -100%;
+          width: 100%;
+          height: 100%;
+          background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%);
+          transition: left 0.5s ease;
+        }
+
+        svg {
+          width: 16px;
+          height: 16px;
+          transition: transform 0.3s ease;
+        }
+
+        &:hover {
+          background: linear-gradient(135deg, #4a5568 0%, #5a6472 100%);
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(74, 85, 104, 0.4);
+          border-color: rgba(255, 255, 255, 0.2);
+
+          svg {
+            transform: scale(1.1);
+          }
+
+          &::before {
+            left: 100%;
+          }
+        }
+
+        &:active {
+          transform: translateY(0) scale(0.98);
+          box-shadow: 0 2px 6px rgba(74, 85, 104, 0.3);
+        }
+      }
+    }
+
+    pre {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: transparent;
+      border: none;
+
+      .code-with-lines {
+        display: flex;
+        overflow-x: auto;
+
+        .line-numbers {
+          flex-shrink: 0;
+          padding: 20px 0;
+          background: rgba(0, 0, 0, 0.1);
+          border-right: 1px solid #3a4a5a;
+          -webkit-user-select: none;
+          user-select: none;
+
+          .line-number {
+            display: block;
+            padding: 0 16px;
+            font-size: 13px;
+            line-height: 1.7;
+            color: #6b7280;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
+            text-align: right;
+          }
+        }
+
+        .code-content {
+          flex: 1;
+          padding: 20px 0;
+
+          code {
+            display: block;
+            padding: 0 16px;
+            font-size: 13px;
+            line-height: 1.7;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Courier New', monospace;
+            background: transparent;
+
+            &::-webkit-scrollbar {
+              height: 8px;
+            }
+
+            &::-webkit-scrollbar-track {
+              background: #1e1e1e;
+            }
+
+            &::-webkit-scrollbar-thumb {
+              background: #4a5568;
+              border-radius: 4px;
+
+              &:hover {
+                background: #5b6372;
+              }
+            }
+          }
+        }
+      }
+
+      &::-webkit-scrollbar {
+        height: 8px;
+      }
+
+      &::-webkit-scrollbar-track {
+        background: #1e1e1e;
+      }
+
+      &::-webkit-scrollbar-thumb {
+        background: #4a5568;
+        border-radius: 4px;
+
+        &:hover {
+          background: #5b6372;
+        }
+      }
+    }
   }
 
-  @keyframes pulse {
+  /* 加载指示器样式 */
+  .loading-indicator {
+    display: flex;
+    gap: 6px;
+    padding: 10px 0;
+    align-items: center;
+
+    .loading-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+      animation: loadingPulse 1.4s infinite ease-in-out;
+
+      &:nth-child(1) {
+        animation-delay: 0s;
+      }
+
+      &:nth-child(2) {
+        animation-delay: 0.2s;
+      }
+
+      &:nth-child(3) {
+        animation-delay: 0.4s;
+      }
+    }
+  }
+
+  @keyframes loadingPulse {
+    0%, 100% {
+      opacity: 0.4;
+      transform: scale(0.6);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  /* 流式加载状态 */
+  &.streaming {
+    animation: contentPulse 1.5s ease-in-out infinite;
+  }
+
+  &.loading {
+    min-height: 40px;
+  }
+
+  @keyframes contentPulse {
     0%, 100% {
       opacity: 1;
     }
     50% {
-      opacity: 0.9;
+      opacity: 0.95;
     }
   }
 
@@ -887,6 +1134,66 @@
     border-radius: 4px;
   }
 
+  // 代码块样式调整
+  .code-block-wrapper {
+    margin: 12px 0;
+    border-radius: 8px;
+
+    .code-block-header {
+      padding: 8px 12px;
+      flex-direction: column;
+      gap: 8px;
+      align-items: flex-start;
+
+      .code-language {
+        font-size: 11px;
+        padding: 3px 8px;
+        letter-spacing: 0.5px;
+
+        &::before {
+          width: 6px;
+          height: 6px;
+        }
+      }
+
+      .copy-button {
+        width: 100%;
+        justify-content: center;
+        padding: 6px 12px;
+        font-size: 12px;
+
+        svg {
+          width: 14px;
+          height: 14px;
+        }
+      }
+    }
+
+    pre {
+      .code-with-lines {
+        .line-numbers {
+          padding: 14px 0;
+
+          .line-number {
+            padding: 0 12px;
+            font-size: 12px;
+            line-height: 1.6;
+          }
+        }
+
+        .code-content {
+          padding: 14px 0;
+
+          code {
+            padding: 0 12px;
+            font-size: 12px;
+            line-height: 1.6;
+          }
+        }
+      }
+    }
+  }
+
   // 链接样式调整
   .markdown-link {
     font-size: 13px;
@@ -909,6 +1216,63 @@
   .markdown-image-caption {
     font-size: 12px;
     margin-top: 6px;
+  }
+}
+
+// 响应式设计 - 平板设备的代码块优化
+@media (min-width: 769px) and (max-width: 1024px) {
+  .code-block-wrapper {
+    margin: 14px 0;
+    border-radius: 10px;
+
+    .code-block-header {
+      padding: 10px 14px;
+
+      .code-language {
+        font-size: 12px;
+        padding: 4px 10px;
+        letter-spacing: 0.75px;
+
+        &::before {
+          width: 7px;
+          height: 7px;
+        }
+      }
+
+      .copy-button {
+        padding: 7px 14px;
+        font-size: 12px;
+
+        svg {
+          width: 15px;
+          height: 15px;
+        }
+      }
+    }
+
+    pre {
+      .code-with-lines {
+        .line-numbers {
+          padding: 18px 0;
+
+          .line-number {
+            padding: 0 14px;
+            font-size: 12px;
+            line-height: 1.65;
+          }
+        }
+
+        .code-content {
+          padding: 18px 0;
+
+          code {
+            padding: 0 14px;
+            font-size: 12px;
+            line-height: 1.65;
+          }
+        }
+      }
+    }
   }
 }
 
