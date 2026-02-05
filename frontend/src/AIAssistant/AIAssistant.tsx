@@ -303,6 +303,11 @@ const AIAssistant: React.FC = () => {
                 } else {
                   chunkContent = String(data.data);
                 }
+                
+                // 调试日志
+                console.log('🔍 数据块类型:', typeof data.data, '内容:', data.data);
+                console.log('🔍 提取的 chunkContent:', chunkContent);
+                
                 currentContent += chunkContent;
                 
                 // 直接更新现有消息的内容
