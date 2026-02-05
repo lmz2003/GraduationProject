@@ -281,7 +281,9 @@ const AIAssistant: React.FC = () => {
                 setRequestId(data.data.requestId);
                 console.log('📝 收到请求 ID:', data.data.requestId);
               } else if (data.type === 'chunk' && data.data) {
-                currentContent += data.data;
+                // 处理可能的对象类型数据
+                const chunkContent = typeof data.data === 'string' ? data.data : JSON.stringify(data.data);
+                currentContent += chunkContent;
                 
                 // 直接更新现有消息的内容
                 setMessages(prev => prev.map(msg =>
