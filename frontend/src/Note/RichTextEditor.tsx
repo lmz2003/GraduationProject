@@ -1,14 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 // @ts-ignore - react-quill 类型声明可能不完整
-import ReactQuill, { Quill } from 'react-quill';
+import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-// @ts-ignore
-import QuillBetterTable from 'quill-better-table';
-import 'quill-better-table/dist/quill-better-table.css';
 import styles from './RichTextEditor.module.scss';
-
-// 注册表格模块
-Quill.register('modules/better-table', QuillBetterTable);
 
 export interface RichTextEditorProps {
   initialContent?: string;
@@ -52,14 +46,18 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
         toolbar.addHandler('image', handleImageUpload);
         
         // 找到表格按钮并添加点击事件
-        const toolbarContainer = editor.container.previousSibling as HTMLElement;
-        const tableButton = toolbarContainer?.querySelector('.ql-table') as HTMLButtonElement;
-        if (tableButton) {
-          tableButtonRef.current = tableButton;
-          // 移除默认行为
-          tableButton.removeAttribute('value');
-          tableButton.addEventListener('click', handleTableClick);
-        }
+        setTimeout(() => {
+          const toolbarElement = document.querySelector('.ql-toolbar');
+          if (toolbarElement) {
+            const tableButton = toolbarElement.querySelector('.ql-table') as HTMLButtonElement;
+            if (tableButton) {
+              tableButtonRef.current = tableButton;
+              // 移除默认行为
+              tableButton.removeAttribute('value');
+              tableButton.addEventListener('click', handleTableClick);
+            }
+          }
+        }, 100);
       }
     }
 
@@ -180,9 +178,39 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     const editor = quillRef.current?.getEditor?.();
     if (!editor) return;
 
-    const tableModule = editor.getModule('better-table') as any;
-    if (tableModule) {
-      tableModule.insertTable(rows, cols);
+    const range = editor.getSelection(true);
+    if (!range) return;
+
+    // 创建表格 HTML
+    let tableHTML = '<table style="border-collapse: collapse; width: 100%; margin: 16px 0; border: 1px solid #e2e8f0;"><tbody>';
+    for (let i = 0; i < rows; i++) {
+      tableHTML += '<tr>';
+      for (let j = 0; j < cols; j++) {
+        tableHTML += '<td style="border: 1px solid #e2e8f0; padding: 8px 12px; min-width: 50px;">';
+        tableHTML += '<br>';
+        tableHTML += '</td>';
+      }
+      tableHTML += '</tr>';
+    }
+    tableHTML += '</tbody></table><p><br></p>';
+
+    // 使用 clipboard 模块插入 HTML
+    try {
+      const delta = editor.clipboard.convert(tableHTML);
+      editor.updateContents(delta, 'user');
+      editor.setSelection(range.index + 1, 0);
+    } catch (error) {
+      console.error('插入表格失败:', error);
+      // 备用方案：直接插入 HTML
+      try {
+        const cursorPosition = range.index;
+        editor.insertText(cursorPosition, '\n', 'user');
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = tableHTML;
+        editor.root.appendChild(tempDiv.firstChild as Node);
+      } catch (e) {
+        console.error('备用插入方案也失败:', e);
+      }
     }
     
     setShowTablePicker(false);
@@ -262,15 +290,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       // 清除格式
       ['clean']
     ],
-    'better-table': {
-      operationMenu: {
-        items: {
-          unmergeCells: {
-            text: '取消合并单元格'
-          }
-        }
-      }
-    },
     clipboard: {
       matchVisual: false,
     },
@@ -278,9 +297,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       delay: 1000,
       maxStack: 50,
       userOnly: true
-    },
-    keyboard: {
-      bindings: QuillBetterTable.keyboardBindings
     }
   };
 
