@@ -35,14 +35,13 @@
   border-bottom: 1px solid #e2e8f0;
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   flex-shrink: 0;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
   min-width: 0;
   position: relative;
   z-index: 10;
   gap: 20px;
-  flex-wrap: wrap;
 }
 
 .headerLeft {
@@ -53,7 +52,14 @@
   min-width: 0;
   flex: 1;
   max-width: calc(100% - 400px);
-  order: 1;
+}
+
+.headerRight {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-shrink: 0;
+  justify-content: flex-end;
 }
 
 .backButton {
@@ -104,46 +110,25 @@
   }
 }
 
-.headerActions {
+.subHeader {
+  background: linear-gradient(to bottom, #f8fafc, #ffffff);
+  padding: 12px 30px;
+  border-bottom: 1px solid #e2e8f0;
   display: flex;
-  gap: 0;
-  align-items: flex-start;
-  flex-wrap: nowrap;
-  padding-right: 0;
+  justify-content: flex-start;
+  align-items: center;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
   min-width: 0;
-  flex: 0 0 auto;
-  justify-content: flex-end;
-  width: 100%;
-  order: 3;
-
-  /* 隐藏滚动条 - Firefox */
-  scrollbar-width: none;
-  
-  /* 隐藏滚动条 - IE, Edge */
-  -ms-overflow-style: none;
+  position: relative;
+  z-index: 10;
 }
 
-.actionColumn {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-  justify-content: flex-end;
-  align-items: flex-end;
-}
-
-.actionRow {
+.subHeaderLeft {
   display: flex;
   gap: 12px;
   align-items: center;
   flex-wrap: wrap;
-  justify-content: flex-end;
-  width: 100%;
-}
-
-/* 隐藏滚动条 - Chrome, Safari, WebKit浏览器 */
-.headerActions::-webkit-scrollbar {
-  display: none;
 }
 
 
@@ -287,6 +272,8 @@
   align-items: center;
   flex-shrink: 0;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  position: relative;
+  z-index: 9;
 }
 
 .metaLabel {

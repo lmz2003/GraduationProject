@@ -380,75 +380,73 @@ const NoteDetailPage: React.FC = () => {
             />
           </div>
 
-          <div className={styles.headerActions}>
-            <div className={styles.actionColumn}>
-              <div className={styles.actionRow}>
-                <div className={`${styles.saveIndicator} ${saving ? styles.saving : ''}`}>
-                  {saving ? '保存中...' : hasChanges ? '有未保存的修改' : '已保存'}
-                </div>
+          <div className={styles.headerRight}>
+            {showSyncButton && (
+              <button
+                className={`${styles.button} ${styles.syncButton}`}
+                onClick={handleSyncToKnowledge}
+                disabled={!needsSync}
+                title={needsSync ? '需要同步到知识库' : '已同步到知识库'}
+              >
+                📚 {needsSync ? '同步到知识库' : '已同步'}
+              </button>
+            )}
 
-                <button
-                  className={`${styles.button} ${styles.primary}`}
-                  onClick={handleSave}
-                  disabled={saving || !hasChanges}
-                >
-                  💾 保存
-                </button>
+            <button
+              className={`${styles.button} ${styles.secondary}`}
+              onClick={handleExportHtml}
+            >
+              📥 导出HTML
+            </button>
 
-                <select
-                  className={styles.statusSelect}
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value)}
-                  aria-label="笔记状态"
-                >
-                  <option value="draft">草稿</option>
-                  <option value="published">已发布</option>
-                </select>
+            <button
+              className={`${styles.button} ${styles.secondary}`}
+              onClick={handlePdfSettings}
+            >
+              📄 导出PDF
+            </button>
 
-                <button
-                  className={`${styles.button} ${showAI ? styles.active : styles.secondary}`}
-                  onClick={() => setShowAI(!showAI)}
-                >
-                  🤖 AI助手
-                </button>
-              </div>
+            <button
+              className={`${styles.button} ${showAI ? styles.active : styles.secondary}`}
+              onClick={() => setShowAI(!showAI)}
+            >
+              🤖 AI助手
+            </button>
+          </div>
+        </div>
 
-              <div className={styles.actionRow}>
-                {showSyncButton && (
-                  <button
-                    className={`${styles.button} ${styles.syncButton}`}
-                    onClick={handleSyncToKnowledge}
-                    disabled={!needsSync}
-                    title={needsSync ? '需要同步到知识库' : '已同步到知识库'}
-                  >
-                    📚 {needsSync ? '同步到知识库' : '已同步'}
-                  </button>
-                )}
-
-                <button
-                  className={`${styles.button} ${styles.secondary}`}
-                  onClick={handleExportHtml}
-                >
-                  📥 导出HTML
-                </button>
-
-                <button
-                  className={`${styles.button} ${styles.secondary}`}
-                  onClick={handlePdfSettings}
-                >
-                  📄 导出PDF
-                </button>
-
-                {!isNewNote && (
-                  <button
-                    className={`${styles.button} ${styles.danger}`}
-                    onClick={handleDelete}
-                  >
-                    🗑️ 删除
-                  </button>
-                )}
-              </div>
+        <div className={styles.subHeader}>
+          <div className={styles.subHeaderLeft}>
+            <div className={`${styles.saveIndicator} ${saving ? styles.saving : ''}`}>
+              {saving ? '保存中...' : hasChanges ? '有未保存的修改' : '已保存'}
             </div>
+
+            <button
+              className={`${styles.button} ${styles.primary}`}
+              onClick={handleSave}
+              disabled={saving || !hasChanges}
+            >
+              💾 保存
+            </button>
+
+            <select
+              className={styles.statusSelect}
+              value={status}
+              onChange={(e) => setStatus(e.target.value)}
+              aria-label="笔记状态"
+            >
+              <option value="draft">草稿</option>
+              <option value="published">已发布</option>
+            </select>
+
+            {!isNewNote && (
+              <button
+                className={`${styles.button} ${styles.danger}`}
+                onClick={handleDelete}
+              >
+                🗑️ 删除
+              </button>
+            )}
           </div>
         </div>
 
