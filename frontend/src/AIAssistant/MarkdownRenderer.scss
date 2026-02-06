@@ -56,8 +56,9 @@
       transform: scale(0.8);
     }
 
-    &:last-child {
-      margin-bottom: 0;
+    50% {
+      opacity: 1;
+      transform: scale(1);
     }
   }
 
