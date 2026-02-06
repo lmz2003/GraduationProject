@@ -421,11 +421,13 @@
           }
 
           // 普通表格样式
-          table {
+          table,
+          .ql-table {
             border-collapse: collapse;
             width: 100%;
             margin: 16px 0;
             border: 1px solid #e2e8f0;
+            display: table !important;
 
             td, th {
               border: 1px solid #e2e8f0;
@@ -444,7 +446,13 @@
               color: #0f172a;
             }
 
+            tbody {
+              display: table-row-group;
+            }
+
             tr {
+              display: table-row;
+
               &:nth-child(even) {
                 background: #fafafa;
               }
@@ -452,6 +460,10 @@
               &:hover {
                 background: #f8fafc;
               }
+            }
+
+            td {
+              display: table-cell;
             }
           }
 

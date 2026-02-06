@@ -1,8 +1,44 @@
 import React, { useState, useEffect, useRef } from 'react';
 // @ts-ignore - react-quill 类型声明可能不完整
-import ReactQuill from 'react-quill';
+import ReactQuill, { Quill } from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import styles from './RichTextEditor.module.scss';
+
+// 注册表格相关的 Blot
+const BlockEmbed = Quill.import('blots/block/embed');
+
+class TableBlot extends BlockEmbed {
+  static blotName = 'table';
+  static tagName = 'table';
+  static className = 'ql-table';
+
+  static create(value: any) {
+    const node = super.create(value);
+    if (typeof value === 'string') {
+      node.innerHTML = value;
+    }
+    return node;
+  }
+
+  static value(node: HTMLElement) {
+    return node.innerHTML;
+  }
+}
+
+class TableRowBlot extends BlockEmbed {
+  static blotName = 'table-row';
+  static tagName = 'tr';
+}
+
+class TableCellBlot extends BlockEmbed {
+  static blotName = 'table-cell';
+  static tagName = 'td';
+}
+
+// 注册自定义 Blot
+Quill.register(TableBlot);
+Quill.register(TableRowBlot);
+Quill.register(TableCellBlot);
 
 export interface RichTextEditorProps {
   initialContent?: string;
@@ -181,8 +217,8 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     const range = editor.getSelection(true);
     if (!range) return;
 
-    // 创建表格 HTML
-    let tableHTML = '<table style="border-collapse: collapse; width: 100%; margin: 16px 0; border: 1px solid #e2e8f0;"><tbody>';
+    // 创建完整的表格 HTML
+    let tableHTML = '<table class="ql-table" style="border-collapse: collapse; width: 100%; border: 1px solid #e2e8f0;"><tbody>';
     for (let i = 0; i < rows; i++) {
       tableHTML += '<tr>';
       for (let j = 0; j < cols; j++) {
@@ -192,24 +228,32 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       }
       tableHTML += '</tr>';
     }
-    tableHTML += '</tbody></table><p><br></p>';
+    tableHTML += '</tbody></table>';
 
-    // 使用 clipboard 模块插入 HTML
+    // 使用自定义 Blot 插入表格
     try {
-      const delta = editor.clipboard.convert(tableHTML);
-      editor.updateContents(delta, 'user');
-      editor.setSelection(range.index + 1, 0);
+      const index = range.index;
+      editor.insertEmbed(index, 'table', tableHTML, 'user');
+      editor.insertText(index + 1, '\n', 'user');
+      editor.setSelection(index + 2, 0);
     } catch (error) {
       console.error('插入表格失败:', error);
-      // 备用方案：直接插入 HTML
+      // 备用方案：直接操作 DOM
       try {
         const cursorPosition = range.index;
         editor.insertText(cursorPosition, '\n', 'user');
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = tableHTML;
-        editor.root.appendChild(tempDiv.firstChild as Node);
+        const tableNode = tempDiv.firstChild;
+        if (tableNode) {
+          // 查找插入位置
+          const blot = editor.getLeaf(cursorPosition + 1)[0];
+          if (blot && blot.domNode && blot.domNode.parentNode) {
+            blot.domNode.parentNode.insertBefore(tableNode, blot.domNode.nextSibling);
+          }
+        }
       } catch (e) {
-        console.error('备用插入方案也失败:', e);
+        console.error('备用插入方案失败:', e);
       }
     }
     
