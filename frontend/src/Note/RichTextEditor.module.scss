@@ -25,6 +25,7 @@
   overflow: hidden;
   background: #ffffff;
   min-height: 0;
+  position: relative;
 
   :global {
     .ql-toolbar {
@@ -99,6 +100,7 @@
           font-size: 12px;
           margin: 0 1px;
           flex-shrink: 0;
+          min-width: 70px;
 
           &:hover {
             border-color: #94a3b8;
@@ -109,6 +111,156 @@
             outline: none;
             border-color: #3b82f6;
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+          }
+        }
+
+        // 标题选择器中文显示
+        .ql-header {
+          &.ql-picker {
+            width: 90px;
+          }
+
+          .ql-picker-label::before {
+            content: '正文';
+          }
+
+          .ql-picker-label[data-value="1"]::before {
+            content: '一级标题';
+          }
+
+          .ql-picker-label[data-value="2"]::before {
+            content: '二级标题';
+          }
+
+          .ql-picker-label[data-value="3"]::before {
+            content: '三级标题';
+          }
+
+          .ql-picker-label[data-value="4"]::before {
+            content: '四级标题';
+          }
+
+          .ql-picker-label[data-value="5"]::before {
+            content: '五级标题';
+          }
+
+          .ql-picker-label[data-value="6"]::before {
+            content: '六级标题';
+          }
+
+          .ql-picker-item[data-value="1"]::before {
+            content: '一级标题';
+            font-size: 28px;
+            font-weight: 600;
+          }
+
+          .ql-picker-item[data-value="2"]::before {
+            content: '二级标题';
+            font-size: 24px;
+            font-weight: 600;
+          }
+
+          .ql-picker-item[data-value="3"]::before {
+            content: '三级标题';
+            font-size: 20px;
+            font-weight: 600;
+          }
+
+          .ql-picker-item[data-value="4"]::before {
+            content: '四级标题';
+            font-size: 18px;
+            font-weight: 600;
+          }
+
+          .ql-picker-item[data-value="5"]::before {
+            content: '五级标题';
+            font-size: 16px;
+            font-weight: 600;
+          }
+
+          .ql-picker-item[data-value="6"]::before {
+            content: '六级标题';
+            font-size: 14px;
+            font-weight: 600;
+          }
+
+          .ql-picker-item::before {
+            content: '正文';
+          }
+        }
+
+        // 字号选择器中文显示
+        .ql-size {
+          .ql-picker-label::before {
+            content: '标准';
+          }
+
+          .ql-picker-label[data-value="small"]::before {
+            content: '小号';
+          }
+
+          .ql-picker-label[data-value="large"]::before {
+            content: '大号';
+          }
+
+          .ql-picker-label[data-value="huge"]::before {
+            content: '特大';
+          }
+
+          .ql-picker-item[data-value="small"]::before {
+            content: '小号';
+            font-size: 12px;
+          }
+
+          .ql-picker-item::before {
+            content: '标准';
+            font-size: 14px;
+          }
+
+          .ql-picker-item[data-value="large"]::before {
+            content: '大号';
+            font-size: 18px;
+          }
+
+          .ql-picker-item[data-value="huge"]::before {
+            content: '特大';
+            font-size: 24px;
+          }
+        }
+
+        // 字体选择器中文显示
+        .ql-font {
+          .ql-picker-label::before {
+            content: '默认字体';
+          }
+
+          .ql-picker-label[data-value="serif"]::before {
+            content: '衬线字体';
+          }
+
+          .ql-picker-label[data-value="monospace"]::before {
+            content: '等宽字体';
+          }
+
+          .ql-picker-item::before {
+            content: '默认字体';
+          }
+
+          .ql-picker-item[data-value="serif"]::before {
+            content: '衬线字体';
+            font-family: serif;
+          }
+
+          .ql-picker-item[data-value="monospace"]::before {
+            content: '等宽字体';
+            font-family: monospace;
+          }
+        }
+
+        // 对齐方式按钮提示
+        .ql-align {
+          &[value=""]::after {
+            content: attr(title);
           }
         }
       }
@@ -144,7 +296,7 @@
             outline: none;
           }
 
-          h1, h2, h3 {
+          h1, h2, h3, h4, h5, h6 {
             font-weight: 600;
             margin: 16px 0 8px 0;
             color: #0f172a;
@@ -160,6 +312,18 @@
 
           h3 {
             font-size: 20px;
+          }
+
+          h4 {
+            font-size: 18px;
+          }
+
+          h5 {
+            font-size: 16px;
+          }
+
+          h6 {
+            font-size: 14px;
           }
 
           p {
@@ -217,6 +381,65 @@
             &:hover {
               color: #2563eb;
             }
+          }
+
+          // 表格样式
+          table {
+            border-collapse: collapse;
+            width: 100%;
+            margin: 16px 0;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            overflow: hidden;
+
+            td, th {
+              border: 1px solid #e2e8f0;
+              padding: 8px 12px;
+              min-width: 50px;
+              position: relative;
+
+              &:hover {
+                background: #f8fafc;
+              }
+            }
+
+            th {
+              background: #f1f5f9;
+              font-weight: 600;
+              color: #0f172a;
+            }
+
+            tr {
+              &:nth-child(even) {
+                background: #fafafa;
+              }
+
+              &:hover {
+                background: #f8fafc;
+              }
+            }
+          }
+
+          // 字体样式
+          .ql-font-serif {
+            font-family: Georgia, 'Times New Roman', serif;
+          }
+
+          .ql-font-monospace {
+            font-family: 'Monaco', 'Courier New', monospace;
+          }
+
+          // 字号样式
+          .ql-size-small {
+            font-size: 12px;
+          }
+
+          .ql-size-large {
+            font-size: 18px;
+          }
+
+          .ql-size-huge {
+            font-size: 24px;
           }
         }
       }
@@ -284,4 +507,61 @@
   font-size: 16px;
   display: flex;
   flex-direction: column;
+}
+
+// 表格选择器样式
+.tablePicker {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+  padding: 12px;
+  z-index: 1000;
+  min-width: 220px;
+}
+
+.tablePickerTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.tableGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tableRow {
+  display: flex;
+  gap: 2px;
+}
+
+.tableCell {
+  width: 18px;
+  height: 18px;
+  border: 1px solid #cbd5e1;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  background: #ffffff;
+
+  &:hover {
+    border-color: #3b82f6;
+    background: #dbeafe;
+  }
+
+  &.tableCellHover {
+    border-color: #3b82f6;
+    background: #3b82f6;
+  }
+}
+
+.tablePickerFooter {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 8px;
+  text-align: center;
 }
