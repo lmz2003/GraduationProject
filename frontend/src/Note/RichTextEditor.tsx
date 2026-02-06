@@ -1,8 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 // @ts-ignore - react-quill 类型声明可能不完整
-import ReactQuill from 'react-quill';
+import ReactQuill, { Quill } from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+// @ts-ignore
+import QuillBetterTable from 'quill-better-table';
+import 'quill-better-table/dist/quill-better-table.css';
 import styles from './RichTextEditor.module.scss';
+
+// 注册表格模块
+Quill.register('modules/better-table', QuillBetterTable);
 
 export interface RichTextEditorProps {
   initialContent?: string;
@@ -19,6 +25,11 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const quillRef = useRef<ReactQuill>(null);
   const [wordCount, setWordCount] = useState<number>(0);
   const isInitializedRef = useRef(false);
+  const [showTablePicker, setShowTablePicker] = useState<boolean>(false);
+  const tablePickerRef = useRef<HTMLDivElement>(null);
+  const tableButtonRef = useRef<HTMLButtonElement | null>(null);
+  const [hoveredRow, setHoveredRow] = useState(-1);
+  const [hoveredCol, setHoveredCol] = useState(-1);
 
   useEffect(() => {
     // 仅在初始化时设置内容
@@ -32,20 +43,54 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     }
   }, [initialContent]);
 
-  // 为图片按钮添加自定义处理器
+  // 为图片和表格按钮添加自定义处理器
   useEffect(() => {
     const editor = quillRef.current?.getEditor?.();
     if (editor) {
       const toolbar = editor.getModule('toolbar') as any;
       if (toolbar) {
         toolbar.addHandler('image', handleImageUpload);
+        
+        // 找到表格按钮并添加点击事件
+        const toolbarContainer = editor.container.previousSibling as HTMLElement;
+        const tableButton = toolbarContainer?.querySelector('.ql-table') as HTMLButtonElement;
+        if (tableButton) {
+          tableButtonRef.current = tableButton;
+          // 移除默认行为
+          tableButton.removeAttribute('value');
+          tableButton.addEventListener('click', handleTableClick);
+        }
       }
     }
+
+    return () => {
+      if (tableButtonRef.current) {
+        tableButtonRef.current.removeEventListener('click', handleTableClick);
+      }
+    };
   }, []);
+
+  // 点击外部关闭表格选择器
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (tablePickerRef.current && !tablePickerRef.current.contains(event.target as Node)) {
+        if (tableButtonRef.current && !tableButtonRef.current.contains(event.target as Node)) {
+          setShowTablePicker(false);
+        }
+      }
+    };
+
+    if (showTablePicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showTablePicker]);
 
   const updateWordCount = () => {
     try {
-      // 获取 Quill 编辑器实例（ReactQuill 组件的 getEditor 方法）
       const editor = quillRef.current?.getEditor?.();
       const text = editor?.getText?.() || '';
       const words = text.trim().split(/\s+/).filter((word: string) => word.length > 0).length;
@@ -58,7 +103,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
   const handleChange = (html: string) => {
     setEditorHtml(html);
     
-    // 使用 setTimeout 避免立即调用，以支持中文输入法
     setTimeout(() => {
       updateWordCount();
       if (onContentChange) {
@@ -97,7 +141,6 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
           if (response.ok) {
             const result = await response.json();
-            // 兼容后端返回格式：{ code: 0, url: '...' } 或 { url: '...' }
             const imageUrl = result.data?.url || result.url;
             
             if (!imageUrl) {
@@ -127,6 +170,71 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
     };
   };
 
+  const handleTableClick = (e?: Event) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    setShowTablePicker(!showTablePicker);
+  };
+
+  const insertTable = (rows: number, cols: number) => {
+    const editor = quillRef.current?.getEditor?.();
+    if (!editor) return;
+
+    const tableModule = editor.getModule('better-table') as any;
+    if (tableModule) {
+      tableModule.insertTable(rows, cols);
+    }
+    
+    setShowTablePicker(false);
+  };
+
+  // 渲染表格选择器
+  const renderTablePicker = () => {
+    if (!showTablePicker || !tableButtonRef.current) return null;
+
+    const buttonRect = tableButtonRef.current.getBoundingClientRect();
+    const maxRows = 8;
+    const maxCols = 10;
+
+    return (
+      <div 
+        ref={tablePickerRef}
+        className={styles.tablePicker}
+        style={{
+          position: 'fixed',
+          top: `${buttonRect.bottom + 5}px`,
+          left: `${buttonRect.left}px`,
+        }}
+      >
+        <div className={styles.tablePickerTitle}>插入表格</div>
+        <div className={styles.tableGrid}>
+          {Array.from({ length: maxRows }).map((_, rowIndex) => (
+            <div key={rowIndex} className={styles.tableRow}>
+              {Array.from({ length: maxCols }).map((_, colIndex) => (
+                <div
+                  key={colIndex}
+                  className={`${styles.tableCell} ${
+                    rowIndex <= hoveredRow && colIndex <= hoveredCol ? styles.tableCellHover : ''
+                  }`}
+                  onMouseEnter={() => {
+                    setHoveredRow(rowIndex);
+                    setHoveredCol(colIndex);
+                  }}
+                  onClick={() => insertTable(rowIndex + 1, colIndex + 1)}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className={styles.tablePickerFooter}>
+          {hoveredRow >= 0 && hoveredCol >= 0 
+            ? `${hoveredRow + 1} × ${hoveredCol + 1}`
+            : '选择表格大小'}
+        </div>
+      </div>
+    );
+  };
+
   const modules = {
     toolbar: [
       // 标题和字体
@@ -150,10 +258,19 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       ],
       // 其他功能
       ['blockquote', 'code-block'],
-      ['link', 'image'],
+      ['link', 'image', 'table'],
       // 清除格式
       ['clean']
     ],
+    'better-table': {
+      operationMenu: {
+        items: {
+          unmergeCells: {
+            text: '取消合并单元格'
+          }
+        }
+      }
+    },
     clipboard: {
       matchVisual: false,
     },
@@ -161,6 +278,9 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       delay: 1000,
       maxStack: 50,
       userOnly: true
+    },
+    keyboard: {
+      bindings: QuillBetterTable.keyboardBindings
     }
   };
 
@@ -176,6 +296,7 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
           placeholder="开始编辑内容..."
           className={styles.quillEditor}
         />
+        {renderTablePicker()}
       </div>
 
       <div className={styles.footer}>

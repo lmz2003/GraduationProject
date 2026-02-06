@@ -383,14 +383,49 @@
             }
           }
 
-          // 表格样式
+          // 表格样式（quill-better-table）
+          .quill-better-table {
+            table {
+              border-collapse: collapse;
+              width: 100%;
+              margin: 16px 0;
+              border: 1px solid #e2e8f0;
+
+              td, th {
+                border: 1px solid #e2e8f0;
+                padding: 8px 12px;
+                min-width: 50px;
+                position: relative;
+
+                &:hover {
+                  background: #f8fafc;
+                }
+              }
+
+              th {
+                background: #f1f5f9;
+                font-weight: 600;
+                color: #0f172a;
+              }
+
+              tr {
+                &:nth-child(even) {
+                  background: #fafafa;
+                }
+
+                &:hover {
+                  background: #f8fafc;
+                }
+              }
+            }
+          }
+
+          // 普通表格样式
           table {
             border-collapse: collapse;
             width: 100%;
             margin: 16px 0;
             border: 1px solid #e2e8f0;
-            border-radius: 6px;
-            overflow: hidden;
 
             td, th {
               border: 1px solid #e2e8f0;
@@ -462,6 +497,40 @@
       &:hover {
         background: #94a3b8;
       }
+    }
+
+    // quill-better-table 操作菜单样式
+    .qlbt-operation-menu {
+      background: #ffffff;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+      padding: 4px;
+      z-index: 1000;
+
+      .qlbt-operation-menu-item {
+        padding: 6px 12px;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 13px;
+        color: #475569;
+        transition: all 0.2s ease;
+
+        &:hover {
+          background: #f1f5f9;
+          color: #1e293b;
+        }
+      }
+    }
+
+    // 表格选中效果
+    .qlbt-col-tool,
+    .qlbt-row-tool {
+      background: #3b82f6;
+    }
+
+    .qlbt-selection-line {
+      background: #3b82f6;
     }
   }
 }
