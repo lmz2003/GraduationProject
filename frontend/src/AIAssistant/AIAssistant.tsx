@@ -281,7 +281,34 @@ const AIAssistant: React.FC = () => {
                 setRequestId(data.data.requestId);
                 console.log('📝 收到请求 ID:', data.data.requestId);
               } else if (data.type === 'chunk' && data.data) {
-                currentContent += data.data;
+                // 处理可能的对象类型数据
+                let chunkContent: string;
+                if (typeof data.data === 'string') {
+                  chunkContent = data.data;
+                } else if (typeof data.data === 'object' && data.data !== null) {
+                  // 如果是对象，尝试提取内容或转换为JSON
+                  if ('content' in data.data && typeof (data.data as any).content === 'string') {
+                    chunkContent = (data.data as any).content;
+                  } else if ('kwargs' in data.data && (data.data as any).kwargs) {
+                    // 处理 langchain 的 AIMessageChunk 格式
+                    const kwargs = (data.data as any).kwargs;
+                    if (kwargs.content && typeof kwargs.content === 'string') {
+                      chunkContent = kwargs.content;
+                    } else {
+                      chunkContent = JSON.stringify(data.data);
+                    }
+                  } else {
+                    chunkContent = JSON.stringify(data.data);
+                  }
+                } else {
+                  chunkContent = String(data.data);
+                }
+                
+                // 调试日志
+                console.log('🔍 数据块类型:', typeof data.data, '内容:', data.data);
+                console.log('🔍 提取的 chunkContent:', chunkContent);
+                
+                currentContent += chunkContent;
                 
                 // 直接更新现有消息的内容
                 setMessages(prev => prev.map(msg =>

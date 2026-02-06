@@ -279,16 +279,16 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 // 消息列表
 .message-list {
   flex: 1;
-  padding: 16px;
+  padding: 20px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
   background-color: $background-color;
   scroll-behavior: smooth;
   
   &::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
   }
   
   &::-webkit-scrollbar-track {
@@ -296,11 +296,11 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
   
   &::-webkit-scrollbar-thumb {
-    background-color: rgba(0, 0, 0, 0.1);
-    border-radius: 3px;
+    background-color: rgba(0, 0, 0, 0.15);
+    border-radius: 4px;
     
     &:hover {
-      background-color: rgba(0, 0, 0, 0.2);
+      background-color: rgba(0, 0, 0, 0.25);
     }
   }
 }
@@ -344,9 +344,10 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 // 消息包装器
 .message-wrapper {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: flex-end;
-  animation: fadeIn 0.3s ease-out;
+  animation: slideUp 0.3s ease-out;
+  transition: all 0.3s ease;
   
   &.user-message {
     @include user-message;
@@ -354,100 +355,117 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     margin-left: auto;
     width: auto;
   }
+  
+  &:hover {
+    transform: translateY(-1px);
+  }
 }
 
 // 头像
 .avatar {
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   border-radius: $border-radius-full;
   @include flex-center;
-  font-size: 18px;
+  font-size: 20px;
   flex-shrink: 0;
-  box-shadow: 0 3px 12px rgba($accent-color, 0.3);
-  transition: $transition;
-  animation: fadeIn 0.3s ease-out;
+  box-shadow: 0 4px 12px rgba($accent-color, 0.25);
+  transition: all 0.3s ease;
+  animation: slideUp 0.3s ease-out;
   
   &.user-avatar {
     background: linear-gradient(135deg, $primary-color 0%, $secondary-color 100%);
     color: white;
-    box-shadow: 0 3px 12px rgba($primary-color, 0.3);
+    box-shadow: 0 4px 16px rgba($primary-color, 0.35);
+    
+    &:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px rgba($primary-color, 0.4);
+    }
   }
   
   &.assistant-avatar {
     background: linear-gradient(135deg, $accent-color 0%, #059669 100%);
     color: white;
-    box-shadow: 0 3px 12px rgba($accent-color, 0.3);
+    box-shadow: 0 4px 16px rgba($accent-color, 0.35);
+    
+    &:hover {
+      transform: scale(1.05);
+      box-shadow: 0 6px 20px rgba($accent-color, 0.4);
+    }
   }
 }
 
 // 消息气泡
 .message-bubble {
   max-width: 85%;
-  padding: 14px 16px;
-  border-radius: 4px 16px 16px 16px;
+  padding: 20px 24px;
+  border-radius: 12px;
   font-size: 14px;
-  line-height: 1.7;
+  line-height: 1.8;
   background: $card-background;
   color: $text-color;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   border: 1px solid $border-color;
-  transition: $transition;
-  animation: fadeIn 0.3s ease-out;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: slideUp 0.3s ease-out;
   word-break: break-word;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  min-height: 44px; /* 确保空内容时也能显示气泡 */
+  min-height: 44px;
   min-width: auto;
   display: inline-block;
-  transition: all 0.2s ease-in-out;
-  transform: translateY(0);
-  opacity: 1;
-  will-change: height, width;
+  will-change: transform, opacity;
   
   &.user-message {
-    border-radius: 16px 4px 16px 16px;
+    border-radius: 18px 4px 4px 18px;
     background: linear-gradient(135deg, $primary-color 0%, $secondary-color 100%);
     color: white;
-    box-shadow: 0 4px 16px rgba($primary-color, 0.3);
+    box-shadow: 0 4px 20px rgba($primary-color, 0.35);
     border: none;
     
     &:hover {
-      transform: translateX(-2px);
+      transform: translateX(-3px) translateY(-1px);
+      box-shadow: 0 6px 24px rgba($primary-color, 0.4);
     }
     
     a {
-      color: #a5b4fc;
-      text-decoration: underline;
+      color: rgba(255, 255, 255, 0.9);
+      text-decoration: none;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.3);
       cursor: pointer;
-      transition: color 0.2s ease;
+      transition: all 0.2s ease;
       
       &:hover {
-        color: #c7d2fe;
+        color: #ffffff;
+        border-bottom-color: rgba(255, 255, 255, 0.6);
       }
     }
   }
   
   &:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   }
   
   p {
     margin: 0;
     
     &:not(:last-child) {
-      margin-bottom: 8px;
+      margin-bottom: 12px;
     }
   }
   
   a {
     color: #3b82f6;
-    text-decoration: underline;
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
     cursor: pointer;
-    transition: color 0.2s ease;
+    transition: all 0.2s ease;
+    font-weight: 500;
     
     &:hover {
       color: #2563eb;
+      border-bottom-color: #2563eb;
     }
   }
 }
@@ -463,42 +481,45 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 .message-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   justify-content: space-between;
+  padding: 4px 0;
   
   .timestamp {
     font-size: 11px;
     color: $text-secondary;
     display: block;
+    font-weight: 500;
   }
   
   .action-btn {
     @include flex-center;
-    width: 28px;
-    height: 28px;
+    width: 30px;
+    height: 30px;
     border-radius: $border-radius-full;
     border: none;
     background: transparent;
     color: $text-secondary;
     cursor: pointer;
-    transition: $transition;
+    transition: all 0.2s ease;
     opacity: 0;
     pointer-events: none;
     
     svg {
-      width: 14px;
-      height: 14px;
+      width: 15px;
+      height: 15px;
       stroke-width: 2;
     }
     
     &:not(:disabled) {
       &:hover {
-        background: rgba(79, 70, 229, 0.1);
+        background: rgba(79, 70, 229, 0.12);
         color: $primary-color;
+        transform: scale(1.1);
       }
       
       &:active {
-        transform: scale(0.92);
+        transform: scale(0.95);
       }
     }
     
@@ -787,20 +808,26 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 // 打字指示器
 .typing-indicator {
   display: flex;
-  gap: 4px;
-  padding: 12px 16px;
+  gap: 6px;
+  padding: 14px 18px;
   background: $card-background;
   border-radius: 16px 16px 16px 4px;
-  box-shadow: $shadow-sm;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
   border: 1px solid $border-color;
   width: fit-content;
+  transition: all 0.3s ease;
+  
+  &:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  }
   
   .typing-dot {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
     border-radius: $border-radius-full;
-    background: $text-secondary;
-    animation: pulse 1.4s infinite ease-in-out;
+    background: linear-gradient(135deg, $primary-color 0%, $secondary-color 100%);
+    animation: typingPulse 1.4s infinite ease-in-out;
+    box-shadow: 0 2px 4px rgba(79, 70, 229, 0.3);
     
     &:nth-child(1) {
       animation-delay: 0s;
@@ -813,6 +840,17 @@ $transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     &:nth-child(3) {
       animation-delay: 0.4s;
     }
+  }
+}
+
+@keyframes typingPulse {
+  0%, 100% {
+    transform: scale(0.6);
+    opacity: 0.4;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
   }
 }
 
