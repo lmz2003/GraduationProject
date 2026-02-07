@@ -420,52 +420,6 @@
             }
           }
 
-          // 普通表格样式
-          table,
-          .ql-table {
-            border-collapse: collapse;
-            width: 100%;
-            margin: 16px 0;
-            border: 1px solid #e2e8f0;
-            display: table !important;
-
-            td, th {
-              border: 1px solid #e2e8f0;
-              padding: 8px 12px;
-              min-width: 50px;
-              position: relative;
-
-              &:hover {
-                background: #f8fafc;
-              }
-            }
-
-            th {
-              background: #f1f5f9;
-              font-weight: 600;
-              color: #0f172a;
-            }
-
-            tbody {
-              display: table-row-group;
-            }
-
-            tr {
-              display: table-row;
-
-              &:nth-child(even) {
-                background: #fafafa;
-              }
-
-              &:hover {
-                background: #f8fafc;
-              }
-            }
-
-            td {
-              display: table-cell;
-            }
-          }
 
           // 字体样式
           .ql-font-serif {
@@ -590,59 +544,4 @@
   flex-direction: column;
 }
 
-// 表格选择器样式
-.tablePicker {
-  background: #ffffff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
-  padding: 12px;
-  z-index: 1000;
-  min-width: 220px;
-}
 
-.tablePickerTitle {
-  font-size: 13px;
-  font-weight: 600;
-  color: #475569;
-  margin-bottom: 8px;
-  text-align: center;
-}
-
-.tableGrid {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.tableRow {
-  display: flex;
-  gap: 2px;
-}
-
-.tableCell {
-  width: 18px;
-  height: 18px;
-  border: 1px solid #cbd5e1;
-  border-radius: 2px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-  background: #ffffff;
-
-  &:hover {
-    border-color: #3b82f6;
-    background: #dbeafe;
-  }
-
-  &.tableCellHover {
-    border-color: #3b82f6;
-    background: #3b82f6;
-  }
-}
-
-.tablePickerFooter {
-  font-size: 11px;
-  color: #94a3b8;
-  margin-top: 8px;
-  text-align: center;
-}
