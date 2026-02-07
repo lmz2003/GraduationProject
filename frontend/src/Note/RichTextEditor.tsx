@@ -3,14 +3,12 @@ import React, { useState, useEffect, useRef } from 'react';
 import ReactQuill, { Quill } from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 // @ts-ignore - quill-better-table 类型声明可能不完整
-import { QuillBetterTable } from 'quill-better-table';
+import QuillBetterTable from 'quill-better-table';
 import 'quill-better-table/dist/quill-better-table.css';
 import styles from './RichTextEditor.module.scss';
 
-// 注册 quill-better-table
-Quill.register({
-  'modules/betterTable': QuillBetterTable
-});
+// 注册 quill-better-table (在组件挂载后延迟注册)
+let isTableModuleRegistered = false;
 
 export interface RichTextEditorProps {
   initialContent?: string;
@@ -39,6 +37,20 @@ const RichTextEditor: React.FC<RichTextEditorProps> = ({
       }
     }
   }, [initialContent]);
+
+  // 在组件挂载时注册 betterTable 模块
+  useEffect(() => {
+    if (!isTableModuleRegistered && QuillBetterTable) {
+      try {
+        Quill.register({
+          'modules/betterTable': QuillBetterTable
+        });
+        isTableModuleRegistered = true;
+      } catch (error) {
+        console.warn('betterTable 模块已注册或注册失败:', error);
+      }
+    }
+  }, []);
 
   // 为图片按钮添加自定义处理器
   useEffect(() => {
