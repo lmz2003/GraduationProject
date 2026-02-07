@@ -3,6 +3,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { normalizeNodeId } from 'platejs';
 import { Plate, usePlateEditor, useEditorState } from 'platejs/react';
+import { TooltipProvider } from '@/components/ui/tooltip';
 
 import { BasicNodesKit } from '@/components/editor/plugins/basic-nodes-kit';
 import { ListKit } from '@/components/editor/plugins/list-kit';
@@ -399,10 +400,12 @@ const PlateNoteEditor: React.FC<PlateNoteEditorProps> = ({
 
   return (
     <div className={styles.editorContainer}>
-      <Plate editor={editor}>
-        <EditorToolbar className={styles.toolbar} />
-        <EditorContent onWordCountChange={setWordCount} />
-      </Plate>
+      <TooltipProvider>
+        <Plate editor={editor}>
+          <EditorToolbar className={styles.toolbar} />
+          <EditorContent onWordCountChange={setWordCount} />
+        </Plate>
+      </TooltipProvider>
 
       <div className={styles.footer}>
         <span>支持富文本编辑，可插入图片、表格等</span>
