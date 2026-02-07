@@ -2,10 +2,11 @@
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { normalizeNodeId } from 'platejs';
-import { Plate, usePlateEditor } from 'platejs/react';
+import { Plate, usePlateEditor, useEditorState } from 'platejs/react';
 
 import { BasicNodesKit } from '@/components/editor/plugins/basic-nodes-kit';
 import { Editor, EditorContainer } from '@/components/ui/editor';
+import { EditorToolbar } from '@/components/editor/editor-toolbar';
 import styles from './plate-note-editor.module.scss';
 
 export interface PlateNoteEditorProps {
@@ -148,6 +149,41 @@ const extractTextFromNodes = (nodes: any[]): string => {
   return text;
 };
 
+// 编辑器内部组件，用于访问编辑器状态
+const EditorContent: React.FC<{
+  onWordCountChange: (count: number) => void;
+}> = ({ onWordCountChange }) => {
+  const editor = useEditorState();
+  const callbacksRef = useRef<{ onWordCountChange: (count: number) => void }>({ onWordCountChange });
+
+  useEffect(() => {
+    callbacksRef.current = { onWordCountChange };
+  }, [onWordCountChange]);
+
+  // 监听编辑器内容变化
+  useEffect(() => {
+    if (!editor || !editor.children) return;
+
+    const text = extractTextFromNodes(editor.children);
+    const words = text
+      .trim()
+      .split(/\s+/)
+      .filter((word: string) => word.length > 0).length;
+    
+    callbacksRef.current.onWordCountChange(words);
+  }, [editor, editor?.children]);
+
+  return (
+    <EditorContainer variant="default" className={styles.editorWrapper}>
+      <Editor
+        variant="default"
+        placeholder="开始编辑内容..."
+        className={styles.editor}
+      />
+    </EditorContainer>
+  );
+};
+
 const PlateNoteEditor: React.FC<PlateNoteEditorProps> = ({
   initialContent = '',
   onContentChange,
@@ -172,13 +208,6 @@ const PlateNoteEditor: React.FC<PlateNoteEditorProps> = ({
     try {
       // 提取纯文本
       const text = extractTextFromNodes(editor.children);
-
-      // 计算字数
-      const words = text
-        .trim()
-        .split(/\s+/)
-        .filter((word: string) => word.length > 0).length;
-      setWordCount(words);
 
       // 触发内容变化回调
       if (callbacksRef.current.onContentChange) {
@@ -206,7 +235,7 @@ const PlateNoteEditor: React.FC<PlateNoteEditorProps> = ({
     value: initialValue,
   });
 
-  // 使用 useEffect 来监听编辑器变化
+  // 监听编辑器值变化
   useEffect(() => {
     if (editor && isInitializedRef.current) {
       handleChange(editor);
@@ -214,18 +243,13 @@ const PlateNoteEditor: React.FC<PlateNoteEditorProps> = ({
       isInitializedRef.current = true;
       handleChange(editor);
     }
-  }, [editor, handleChange]);
+  }, [editor?.children]);
 
   return (
     <div className={styles.editorContainer}>
       <Plate editor={editor}>
-        <EditorContainer variant="default" className={styles.editorWrapper}>
-          <Editor
-            variant="default"
-            placeholder="开始编辑内容..."
-            className={styles.editor}
-          />
-        </EditorContainer>
+        <EditorToolbar className={styles.toolbar} />
+        <EditorContent onWordCountChange={setWordCount} />
       </Plate>
 
       <div className={styles.footer}>
