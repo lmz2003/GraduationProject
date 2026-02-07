@@ -41,7 +41,7 @@ async function bootstrap() {
   // 获取端口配置
   const port = configService.get<number>('PORT') || 3001;
   
-  await app.listen(3001);
-  console.log(`Server is running on http://localhost:3001`);
+  await app.listen(port);
+  console.log(`Server is running on http://localhost:${port}`);
 }
 bootstrap();
