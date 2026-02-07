@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import RichTextEditor from './RichTextEditor';
+import PlateNoteEditor from '../components/editor/plate-note-editor';
 import PdfExportModal from '../components/PdfExportModal';
 import AIAssistant from '../AIAssistant/AIAssistant';
 import { AIAssistantProvider } from '../context/AIAssistantContext';
@@ -476,7 +476,7 @@ const NoteDetailPage: React.FC = () => {
 
         <div className={styles.contentWrapper}>
           <div className={styles.editorContainer}>
-            <RichTextEditor
+            <PlateNoteEditor
               initialContent={content}
               onContentChange={setContent}
               onHtmlChange={setHtmlContent}
