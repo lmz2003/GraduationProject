@@ -5,6 +5,13 @@ import { normalizeNodeId } from 'platejs';
 import { Plate, usePlateEditor, useEditorState } from 'platejs/react';
 
 import { BasicNodesKit } from '@/components/editor/plugins/basic-nodes-kit';
+import { ListKit } from '@/components/editor/plugins/list-kit';
+import { LinkKit } from '@/components/editor/plugins/link-kit';
+import { MediaKit } from '@/components/editor/plugins/media-kit';
+import { CodeBlockKit } from '@/components/editor/plugins/code-block-kit';
+import { AutoformatKit } from '@/components/editor/plugins/autoformat-kit';
+import { BlockSelectionKit } from '@/components/editor/plugins/block-selection-kit';
+import { IndentAlignKit } from '@/components/editor/plugins/indent-align-kit';
 import { Editor, EditorContainer } from '@/components/ui/editor';
 import { EditorToolbar } from '@/components/editor/editor-toolbar';
 import styles from './plate-note-editor.module.scss';
@@ -43,7 +50,7 @@ const htmlToPlateValue = (initialContent: string) => {
     const nodes: any[] = [];
 
     // 遍历 HTML 节点并转换为 Plate 格式
-    const processNode = (node: Node): any => {
+    const processNode = (node: Node, parentTag?: string): any => {
       if (node.nodeType === Node.TEXT_NODE) {
         const text = node.textContent || '';
         return text ? { text } : null;
@@ -51,55 +58,191 @@ const htmlToPlateValue = (initialContent: string) => {
 
       if (node.nodeType === Node.ELEMENT_NODE) {
         const element = node as HTMLElement;
+        const tagName = element.tagName.toLowerCase();
         const children: any[] = [];
 
-        for (const child of Array.from(element.childNodes)) {
-          const processed = processNode(child);
-          if (processed) {
-            if (Array.isArray(processed)) {
-              children.push(...processed);
-            } else {
-              children.push(processed);
+        // 对于void元素（自闭合标签），不处理子元素
+        const voidElements = ['img', 'br', 'hr', 'video', 'audio', 'iframe'];
+        const shouldProcessChildren = !voidElements.includes(tagName);
+
+        if (shouldProcessChildren) {
+          for (const child of Array.from(element.childNodes)) {
+            const processed = processNode(child, tagName);
+            if (processed) {
+              if (Array.isArray(processed)) {
+                children.push(...processed);
+              } else {
+                children.push(processed);
+              }
             }
           }
         }
 
-        const tagName = element.tagName.toLowerCase();
-
         switch (tagName) {
+          // 块级元素
           case 'h1':
-            return { type: 'h1', children: children.length ? children : [{ text: '' }] };
           case 'h2':
-            return { type: 'h2', children: children.length ? children : [{ text: '' }] };
           case 'h3':
-            return { type: 'h3', children: children.length ? children : [{ text: '' }] };
           case 'h4':
-            return { type: 'h4', children: children.length ? children : [{ text: '' }] };
           case 'h5':
-            return { type: 'h5', children: children.length ? children : [{ text: '' }] };
           case 'h6':
-            return { type: 'h6', children: children.length ? children : [{ text: '' }] };
+            return { 
+              type: tagName, 
+              children: children.length ? children : [{ text: '' }] 
+            };
           case 'blockquote':
-            return { type: 'blockquote', children: children.length ? children : [{ text: '' }] };
+            return { 
+              type: 'blockquote', 
+              children: children.length ? children : [{ text: '' }] 
+            };
           case 'p':
-            return { type: 'p', children: children.length ? children : [{ text: '' }] };
+            return { 
+              type: 'p', 
+              children: children.length ? children : [{ text: '' }] 
+            };
+          case 'div':
+            // div通常转换为段落（如果包含内容）或保留子元素
+            return children.length > 0 ? children : null;
+          case 'section':
+          case 'article':
+          case 'main':
+            // 这些标签保留其子元素
+            return children.length > 0 ? children : null;
+          
+          // 列表
+          case 'ul':
+          case 'ol': {
+            // 确保只包含li元素
+            const listItems = children.filter(child => child?.type === 'li');
+            return {
+              type: tagName,
+              children: listItems.length > 0 ? listItems : [{ type: 'li', children: [{ text: '' }] }]
+            };
+          }
+          case 'li':
+            return { 
+              type: 'li', 
+              children: children.length ? children : [{ text: '' }] 
+            };
+          case 'dl':
+            // 定义列表转换为段落
+            return children.length > 0 ? children : null;
+          case 'dt':
+          case 'dd':
+            return { 
+              type: 'p', 
+              children: children.length ? children : [{ text: '' }] 
+            };
+          
+          // 代码块
+          case 'pre': {
+            // 预处理文本以保留空格和换行
+            const codeText = element.textContent || '';
+            const codeLines = codeText.split('\n').map(line => ({
+              type: 'code_line',
+              children: [{ text: line }]
+            }));
+            return {
+              type: 'code_block',
+              lang: element.getAttribute('data-language') || element.getAttribute('class') || '',
+              children: codeLines.length > 0 ? codeLines : [{ type: 'code_line', children: [{ text: '' }] }]
+            };
+          }
+          case 'code':
+            if (parentTag === 'pre') {
+              // 在pre标签内，code返回其文本
+              return { type: 'code_line', children: [{ text: element.textContent || '' }] };
+            }
+            // 否则标记为代码文本
+            return children.map((child) => child ? { ...child, code: true } : null).filter((c) => c);
+          
+          // 内联标记
           case 'strong':
           case 'b':
-            return children.map((child) => ({ ...child, bold: true }));
+            return children.map((child) => child ? { ...child, bold: true } : null).filter((c) => c);
           case 'em':
           case 'i':
-            return children.map((child) => ({ ...child, italic: true }));
+            return children.map((child) => child ? { ...child, italic: true } : null).filter((c) => c);
           case 'u':
-            return children.map((child) => ({ ...child, underline: true }));
+            return children.map((child) => child ? { ...child, underline: true } : null).filter((c) => c);
           case 's':
           case 'strike':
-            return children.map((child) => ({ ...child, strikethrough: true }));
-          case 'code':
-            return children.map((child) => ({ ...child, code: true }));
-          case 'img':
-            return null; // 图片处理需要单独的插件
+          case 'del':
+            return children.map((child) => child ? { ...child, strikethrough: true } : null).filter((c) => c);
+          case 'mark':
+          case 'highli':
+            return children.map((child) => child ? { ...child, highlight: true } : null).filter((c) => c);
+          case 'sub':
+            return children.map((child) => child ? { ...child, subscript: true } : null).filter((c) => c);
+          case 'sup':
+            return children.map((child) => child ? { ...child, superscript: true } : null).filter((c) => c);
+          case 'kbd':
+            return children.map((child) => child ? { ...child, kbd: true } : null).filter((c) => c);
+          
+          // 媒体元素
+          case 'img': {
+            const url = element.getAttribute('src') || '';
+            return url ? {
+              type: 'img',
+              url,
+              alt: element.getAttribute('alt') || '',
+              children: [{ text: '' }],
+            } : null;
+          }
+          case 'video': {
+            const url = element.getAttribute('src') || '';
+            return url ? {
+              type: 'video',
+              url,
+              children: [{ text: '' }],
+            } : null;
+          }
+          case 'audio': {
+            const url = element.getAttribute('src') || '';
+            return url ? {
+              type: 'audio',
+              url,
+              children: [{ text: '' }],
+            } : null;
+          }
+          case 'iframe': {
+            const url = element.getAttribute('src') || '';
+            return url ? {
+              type: 'mediaEmbed',
+              url,
+              children: [{ text: '' }],
+            } : null;
+          }
+          
+          // 链接
+          case 'a': {
+            const url = element.getAttribute('href') || '';
+            return {
+              type: 'a',
+              url,
+              children: children.length ? children : [{ text: element.textContent || '' }],
+            };
+          }
+          
+          // 忽略的元素
+          case 'br':
+            return { text: '\n' };
+          case 'hr':
+            return { type: 'hr', children: [{ text: '' }] };
+          case 'style':
+          case 'script':
+          case 'noscript':
+          case 'meta':
+          case 'title':
+          case 'head':
+            return null;
+          
+          // 其他容器元素，保留子元素
+          case 'span':
+          case 'small':
+          case 'button':
           default:
-            return children;
+            return children.length > 0 ? children : null;
         }
       }
 
@@ -231,7 +374,16 @@ const PlateNoteEditor: React.FC<PlateNoteEditorProps> = ({
   }, []);
 
   const editor = usePlateEditor({
-    plugins: BasicNodesKit,
+    plugins: [
+      ...BasicNodesKit,
+      ...ListKit,
+      ...LinkKit,
+      ...MediaKit,
+      ...CodeBlockKit,
+      ...AutoformatKit,
+      ...BlockSelectionKit,
+      ...IndentAlignKit,
+    ],
     value: initialValue,
   });
 

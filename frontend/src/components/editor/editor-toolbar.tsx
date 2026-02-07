@@ -2,7 +2,6 @@
 
 import React, { useCallback } from 'react';
 import { useEditorState } from 'platejs/react';
-import { toggleMark, toggleNode } from 'platejs';
 import {
   Bold,
   Italic,
@@ -12,6 +11,12 @@ import {
   Heading2,
   Heading3,
   Quote,
+  Strikethrough,
+  List,
+  ListOrdered,
+  Link as LinkIcon,
+  Image,
+  FileCode,
 } from 'lucide-react';
 
 import {
@@ -26,18 +31,22 @@ export const EditorToolbar: React.FC<{ className?: string }> = ({ className }) =
   if (!editor) return null;
 
   const handleToggleMark = useCallback((mark: string) => {
-    toggleMark(editor, { key: mark });
+    editor.tf.toggleMark(mark);
   }, [editor]);
 
   const handleToggleNode = useCallback((type: string) => {
     if (type === 'h1') {
-      toggleNode(editor, { activeType: 'h1', inactiveType: 'p' });
+      editor.tf.toggleBlock(type);
     } else if (type === 'h2') {
-      toggleNode(editor, { activeType: 'h2', inactiveType: 'p' });
+      editor.tf.toggleBlock(type);
     } else if (type === 'h3') {
-      toggleNode(editor, { activeType: 'h3', inactiveType: 'p' });
+      editor.tf.toggleBlock(type);
     } else if (type === 'blockquote') {
-      toggleNode(editor, { activeType: 'blockquote', inactiveType: 'p' });
+      editor.tf.toggleBlock(type);
+    } else if (type === 'ul') {
+      (editor.api as any).list?.toggle?.({ type: 'ul' });
+    } else if (type === 'ol') {
+      (editor.api as any).list?.toggle?.({ type: 'ol' });
     }
   }, [editor]);
 
@@ -76,6 +85,16 @@ export const EditorToolbar: React.FC<{ className?: string }> = ({ className }) =
 
       <ToolbarGroup>
         <ToolbarButton
+          tooltip="删除线 (Ctrl+Shift+X)"
+          onClick={() => handleToggleMark('strikethrough')}
+          size="sm"
+        >
+          <Strikethrough className="size-4" />
+        </ToolbarButton>
+      </ToolbarGroup>
+
+      <ToolbarGroup>
+        <ToolbarButton
           tooltip="标题 1 (Ctrl+Alt+1)"
           onClick={() => handleToggleNode('h1')}
           size="sm"
@@ -102,6 +121,59 @@ export const EditorToolbar: React.FC<{ className?: string }> = ({ className }) =
           size="sm"
         >
           <Quote className="size-4" />
+        </ToolbarButton>
+      </ToolbarGroup>
+
+      <ToolbarGroup>
+        <ToolbarButton
+          tooltip="项目符号列表"
+          onClick={() => handleToggleNode('ul')}
+          size="sm"
+        >
+          <List className="size-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          tooltip="有序列表"
+          onClick={() => handleToggleNode('ol')}
+          size="sm"
+        >
+          <ListOrdered className="size-4" />
+        </ToolbarButton>
+      </ToolbarGroup>
+
+      <ToolbarGroup>
+        <ToolbarButton
+          tooltip="插入图片"
+          onClick={() => {
+            const url = prompt('请输入图片URL:');
+            if (url) {
+              (editor.api as any).img?.insertImg?.({ url });
+            }
+          }}
+          size="sm"
+        >
+          <Image className="size-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          tooltip="插入链接"
+          onClick={() => {
+            const url = prompt('请输入链接URL:');
+            if (url) {
+              (editor.api as any).link?.insert?.({ url });
+            }
+          }}
+          size="sm"
+        >
+          <LinkIcon className="size-4" />
+        </ToolbarButton>
+        <ToolbarButton
+          tooltip="代码块"
+          onClick={() => {
+            (editor.api as any).codeBlock?.insert?.();
+          }}
+          size="sm"
+        >
+          <FileCode className="size-4" />
         </ToolbarButton>
       </ToolbarGroup>
     </Toolbar>

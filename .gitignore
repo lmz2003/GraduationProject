@@ -41,3 +41,7 @@ coverage/
 # Uploads
 uploads/
 **/uploads/
+
+# Content folders (auto-generated or third-party documentation)
+content/
+**/content/
