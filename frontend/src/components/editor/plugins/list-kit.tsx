@@ -1,12 +1,26 @@
 'use client';
 
 import { ListPlugin } from '@platejs/list/react';
-import { ListElement } from '@/components/ui/list-node';
+import { KEYS } from 'platejs';
+
+import { IndentKit } from '@/components/editor/plugins/indent-kit';
+import { BlockList } from '@/components/ui/block-list';
 
 export const ListKit = [
+  ...IndentKit,
   ListPlugin.configure({
-    node: {
-      component: ListElement,
+    inject: {
+      targetPlugins: [
+        ...KEYS.heading,
+        KEYS.p,
+        KEYS.blockquote,
+        KEYS.codeBlock,
+        KEYS.toggle,
+        KEYS.img,
+      ],
+    },
+    render: {
+      belowNodes: BlockList,
     },
   }),
 ];
