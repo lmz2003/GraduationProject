@@ -1,10 +1,8 @@
 'use client';
 
-import * as React from 'react';
+import { PlaceholderPlugin } from '@platejs/media/react';
 
 import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu';
-
-import { PlaceholderPlugin } from '@platejs/media/react';
 import {
   AudioLinesIcon,
   FileUpIcon,
@@ -14,6 +12,7 @@ import {
 } from 'lucide-react';
 import { isUrl, KEYS } from 'platejs';
 import { useEditorRef } from 'platejs/react';
+import * as React from 'react';
 import { toast } from 'sonner';
 import { useFilePicker } from 'use-file-picker';
 
@@ -114,9 +113,9 @@ export function MediaToolbarButton({
         </ToolbarSplitButtonPrimary>
 
         <DropdownMenu
-          open={open}
-          onOpenChange={setOpen}
           modal={false}
+          onOpenChange={setOpen}
+          open={open}
           {...props}
         >
           <DropdownMenuTrigger asChild>
@@ -124,9 +123,9 @@ export function MediaToolbarButton({
           </DropdownMenuTrigger>
 
           <DropdownMenuContent
-            onClick={(e) => e.stopPropagation()}
             align="start"
             alignOffset={-32}
+            onClick={(e) => e.stopPropagation()}
           >
             <DropdownMenuGroup>
               <DropdownMenuItem onSelect={() => openFilePicker()}>
@@ -143,10 +142,10 @@ export function MediaToolbarButton({
       </ToolbarSplitButton>
 
       <AlertDialog
-        open={dialogOpen}
         onOpenChange={(value) => {
           setDialogOpen(value);
         }}
+        open={dialogOpen}
       >
         <AlertDialogContent className="gap-6">
           <MediaUrlDialogContent
@@ -198,16 +197,16 @@ function MediaUrlDialogContent({
           <span className="inline-flex bg-background px-2">URL</span>
         </label>
         <Input
-          id="url"
+          autoFocus
           className="w-full"
-          value={url}
+          id="url"
           onChange={(e) => setUrl(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') embedMedia();
           }}
           placeholder=""
           type="url"
-          autoFocus
+          value={url}
         />
       </AlertDialogDescription>
 

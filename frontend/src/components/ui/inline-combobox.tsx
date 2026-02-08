@@ -1,15 +1,11 @@
 'use client';
 
-import * as React from 'react';
-
-import type { Point, TElement } from 'platejs';
-
 import {
-  type ComboboxItemProps,
   Combobox,
   ComboboxGroup,
   ComboboxGroupLabel,
   ComboboxItem,
+  type ComboboxItemProps,
   ComboboxPopover,
   ComboboxProvider,
   ComboboxRow,
@@ -24,7 +20,9 @@ import {
   useHTMLInputCursorState,
 } from '@platejs/combobox/react';
 import { cva } from 'class-variance-authority';
+import type { Point, TElement } from 'platejs';
 import { useComposedRef, useEditorRef } from 'platejs/react';
+import * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -89,17 +87,6 @@ const InlineCombobox = ({
   const hasValueProp = valueProp !== undefined;
   const value = hasValueProp ? valueProp : valueState;
 
-  // Check if current user is the creator of this element (for Yjs collaboration)
-  const isCreator = React.useMemo(() => {
-    const elementUserId = (element as any).userId;
-    const currentUserId = editor.meta.userId;
-
-    // If no userId (backwards compatibility or non-Yjs), allow
-    if (!elementUserId) return true;
-
-    return elementUserId === currentUserId;
-  }, [editor.meta.userId, element]);
-
   const setValue = React.useCallback(
     (newValue: string) => {
       setValueProp?.(newValue);
@@ -137,7 +124,6 @@ const InlineCombobox = ({
   const { props: inputProps, removeInput } = useComboboxInput({
     cancelInputOnBlur: true,
     cursorState,
-    autoFocus: isCreator,
     ref: inputRef,
     onCancelInput: (cause) => {
       if (cause !== 'backspace') {
@@ -243,20 +229,20 @@ const InlineComboboxInput = ({
 
       <span className="relative min-h-[1lh]">
         <span
-          className="invisible overflow-hidden text-nowrap"
           aria-hidden="true"
+          className="invisible overflow-hidden text-nowrap"
         >
           {value || '\u200B'}
         </span>
 
         <Combobox
-          ref={ref}
+          autoSelect
           className={cn(
             'absolute top-0 left-0 size-full bg-transparent outline-none',
             className
           )}
+          ref={ref}
           value={value}
-          autoSelect
           {...inputProps}
           {...props}
         />
@@ -272,27 +258,6 @@ const InlineComboboxContent: typeof ComboboxPopover = ({
   ...props
 }) => {
   // Portal prevents CSS from leaking into popover
-  const store = useComboboxContext();
-
-  function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
-    if (!store) return;
-
-    const state = store.getState();
-    const { items, activeId } = state;
-
-    if (!items.length) return;
-
-    const currentIndex = items.findIndex((item) => item.id === activeId);
-
-    if (event.key === 'ArrowUp' && currentIndex <= 0) {
-      event.preventDefault();
-      store.setActiveId(store.last());
-    } else if (event.key === 'ArrowDown' && currentIndex >= items.length - 1) {
-      event.preventDefault();
-      store.setActiveId(store.first());
-    }
-  }
-
   return (
     <Portal>
       <ComboboxPopover
@@ -300,7 +265,6 @@ const InlineComboboxContent: typeof ComboboxPopover = ({
           'z-500 max-h-[288px] w-[300px] overflow-y-auto rounded-md bg-popover shadow-md',
           className
         )}
-        onKeyDownCapture={handleKeyDown}
         {...props}
       />
     </Portal>

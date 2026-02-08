@@ -1,12 +1,10 @@
 'use client';
 
-import * as React from 'react';
-
 import type { VariantProps } from 'class-variance-authority';
-import type { PlateContentProps, PlateViewProps } from 'platejs/react';
-
 import { cva } from 'class-variance-authority';
+import type { PlateContentProps, PlateViewProps } from 'platejs/react';
 import { PlateContainer, PlateContent, PlateView } from 'platejs/react';
+import type * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -99,7 +97,6 @@ export const Editor = ({
   ...props
 }: EditorProps & { ref?: React.RefObject<HTMLDivElement | null> }) => (
   <PlateContent
-    ref={ref}
     className={cn(
       editorVariants({
         disabled,
@@ -108,8 +105,9 @@ export const Editor = ({
       }),
       className
     )}
-    disabled={disabled}
     disableDefaultStyles
+    disabled={disabled}
+    ref={ref}
     {...props}
   />
 );

@@ -1,9 +1,5 @@
 'use client';
 
-import * as React from 'react';
-
-import type { PlateEditor, PlateElementProps } from 'platejs/react';
-
 import { AIChatPlugin } from '@platejs/ai/react';
 import {
   CalendarIcon,
@@ -25,8 +21,10 @@ import {
   Table,
   TableOfContentsIcon,
 } from 'lucide-react';
-import { type TComboboxInputElement, KEYS } from 'platejs';
+import { KEYS, type TComboboxInputElement } from 'platejs';
+import type { PlateEditor, PlateElementProps } from 'platejs/react';
 import { PlateElement } from 'platejs/react';
+import type * as React from 'react';
 
 import {
   insertBlock,
@@ -178,19 +176,6 @@ const groups: Group[] = [
         label: 'Excalidraw',
         value: KEYS.excalidraw,
       },
-      {
-        icon: <Code2 />,
-        keywords: [
-          'code-drawing',
-          'diagram',
-          'plantuml',
-          'graphviz',
-          'flowchart',
-          'mermaid',
-        ],
-        label: 'Code Drawing',
-        value: KEYS.codeDrawing,
-      },
     ].map((item) => ({
       ...item,
       onSelect: (editor, value) => {
@@ -243,13 +228,13 @@ export function SlashInputElement(
               {items.map(
                 ({ focusEditor, icon, keywords, label, value, onSelect }) => (
                   <InlineComboboxItem
-                    key={value}
-                    value={value}
-                    onClick={() => onSelect(editor, value)}
-                    label={label}
                     focusEditor={focusEditor}
                     group={group}
+                    key={value}
                     keywords={keywords}
+                    label={label}
+                    onClick={() => onSelect(editor, value)}
+                    value={value}
                   >
                     <div className="mr-2 text-muted-foreground">{icon}</div>
                     {label ?? value}

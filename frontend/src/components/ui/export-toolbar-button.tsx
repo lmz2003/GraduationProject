@@ -1,17 +1,14 @@
 'use client';
 
-import * as React from 'react';
+import { MarkdownPlugin } from '@platejs/markdown';
 
 import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu';
-
-import { exportToDocx } from '@platejs/docx-io';
-import { MarkdownPlugin } from '@platejs/markdown';
 import { ArrowDownToLineIcon } from 'lucide-react';
-import type { SlatePlugin } from 'platejs';
 import { createSlateEditor } from 'platejs';
 import { useEditorRef } from 'platejs/react';
 import { serializeHtml } from 'platejs/static';
-
+import * as React from 'react';
+import { BaseEditorKit } from '@/components/editor/editor-base-kit';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,11 +16,9 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { BaseEditorKit } from '@/components/editor/editor-base-kit';
 
 import { EditorStatic } from './editor-static';
 import { ToolbarButton } from './toolbar';
-// import { DocxExportKit } from '@/components/editor/plugins/docx-export-kit';
 
 const siteUrl = 'https://platejs.org';
 
@@ -150,25 +145,10 @@ export function ExportToolbarButton(props: DropdownMenuProps) {
     await downloadFile(url, 'plate.md');
   };
 
-  // const exportToWord = async () => {
-  //   const blob = await exportToDocx(editor.children, {
-  //     editorPlugins: [...BaseEditorKit, ...DocxExportKit] as SlatePlugin[],
-  //   });
-
-  //   const url = URL.createObjectURL(blob);
-  //   const link = document.createElement('a');
-  //   link.href = url;
-  //   link.download = 'plate.docx';
-  //   document.body.append(link);
-  //   link.click();
-  //   link.remove();
-  //   URL.revokeObjectURL(url);
-  // };
-
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen} modal={false} {...props}>
+    <DropdownMenu modal={false} onOpenChange={setOpen} open={open} {...props}>
       <DropdownMenuTrigger asChild>
-        <ToolbarButton pressed={open} tooltip="Export" isDropdown>
+        <ToolbarButton isDropdown pressed={open} tooltip="Export">
           <ArrowDownToLineIcon className="size-4" />
         </ToolbarButton>
       </DropdownMenuTrigger>
@@ -187,9 +167,6 @@ export function ExportToolbarButton(props: DropdownMenuProps) {
           <DropdownMenuItem onSelect={exportToMarkdown}>
             Export as Markdown
           </DropdownMenuItem>
-          {/* <DropdownMenuItem onSelect={exportToWord}>
-            Export as Word
-          </DropdownMenuItem> */}
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>

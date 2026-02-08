@@ -1,9 +1,8 @@
 'use client';
 
-import * as React from 'react';
-
 import { useAIChatEditor } from '@platejs/ai/react';
 import { usePlateEditor } from 'platejs/react';
+import * as React from 'react';
 
 import { BaseEditorKit } from '@/components/editor/editor-base-kit';
 
@@ -18,7 +17,7 @@ export const AIChatEditor = React.memo(function AIChatEditor({
     plugins: BaseEditorKit,
   });
 
-  const value = useAIChatEditor(aiEditor, content);
+  useAIChatEditor(aiEditor, content);
 
-  return <EditorStatic variant="aiChat" editor={aiEditor} value={value} />;
+  return <EditorStatic editor={aiEditor} variant="aiChat" />;
 });
