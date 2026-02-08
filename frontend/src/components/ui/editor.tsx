@@ -4,6 +4,7 @@ import type { VariantProps } from 'class-variance-authority';
 import { cva } from 'class-variance-authority';
 import type { PlateContentProps, PlateViewProps } from 'platejs/react';
 import { PlateContainer, PlateContent, PlateView } from 'platejs/react';
+import { useEffect, useRef } from 'react';
 import type * as React from 'react';
 
 import { cn } from '@/lib/utils';
@@ -38,15 +39,48 @@ export function EditorContainer({
   variant,
   ...props
 }: React.ComponentProps<'div'> & VariantProps<typeof editorContainerVariants>) {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement;
+      
+      // Check if there's an open dropdown menu
+      const openMenuContent = document.querySelector('[data-state="open"][data-slot="dropdown-menu-content"]');
+      if (!openMenuContent) return;
+      
+      // Only stop propagation if clicking on the actual editor content, not the PlateContainer wrapper
+      // PlateContainer contains the slate-editable element
+      const slateEditor = containerRef.current?.querySelector('[data-slate-editor]');
+      
+      // If the click is on the slate editor content (not on toolbar or other UI elements),
+      // stop the event to prevent the dropdown from closing
+      if (slateEditor && slateEditor.contains(target)) {
+        e.stopImmediatePropagation();
+      }
+    };
+
+    // Use capture phase to intercept before Radix UI's handlers
+    containerRef.current.addEventListener('pointerdown', handlePointerDown, true);
+    return () => {
+      containerRef.current?.removeEventListener('pointerdown', handlePointerDown, true);
+    };
+  }, []);
+
   return (
-    <PlateContainer
+    <div
       className={cn(
-        'ignore-click-outside/toolbar',
+        'ignore-click-outside/toolbar p-0 pb-5',
         editorContainerVariants({ variant }),
         className
       )}
-      {...props}
-    />
+      data-ignore-click-outside="toolbar"
+      ref={containerRef}
+    >
+      <PlateContainer {...props} />
+    </div>
   );
 }
 
