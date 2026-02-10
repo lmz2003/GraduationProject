@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {PlateEditor} from '../components/editor/plate-editor';
-import { Toaster } from 'sonner';
+// import { Toaster } from 'sonner';
 import PdfExportModal from '../components/PdfExportModal';
 import AIAssistant from '../AIAssistant/AIAssistant';
 import { AIAssistantProvider } from '../context/AIAssistantContext';
@@ -501,7 +501,6 @@ const NoteDetailPage: React.FC = () => {
         <div className={styles.contentWrapper}>
           <div className={styles.editorContainer} ref={previewRef}>
             <PlateEditor />
-            <Toaster />
           </div>
         </div>
       </div>

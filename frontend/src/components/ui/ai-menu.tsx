@@ -1,5 +1,7 @@
 'use client';
 
+import * as React from 'react';
+
 import {
   AIChatPlugin,
   AIPlugin,
@@ -28,23 +30,21 @@ import {
   X,
 } from 'lucide-react';
 import {
+  type NodeEntry,
+  type SlateEditor,
   isHotkey,
   KEYS,
   NodeApi,
-  type NodeEntry,
-  type SlateEditor,
   TextApi,
 } from 'platejs';
 import {
-  type PlateEditor,
   useEditorPlugin,
-  useEditorRef,
   useFocusedLast,
   useHotkeys,
   usePluginOption,
 } from 'platejs/react';
-import * as React from 'react';
-import { commentPlugin } from '@/components/editor/plugins/comment-kit';
+import { type PlateEditor, useEditorRef } from 'platejs/react';
+
 import { Button } from '@/components/ui/button';
 import {
   Command,
@@ -58,6 +58,7 @@ import {
   PopoverContent,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import { commentPlugin } from '@/components/editor/plugins/comment-kit';
 
 import { AIChatEditor } from './ai-chat-editor';
 
@@ -174,26 +175,26 @@ export function AIMenu() {
   if (toolName === 'edit' && mode === 'chat' && isLoading) return null;
 
   return (
-    <Popover modal={false} onOpenChange={setOpen} open={open}>
+    <Popover open={open} onOpenChange={setOpen} modal={false}>
       <PopoverAnchor virtualRef={{ current: anchorElement! }} />
 
       <PopoverContent
-        align="center"
         className="border-none bg-transparent p-0 shadow-none"
+        style={{
+          width: anchorElement?.offsetWidth,
+        }}
         onEscapeKeyDown={(e) => {
           e.preventDefault();
 
           api.aiChat.hide();
         }}
+        align="center"
         side="bottom"
-        style={{
-          width: anchorElement?.offsetWidth,
-        }}
       >
         <Command
           className="w-full rounded-lg border shadow-md"
-          onValueChange={setValue}
           value={value}
+          onValueChange={setValue}
         >
           {mode === 'chat' &&
             isSelecting &&
@@ -207,13 +208,12 @@ export function AIMenu() {
             </div>
           ) : (
             <CommandPrimitive.Input
-              autoFocus
               className={cn(
                 'flex h-9 w-full min-w-0 border-input bg-transparent px-3 py-1 text-base outline-none transition-[color,box-shadow] placeholder:text-muted-foreground md:text-sm dark:bg-input/30',
                 'aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40',
                 'border-b focus-visible:ring-transparent'
               )}
-              data-plate-focus
+              value={input}
               onKeyDown={(e) => {
                 if (isHotkey('backspace')(e) && input.length === 0) {
                   e.preventDefault();
@@ -227,7 +227,8 @@ export function AIMenu() {
               }}
               onValueChange={setInput}
               placeholder="Ask AI anything..."
-              value={input}
+              data-plate-focus
+              autoFocus
             />
           )}
 
@@ -342,7 +343,8 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     value: 'emojify',
     onSelect: ({ editor, input }) => {
       void editor.getApi(AIChatPlugin).aiChat.submit(input, {
-        prompt: 'Emojify',
+        prompt:
+          'Add a small number of contextually relevant emojis within each block only. You may insert emojis, but do not remove, replace, or rewrite existing text, and do not modify Markdown syntax, links, or line breaks.',
         toolName: 'edit',
       });
     },
@@ -367,7 +369,8 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     value: 'fixSpelling',
     onSelect: ({ editor, input }) => {
       void editor.getApi(AIChatPlugin).aiChat.submit(input, {
-        prompt: 'Fix spelling and grammar',
+        prompt:
+          'Fix spelling, grammar, and punctuation errors within each block only, without changing meaning, tone, or adding new information.',
         toolName: 'edit',
       });
     },
@@ -400,7 +403,8 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     value: 'improveWriting',
     onSelect: ({ editor, input }) => {
       void editor.getApi(AIChatPlugin).aiChat.submit(input, {
-        prompt: 'Improve the writing',
+        prompt:
+          'Improve the writing for clarity and flow, without changing meaning or adding new information.',
         toolName: 'edit',
       });
     },
@@ -422,7 +426,8 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     value: 'makeLonger',
     onSelect: ({ editor, input }) => {
       void editor.getApi(AIChatPlugin).aiChat.submit(input, {
-        prompt: 'Make longer',
+        prompt:
+          'Make the content longer by elaborating on existing ideas within each block only, without changing meaning or adding new information.',
         toolName: 'edit',
       });
     },
@@ -433,7 +438,8 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     value: 'makeShorter',
     onSelect: ({ editor, input }) => {
       void editor.getApi(AIChatPlugin).aiChat.submit(input, {
-        prompt: 'Make shorter',
+        prompt:
+          'Make the content shorter by reducing verbosity within each block only, without changing meaning or removing essential information.',
         toolName: 'edit',
       });
     },
@@ -452,7 +458,8 @@ Start writing a new paragraph AFTER <Document> ONLY ONE SENTENCE`
     value: 'simplifyLanguage',
     onSelect: ({ editor, input }) => {
       void editor.getApi(AIChatPlugin).aiChat.submit(input, {
-        prompt: 'Simplify the language',
+        prompt:
+          'Simplify the language by using clearer and more straightforward wording within each block only, without changing meaning or adding new information.',
         toolName: 'edit',
       });
     },
@@ -588,11 +595,12 @@ export const AIMenuItems = ({
   return (
     <>
       {menuGroups.map((group, index) => (
-        <CommandGroup heading={group.heading} key={index}>
+        <CommandGroup key={index} heading={group.heading}>
           {group.items.map((menuItem) => (
             <CommandItem
-              className="[&_svg]:text-muted-foreground"
               key={menuItem.value}
+              className="[&_svg]:text-muted-foreground"
+              value={menuItem.value}
               onSelect={() => {
                 menuItem.onSelect?.({
                   aiEditor,
@@ -601,7 +609,6 @@ export const AIMenuItems = ({
                 });
                 setInput('');
               }}
-              value={menuItem.value}
             >
               {menuItem.icon}
               <span>{menuItem.label}</span>
@@ -665,10 +672,10 @@ export function AILoadingBar() {
         <span className="h-4 w-4 animate-spin rounded-full border-2 border-muted-foreground border-t-transparent" />
         <span>{status === 'submitted' ? 'Thinking...' : 'Writing...'}</span>
         <Button
-          className="flex items-center gap-1 text-xs"
-          onClick={() => api.aiChat.stop()}
           size="sm"
           variant="ghost"
+          className="flex items-center gap-1 text-xs"
+          onClick={() => api.aiChat.stop()}
         >
           <PauseIcon className="h-4 w-4" />
           Stop
@@ -692,17 +699,17 @@ export function AILoadingBar() {
         <div className="flex w-full items-center justify-between gap-3">
           <div className="flex items-center gap-5">
             <Button
+              size="sm"
               disabled={isLoading}
               onClick={() => handleComments('accept')}
-              size="sm"
             >
               Accept
             </Button>
 
             <Button
+              size="sm"
               disabled={isLoading}
               onClick={() => handleComments('reject')}
-              size="sm"
             >
               Reject
             </Button>

@@ -1,8 +1,10 @@
-import { isOrderedList } from '@platejs/list';
-import { CheckIcon } from 'lucide-react';
+import * as React from 'react';
+
 import type { RenderStaticNodeWrapper, TListElement } from 'platejs';
 import type { SlateRenderElementProps } from 'platejs/static';
-import type * as React from 'react';
+
+import { isOrderedList } from '@platejs/list';
+import { CheckIcon } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
@@ -26,15 +28,20 @@ export const BlockListStatic: RenderStaticNodeWrapper = (props) => {
 };
 
 function List(props: SlateRenderElementProps) {
-  const { listStart, listStyleType } = props.element as TListElement;
+  const { indent, listStart, listStyleType } = props.element as TListElement & {
+    indent?: number;
+  };
   const { Li, Marker } = config[listStyleType] ?? {};
   const List = isOrderedList(props.element) ? 'ol' : 'ul';
+
+  // Apply margin-left for indent (24px per level) for DOCX export compatibility
+  const marginLeft = indent ? `${indent * 24}px` : undefined;
 
   return (
     <List
       className="relative m-0 p-0"
+      style={{ listStyleType, marginLeft }}
       start={listStart}
-      style={{ listStyleType }}
     >
       {Marker && <Marker {...props} />}
       {Li ? <Li {...props} /> : <li>{props.children}</li>}

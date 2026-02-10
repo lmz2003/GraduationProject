@@ -1,9 +1,10 @@
-import { BaseTablePlugin } from '@platejs/table';
+import * as React from 'react';
 
 import type { TTableCellElement, TTableElement } from 'platejs';
 import type { SlateElementProps } from 'platejs/static';
+
+import { BaseTablePlugin } from '@platejs/table';
 import { SlateElement } from 'platejs/static';
-import type * as React from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -21,7 +22,10 @@ export function TableElementStatic({
       style={{ paddingLeft: marginLeft }}
     >
       <div className="group/table relative w-fit">
-        <table className="mr-0 ml-px table h-px table-fixed border-collapse">
+        <table
+          className="mr-0 ml-px table h-px table-fixed border-collapse"
+          style={{ borderCollapse: 'collapse', width: '100%' }}
+        >
           <tbody className="min-w-full">{children}</tbody>
         </table>
       </div>
@@ -53,11 +57,6 @@ export function TableCellElementStatic({
     <SlateElement
       {...props}
       as={isHeader ? 'th' : 'td'}
-      attributes={{
-        ...props.attributes,
-        colSpan: api.table.getColSpan(element),
-        rowSpan: api.table.getRowSpan(element),
-      }}
       className={cn(
         'h-full overflow-visible border-none bg-background p-0',
         element.background ? 'bg-(--cellBackground)' : 'bg-background',
@@ -79,6 +78,11 @@ export function TableCellElementStatic({
           minWidth: width || 120,
         } as React.CSSProperties
       }
+      attributes={{
+        ...props.attributes,
+        colSpan: api.table.getColSpan(element),
+        rowSpan: api.table.getRowSpan(element),
+      }}
     >
       <div
         className="relative z-20 box-border h-full px-4 py-2"

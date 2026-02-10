@@ -2,6 +2,8 @@
 
 /* DEMO ONLY, DO NOT USE IN PRODUCTION */
 
+import * as React from 'react';
+
 import { CopilotPlugin } from '@platejs/ai/react';
 import {
   Check,
@@ -13,7 +15,6 @@ import {
   Wand2Icon,
 } from 'lucide-react';
 import { useEditorRef } from 'platejs/react';
-import * as React from 'react';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -271,9 +272,9 @@ export function SettingsDialog() {
         </label>
         <Button
           asChild
-          className="absolute top-0 right-[28px] h-full"
           size="icon"
           variant="ghost"
+          className="absolute top-0 right-[28px] h-full"
         >
           <a
             className="flex items-center"
@@ -292,22 +293,22 @@ export function SettingsDialog() {
       </div>
 
       <Input
-        className="pr-10"
-        data-1p-ignore
         id={label}
+        className="pr-10"
+        value={tempKeys[service]}
         onChange={(e) =>
           setTempKeys((prev) => ({ ...prev, [service]: e.target.value }))
         }
         placeholder=""
+        data-1p-ignore
         type={showKey[service] ? 'text' : 'password'}
-        value={tempKeys[service]}
       />
       <Button
+        size="icon"
+        variant="ghost"
         className="absolute top-0 right-0 h-full"
         onClick={() => toggleKeyVisibility(service)}
-        size="icon"
         type="button"
-        variant="ghost"
       >
         {showKey[service] ? (
           <EyeOff className="size-4" />
@@ -322,15 +323,15 @@ export function SettingsDialog() {
   );
 
   return (
-    <Dialog onOpenChange={setOpen} open={open}>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button
+          size="icon"
+          variant="default"
           className={cn(
             'group fixed right-4 bottom-4 z-50 size-10 overflow-hidden',
             'rounded-full shadow-md hover:shadow-lg'
           )}
-          size="icon"
-          variant="default"
           // data-block-hide
         >
           <Settings className="size-4" />
@@ -364,14 +365,14 @@ export function SettingsDialog() {
                 >
                   Model
                 </label>
-                <Popover onOpenChange={setOpenModel} open={openModel}>
-                  <PopoverTrigger asChild id="select-model">
+                <Popover open={openModel} onOpenChange={setOpenModel}>
+                  <PopoverTrigger id="select-model" asChild>
                     <Button
-                      aria-expanded={openModel}
-                      className="w-full justify-between"
-                      role="combobox"
                       size="lg"
                       variant="outline"
+                      className="w-full justify-between"
+                      aria-expanded={openModel}
+                      role="combobox"
                     >
                       <code>{tempModel.label}</code>
                       <ChevronsUpDown className="ml-2 size-4 shrink-0 opacity-50" />
@@ -386,11 +387,11 @@ export function SettingsDialog() {
                           {models.map((m) => (
                             <CommandItem
                               key={m.value}
+                              value={m.value}
                               onSelect={() => {
                                 setTempModel(m);
                                 setOpenModel(false);
                               }}
-                              value={m.value}
                             >
                               <Check
                                 className={cn(
@@ -426,7 +427,7 @@ export function SettingsDialog() {
             </div>
           </div> */}
 
-          <Button className="w-full" size="lg" type="submit">
+          <Button size="lg" className="w-full" type="submit">
             Save changes
           </Button>
         </form>
