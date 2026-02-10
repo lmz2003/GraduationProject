@@ -23,7 +23,7 @@ import { BaseEditorKit } from '@/components/editor/editor-base-kit';
 
 import { EditorStatic } from './editor-static';
 import { ToolbarButton } from './toolbar';
-import { DocxExportKit } from '@/components/editor/plugins/docx-export-kit';
+// import { DocxExportKit } from '@/components/editor/plugins/docx-export-kit';
 
 const siteUrl = 'https://platejs.org';
 
@@ -150,20 +150,20 @@ export function ExportToolbarButton(props: DropdownMenuProps) {
     await downloadFile(url, 'plate.md');
   };
 
-  const exportToWord = async () => {
-    const blob = await exportToDocx(editor.children, {
-      editorPlugins: [...BaseEditorKit, ...DocxExportKit] as SlatePlugin[],
-    });
+  // const exportToWord = async () => {
+  //   const blob = await exportToDocx(editor.children, {
+  //     editorPlugins: [...BaseEditorKit, ...DocxExportKit] as SlatePlugin[],
+  //   });
 
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'plate.docx';
-    document.body.append(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-  };
+  //   const url = URL.createObjectURL(blob);
+  //   const link = document.createElement('a');
+  //   link.href = url;
+  //   link.download = 'plate.docx';
+  //   document.body.append(link);
+  //   link.click();
+  //   link.remove();
+  //   URL.revokeObjectURL(url);
+  // };
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen} modal={false} {...props}>
@@ -187,9 +187,9 @@ export function ExportToolbarButton(props: DropdownMenuProps) {
           <DropdownMenuItem onSelect={exportToMarkdown}>
             Export as Markdown
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={exportToWord}>
+          {/* <DropdownMenuItem onSelect={exportToWord}>
             Export as Word
-          </DropdownMenuItem>
+          </DropdownMenuItem> */}
         </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
