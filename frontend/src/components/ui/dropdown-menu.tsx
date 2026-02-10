@@ -3,7 +3,7 @@
 import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu';
 import { CheckIcon, ChevronRightIcon, CircleIcon } from 'lucide-react';
 import type * as React from 'react';
-import { useEffect, useState } from 'react';
+import { useRef, useEffect } from 'react';
 
 import { cn } from '@/lib/utils';
 
@@ -35,32 +35,63 @@ function DropdownMenuTrigger({
 function DropdownMenuContent({
   className,
   sideOffset = 4,
-  side = 'bottom' as const,
-  align = 'start' as const,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
-  const [portalContainer, setPortalContainer] = useState<HTMLElement | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // 创建或获取body作为portal容器，确保dropdown被正确定位
-    setPortalContainer(document.body);
-  }, []);
+    const handlePositioning = () => {
+      if (!contentRef.current) return;
+      
+      // 强制使用fixed定位并移除任何relative约束
+      contentRef.current.style.position = 'fixed';
+      contentRef.current.style.inset = 'auto';
+      
+      // 计算trigger的位置 - 从Root中查找trigger
+      const root = contentRef.current.closest('[data-slot="dropdown-menu"]');
+      const trigger = root?.querySelector('[data-slot="dropdown-menu-trigger"]');
+      if (trigger) {
+        const rect = trigger.getBoundingClientRect();
+        // 相对于viewport定位
+        contentRef.current.style.left = `${rect.left}px`;
+        contentRef.current.style.top = `${rect.bottom + sideOffset}px`;
+      }
+    };
 
-  if (!portalContainer) {
-    return null;
-  }
+    // 检查是否打开（通过查看data-state属性）
+    const observer = new MutationObserver(() => {
+      if (contentRef.current?.getAttribute('data-state') === 'open') {
+        handlePositioning();
+      }
+    });
+
+    if (contentRef.current) {
+      observer.observe(contentRef.current, { attributes: true });
+      handlePositioning();
+    }
+
+    // 监听滚动事件以更新位置
+    const handleScroll = handlePositioning;
+    window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('resize', handleScroll);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', handleScroll);
+    };
+  }, [sideOffset]);
 
   return (
-    <DropdownMenuPrimitive.Portal container={portalContainer}>
+    <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
+        ref={contentRef}
         className={cn(
           'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] overflow-y-auto overflow-x-hidden rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=closed]:animate-out data-[state=open]:animate-in',
           className
         )}
         data-slot="dropdown-menu-content"
-        side={side}
-        align={align}
-        sideOffset={sideOffset}
+        sideOffset={0}
         {...props}
       />
     </DropdownMenuPrimitive.Portal>
