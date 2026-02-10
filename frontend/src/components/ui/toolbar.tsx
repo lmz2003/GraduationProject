@@ -13,7 +13,7 @@ import {
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
-import { Tooltip, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 export function Toolbar({
@@ -314,13 +314,15 @@ function withTooltip<T extends React.ElementType>(Component: T) {
 
     if (tooltip && mounted) {
       return (
-        <Tooltip {...tooltipProps}>
-          <TooltipTrigger asChild {...tooltipTriggerProps}>
-            {component}
-          </TooltipTrigger>
+        <TooltipProvider>
+          <Tooltip {...tooltipProps}>
+            <TooltipTrigger asChild {...tooltipTriggerProps}>
+              {component}
+            </TooltipTrigger>
 
-          <TooltipContent {...tooltipContentProps}>{tooltip}</TooltipContent>
-        </Tooltip>
+            <TooltipContent {...tooltipContentProps}>{tooltip}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       );
     }
 
