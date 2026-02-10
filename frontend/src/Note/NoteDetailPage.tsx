@@ -101,7 +101,7 @@ const NoteDetailPage: React.FC = () => {
   useEffect(() => {
     if (isNewNote) return;
 
-    const handleNeedsSync = (data: any) => {
+    const handleNeedsSync = (data: Record<string, unknown>) => {
       console.log('收到同步提示:', data);
       if (data.noteId === id) {
         setNeedsSync(true);
@@ -347,6 +347,29 @@ const NoteDetailPage: React.FC = () => {
     }
   };
 
+  // 监听编辑器DOM变化，同步内容
+  useEffect(() => {
+    if (!previewRef.current) return;
+
+    const observer = new MutationObserver(() => {
+      // 获取编辑器内容的HTML
+      const contentElement = previewRef.current?.querySelector('[contenteditable="true"]');
+      if (contentElement) {
+        const htmlContent = contentElement.innerHTML;
+        setHtmlContent(htmlContent);
+        setContent(htmlContent);
+      }
+    });
+
+    observer.observe(previewRef.current, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+    });
+
+    return () => observer.disconnect();
+  }, []);
+
   if (loading) {
     return (
       <div className={styles.pageContainer}>
@@ -476,7 +499,7 @@ const NoteDetailPage: React.FC = () => {
         </div>
 
         <div className={styles.contentWrapper}>
-          <div className={styles.editorContainer}>
+          <div className={styles.editorContainer} ref={previewRef}>
             <PlateEditor />
             <Toaster />
           </div>

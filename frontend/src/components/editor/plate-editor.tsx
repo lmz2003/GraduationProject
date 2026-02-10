@@ -8,9 +8,10 @@ import { SettingsDialog } from '@/components/editor/settings-dialog';
 import { Editor, EditorContainer } from '@/components/ui/editor';
 
 export function PlateEditor() {
+  const defaultEditorValue = defaultValue;
   const editor = usePlateEditor({
     plugins: EditorKit,
-    value,
+    value: defaultEditorValue,
   });
 
   return (
@@ -24,7 +25,7 @@ export function PlateEditor() {
   );
 }
 
-const value = normalizeNodeId([
+const defaultValue = normalizeNodeId([
   {
     children: [{ text: 'Welcome to the Plate Playground!' }],
     type: 'h1',
