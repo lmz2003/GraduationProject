@@ -4,10 +4,10 @@ import * as React from 'react';
 
 import type { DropdownMenuProps } from '@radix-ui/react-dropdown-menu';
 
-import { exportToDocx } from '@platejs/docx-io';
+// import { exportToDocx } from '@platejs/docx-io';
 import { MarkdownPlugin } from '@platejs/markdown';
 import { ArrowDownToLineIcon } from 'lucide-react';
-import type { SlatePlugin } from 'platejs';
+// import type { SlatePlugin } from 'platejs';
 import { createSlateEditor } from 'platejs';
 import { useEditorRef } from 'platejs/react';
 import { serializeHtml } from 'platejs/static';
