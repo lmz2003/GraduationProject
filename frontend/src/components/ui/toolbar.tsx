@@ -116,20 +116,23 @@ type ToolbarButtonProps = {
   isDropdown?: boolean;
   pressed?: boolean;
 } & Omit<
-  React.ComponentPropsWithoutRef<typeof ToolbarToggleItem>,
+  React.ComponentProps<typeof ToolbarToggleItem>,
   'asChild' | 'value'
 > &
   VariantProps<typeof toolbarButtonVariants>;
 
-export const ToolbarButton = withTooltip(function ToolbarButton({
-  children,
-  className,
-  isDropdown,
-  pressed,
-  size = 'sm',
-  variant,
-  ...props
-}: ToolbarButtonProps) {
+export const ToolbarButton = withTooltip(React.forwardRef(function ToolbarButton(
+  {
+    children,
+    className,
+    isDropdown,
+    pressed,
+    size = 'sm',
+    variant,
+    ...props
+  }: ToolbarButtonProps,
+  ref: React.Ref<any>
+) {
   return typeof pressed === 'boolean' ? (
     <ToolbarToggleGroup disabled={props.disabled} value="single" type="single">
       <ToolbarToggleItem
@@ -143,6 +146,7 @@ export const ToolbarButton = withTooltip(function ToolbarButton({
         )}
         value={pressed ? 'single' : ''}
         {...props}
+        ref={ref}
       >
         {isDropdown ? (
           <>
@@ -172,11 +176,12 @@ export const ToolbarButton = withTooltip(function ToolbarButton({
         className
       )}
       {...props}
+      ref={ref}
     >
       {children}
     </ToolbarPrimitive.Button>
   );
-});
+}));
 
 export function ToolbarSplitButton({
   className,
@@ -247,20 +252,24 @@ export function ToolbarSplitButtonSecondary({
   );
 }
 
-export function ToolbarToggleItem({
-  className,
-  size = 'sm',
-  variant,
-  ...props
-}: React.ComponentProps<typeof ToolbarPrimitive.ToggleItem> &
-  VariantProps<typeof toolbarButtonVariants>) {
+export const ToolbarToggleItem = React.forwardRef(function ToolbarToggleItem(
+  {
+    className,
+    size = 'sm',
+    variant,
+    ...props
+  }: React.ComponentPropsWithoutRef<typeof ToolbarPrimitive.ToggleItem> &
+    VariantProps<typeof toolbarButtonVariants>,
+  ref: React.Ref<any>
+) {
   return (
     <ToolbarPrimitive.ToggleItem
       className={cn(toolbarButtonVariants({ size, variant }), className)}
       {...props}
+      ref={ref}
     />
   );
-}
+});
 
 export function ToolbarGroup({
   children,
@@ -297,20 +306,23 @@ type TooltipProps<T extends React.ElementType> = {
 } & React.ComponentProps<T>;
 
 function withTooltip<T extends React.ElementType>(Component: T) {
-  return function ExtendComponent({
-    tooltip,
-    tooltipContentProps,
-    tooltipProps,
-    tooltipTriggerProps,
-    ...props
-  }: TooltipProps<T>) {
+  return React.forwardRef(function ExtendComponent(
+    {
+      tooltip,
+      tooltipContentProps,
+      tooltipProps,
+      tooltipTriggerProps,
+      ...props
+    }: TooltipProps<T>,
+    ref: React.Ref<any>
+  ) {
     const [mounted, setMounted] = React.useState(false);
 
     React.useEffect(() => {
       setMounted(true);
     }, []);
 
-    const component = <Component {...(props as React.ComponentProps<T>)} />;
+    const component = <Component {...(props as React.ComponentProps<T>)} ref={ref} />;
 
     if (tooltip && mounted) {
       return (
@@ -327,7 +339,7 @@ function withTooltip<T extends React.ElementType>(Component: T) {
     }
 
     return component;
-  };
+  });
 }
 
 function TooltipContent({
