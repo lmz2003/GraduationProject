@@ -129,3 +129,9 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Radix UI Dropdown Menu positioning fix */
+[data-slot="dropdown-menu-content"],
+[data-slot="dropdown-menu-sub-content"] {
+  transform-origin: var(--radix-dropdown-menu-content-transform-origin);
+}
