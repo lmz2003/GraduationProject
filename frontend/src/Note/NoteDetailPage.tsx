@@ -358,157 +358,160 @@ const NoteDetailPage: React.FC = () => {
   }
 
   return (
-    <div 
-      className={`${styles.pageContainer} ${isDragging ? styles.dragging : ''}`}
-    >
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        flex: `0 0 ${showAI ? mainWidthPercent : 100}%`,
-        minWidth: 0,
-        height: '100%'
-      }}>
-        <div className={styles.header}>
-          <div className={styles.headerLeft}>
-            <button className={styles.backButton} onClick={handleBack}>
-              ← 返回列表
-            </button>
-            <input
-              className={styles.titleInput}
-              placeholder="未命名笔记"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-          </div>
+    // <div 
+    //   className={`${styles.pageContainer} ${isDragging ? styles.dragging : ''}`}
+    // >
+    //   <div style={{
+    //     display: 'flex',
+    //     flexDirection: 'column',
+    //     flex: `0 0 ${showAI ? mainWidthPercent : 100}%`,
+    //     minWidth: 0,
+    //     height: '100%'
+    //   }}>
+    //     <div className={styles.header}>
+    //       <div className={styles.headerLeft}>
+    //         <button className={styles.backButton} onClick={handleBack}>
+    //           ← 返回列表
+    //         </button>
+    //         <input
+    //           className={styles.titleInput}
+    //           placeholder="未命名笔记"
+    //           value={title}
+    //           onChange={(e) => setTitle(e.target.value)}
+    //         />
+    //       </div>
 
-          <div className={styles.headerRight}>
-            {showSyncButton && (
-              <button
-                className={`${styles.button} ${styles.syncButton}`}
-                onClick={handleSyncToKnowledge}
-                disabled={!needsSync}
-                title={needsSync ? '需要同步到知识库' : '已同步到知识库'}
-              >
-                📚 {needsSync ? '同步到知识库' : '已同步'}
-              </button>
-            )}
+    //       <div className={styles.headerRight}>
+    //         {showSyncButton && (
+    //           <button
+    //             className={`${styles.button} ${styles.syncButton}`}
+    //             onClick={handleSyncToKnowledge}
+    //             disabled={!needsSync}
+    //             title={needsSync ? '需要同步到知识库' : '已同步到知识库'}
+    //           >
+    //             📚 {needsSync ? '同步到知识库' : '已同步'}
+    //           </button>
+    //         )}
 
-            <button
-              className={`${styles.button} ${styles.secondary}`}
-              onClick={handleExportHtml}
-            >
-              📥 导出HTML
-            </button>
+    //         <button
+    //           className={`${styles.button} ${styles.secondary}`}
+    //           onClick={handleExportHtml}
+    //         >
+    //           📥 导出HTML
+    //         </button>
 
-            <button
-              className={`${styles.button} ${styles.secondary}`}
-              onClick={handlePdfSettings}
-            >
-              📄 导出PDF
-            </button>
+    //         <button
+    //           className={`${styles.button} ${styles.secondary}`}
+    //           onClick={handlePdfSettings}
+    //         >
+    //           📄 导出PDF
+    //         </button>
 
-            <button
-              className={`${styles.button} ${showAI ? styles.active : styles.secondary}`}
-              onClick={() => setShowAI(!showAI)}
-            >
-              🤖 AI助手
-            </button>
-          </div>
-        </div>
+    //         <button
+    //           className={`${styles.button} ${showAI ? styles.active : styles.secondary}`}
+    //           onClick={() => setShowAI(!showAI)}
+    //         >
+    //           🤖 AI助手
+    //         </button>
+    //       </div>
+    //     </div>
 
-        <div className={styles.subHeader}>
-          <div className={styles.subHeaderLeft}>
-            <div className={`${styles.saveIndicator} ${saving ? styles.saving : ''}`}>
-              {saving ? '保存中...' : hasChanges ? '有未保存的修改' : '已保存'}
-            </div>
+    //     <div className={styles.subHeader}>
+    //       <div className={styles.subHeaderLeft}>
+    //         <div className={`${styles.saveIndicator} ${saving ? styles.saving : ''}`}>
+    //           {saving ? '保存中...' : hasChanges ? '有未保存的修改' : '已保存'}
+    //         </div>
 
-            <button
-              className={`${styles.button} ${styles.primary}`}
-              onClick={handleSave}
-              disabled={saving || !hasChanges}
-            >
-              💾 保存
-            </button>
+    //         <button
+    //           className={`${styles.button} ${styles.primary}`}
+    //           onClick={handleSave}
+    //           disabled={saving || !hasChanges}
+    //         >
+    //           💾 保存
+    //         </button>
 
-            <select
-              className={styles.statusSelect}
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              aria-label="笔记状态"
-            >
-              <option value="draft">草稿</option>
-              <option value="published">已发布</option>
-            </select>
+    //         <select
+    //           className={styles.statusSelect}
+    //           value={status}
+    //           onChange={(e) => setStatus(e.target.value)}
+    //           aria-label="笔记状态"
+    //         >
+    //           <option value="draft">草稿</option>
+    //           <option value="published">已发布</option>
+    //         </select>
 
-            {!isNewNote && (
-              <button
-                className={`${styles.button} ${styles.danger}`}
-                onClick={handleDelete}
-              >
-                🗑️ 删除
-              </button>
-            )}
-          </div>
-        </div>
+    //         {!isNewNote && (
+    //           <button
+    //             className={`${styles.button} ${styles.danger}`}
+    //             onClick={handleDelete}
+    //           >
+    //             🗑️ 删除
+    //           </button>
+    //         )}
+    //       </div>
+    //     </div>
 
-        <div className={styles.metaBar}>
-          <span className={styles.metaLabel}>标签:</span>
-          <div className={styles.tagsList}>
-            {tags.map((tag, index) => (
-              <span key={index} className={styles.tag}>
-                {tag}
-                <button
-                  className={styles.tagRemove}
-                  onClick={() => handleRemoveTag(tag)}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
-          </div>
-          <input
-            className={styles.tagsInput}
-            placeholder="添加标签（回车确认）"
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
-          />
-        </div>
+    //     <div className={styles.metaBar}>
+    //       <span className={styles.metaLabel}>标签:</span>
+    //       <div className={styles.tagsList}>
+    //         {tags.map((tag, index) => (
+    //           <span key={index} className={styles.tag}>
+    //             {tag}
+    //             <button
+    //               className={styles.tagRemove}
+    //               onClick={() => handleRemoveTag(tag)}
+    //             >
+    //               ×
+    //             </button>
+    //           </span>
+    //         ))}
+    //       </div>
+    //       <input
+    //         className={styles.tagsInput}
+    //         placeholder="添加标签（回车确认）"
+    //         value={tagInput}
+    //         onChange={(e) => setTagInput(e.target.value)}
+    //         onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+    //       />
+    //     </div>
 
-        <div className={styles.contentWrapper}>
-          <div className={styles.editorContainer}>
-            <PlateEditor/>
-            <Toaster />
-          </div>
-        </div>
-      </div>
+    //     <div className={styles.contentWrapper}>
+    //       <div className={styles.editorContainer}>
+            
+    //       </div>
+    //     </div>
+    //   </div>
 
-      {showAI && (
-        <>
-          <div
-            className={`${styles.resizer} ${isDragging ? styles.resizing : ''}`}
-            onMouseDown={handleMouseDown}
-          />
-          <div 
-            className={styles.aiContainer}
-            style={{
-              flex: `0 0 ${100 - mainWidthPercent}%`,
-              minWidth: 0
-            }}
-          >
-            <div className={styles.aiContent}>
-              <AIAssistant />
-            </div>
-          </div>
-        </>
-      )}
+    //   {showAI && (
+    //     <>
+    //       <div
+    //         className={`${styles.resizer} ${isDragging ? styles.resizing : ''}`}
+    //         onMouseDown={handleMouseDown}
+    //       />
+    //       <div 
+    //         className={styles.aiContainer}
+    //         style={{
+    //           flex: `0 0 ${100 - mainWidthPercent}%`,
+    //           minWidth: 0
+    //         }}
+    //       >
+    //         <div className={styles.aiContent}>
+    //           <AIAssistant />
+    //         </div>
+    //       </div>
+    //     </>
+    //   )}
 
-      <PdfExportModal
-        isOpen={showPdfSettings}
-        onClose={() => setShowPdfSettings(false)}
-        previewRef={previewRef}
-        htmlContent={htmlContent}
-      />
+    //   <PdfExportModal
+    //     isOpen={showPdfSettings}
+    //     onClose={() => setShowPdfSettings(false)}
+    //     previewRef={previewRef}
+    //     htmlContent={htmlContent}
+    //   />
+    // </div>
+    <div className="h-screen w-full">
+      <PlateEditor />
+      <Toaster />
     </div>
   );
 };
