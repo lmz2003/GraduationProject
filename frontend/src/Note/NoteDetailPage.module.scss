@@ -42,6 +42,7 @@
   position: relative;
   z-index: 10;
   gap: 20px;
+  flex-wrap: wrap;
 }
 
 .headerLeft {
@@ -109,28 +110,6 @@
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
   }
 }
-
-.subHeader {
-  background: linear-gradient(to bottom, #f8fafc, #ffffff);
-  padding: 12px 30px;
-  border-bottom: 1px solid #e2e8f0;
-  display: flex;
-  justify-content: flex-start;
-  align-items: center;
-  flex-shrink: 0;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-  min-width: 0;
-  position: relative;
-  z-index: 10;
-}
-
-.subHeaderLeft {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
 
 .statusSelect {
   padding: 8px 12px;
@@ -358,8 +337,6 @@
   position: relative;
   z-index: 1000;
   -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
   user-select: none;
   touch-action: none;
 

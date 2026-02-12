@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {PlateEditor} from '../components/editor/plate-editor';
 // import { Toaster } from 'sonner';
-import PdfExportModal from '../components/PdfExportModal';
 import AIAssistant from '../AIAssistant/AIAssistant';
 import { AIAssistantProvider } from '../context/AIAssistantContext';
 import { useWebSocket } from '../hooks/useWebSocket';
@@ -11,7 +10,7 @@ import styles from './NoteDetailPage.module.scss';
 interface Note {
   id: string;
   title: string;
-  content: string;
+  content: string; // Plate 编辑器格式，JSON 序列化字符串
   summary?: string;
   tags: string[];
   status: string;
@@ -28,14 +27,12 @@ const NoteDetailPage: React.FC = () => {
   const [note, setNote] = useState<Note | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [htmlContent, setHtmlContent] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [status, setStatus] = useState('draft');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const [showPdfSettings, setShowPdfSettings] = useState(false);
   const [showAI, setShowAI] = useState(true);
   const [mainWidthPercent, setMainWidthPercent] = useState<number>(() => {
     const saved = localStorage.getItem('noteLayoutWidth');
@@ -77,7 +74,6 @@ const NoteDetailPage: React.FC = () => {
         setNote(noteData);
         setTitle(noteData.title);
         setContent(noteData.content);
-        setHtmlContent(noteData.content);
         setTags(noteData.tags || []);
         setStatus(noteData.status);
       }
@@ -92,6 +88,7 @@ const NoteDetailPage: React.FC = () => {
 
   useEffect(() => {
     fetchNote();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const token = localStorage.getItem('token');
@@ -131,16 +128,16 @@ const NoteDetailPage: React.FC = () => {
       setHasChanges(title.length > 0 || content.length > 0 || tags.length > 0);
       setShowSyncButton(false);
     }
-  }, [title, content, tags, status, note]);
+  }, [title, content, tags, status, note, isNewNote]);
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setSaving(true);
     try {
       const token = localStorage.getItem('token');
 
       const noteData = {
         title: title || '未命名笔记',
-        content: htmlContent,
+        content: content,
         tags,
         status,
       };
@@ -175,7 +172,6 @@ const NoteDetailPage: React.FC = () => {
         setNote(savedNote);
         setTitle(savedNote.title);
         setContent(savedNote.content);
-        setHtmlContent(savedNote.content);
         setTags(savedNote.tags || []);
         setStatus(savedNote.status);
         setHasChanges(false);
@@ -192,7 +188,7 @@ const NoteDetailPage: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  };
+  }, [title, content, tags, status, isNewNote, id, API_BASE, navigate]);
 
   const handleDelete = async () => {
     if (!confirm('确认删除这条笔记吗？删除后将无法恢复。')) {
@@ -221,21 +217,6 @@ const NoteDetailPage: React.FC = () => {
     }
   };
 
-  const handleExportHtml = () => {
-    const blob = new Blob([htmlContent], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${title || '未命名笔记'}-${new Date().toISOString().slice(0, 10)}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-  };
-
-  const handlePdfSettings = () => {
-    setShowPdfSettings(true);
-  };
 
   const handleAddTag = () => {
     const trimmed = tagInput.trim();
@@ -347,28 +328,23 @@ const NoteDetailPage: React.FC = () => {
     }
   };
 
-  // 监听编辑器DOM变化，同步内容
+  // 监听快捷键保存 (Ctrl+S / Cmd+S)
   useEffect(() => {
-    if (!previewRef.current) return;
-
-    const observer = new MutationObserver(() => {
-      // 获取编辑器内容的HTML
-      const contentElement = previewRef.current?.querySelector('[contenteditable="true"]');
-      if (contentElement) {
-        const htmlContent = contentElement.innerHTML;
-        setHtmlContent(htmlContent);
-        setContent(htmlContent);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 检查是否按下了 Ctrl+S (Windows/Linux) 或 Cmd+S (Mac)
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault();
+        // 只有当有未保存的修改且没有正在保存时才执行保存
+        if (hasChanges && !saving) {
+          handleSave();
+        }
       }
-    });
+    };
 
-    observer.observe(previewRef.current, {
-      childList: true,
-      subtree: true,
-      characterData: true,
-    });
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [hasChanges, saving, handleSave]);
 
-    return () => observer.disconnect();
-  }, []);
 
   if (loading) {
     return (
@@ -416,31 +392,6 @@ const NoteDetailPage: React.FC = () => {
               </button>
             )}
 
-            <button
-              className={`${styles.button} ${styles.secondary}`}
-              onClick={handleExportHtml}
-            >
-              📥 导出HTML
-            </button>
-
-            <button
-              className={`${styles.button} ${styles.secondary}`}
-              onClick={handlePdfSettings}
-            >
-              📄 导出PDF
-            </button>
-
-            <button
-              className={`${styles.button} ${showAI ? styles.active : styles.secondary}`}
-              onClick={() => setShowAI(!showAI)}
-            >
-              🤖 AI助手
-            </button>
-          </div>
-        </div>
-
-        <div className={styles.subHeader}>
-          <div className={styles.subHeaderLeft}>
             <div className={`${styles.saveIndicator} ${saving ? styles.saving : ''}`}>
               {saving ? '保存中...' : hasChanges ? '有未保存的修改' : '已保存'}
             </div>
@@ -471,8 +422,16 @@ const NoteDetailPage: React.FC = () => {
                 🗑️ 删除
               </button>
             )}
+
+            <button
+              className={`${styles.button} ${showAI ? styles.active : styles.secondary}`}
+              onClick={() => setShowAI(!showAI)}
+            >
+              🤖 AI助手
+            </button>
           </div>
         </div>
+
 
         <div className={styles.metaBar}>
           <span className={styles.metaLabel}>标签:</span>
@@ -500,7 +459,10 @@ const NoteDetailPage: React.FC = () => {
 
         <div className={styles.contentWrapper}>
           <div className={styles.editorContainer} ref={previewRef}>
-            <PlateEditor />
+            <PlateEditor 
+              initialValue={content}
+              onContentChange={setContent}
+            />
           </div>
         </div>
       </div>
@@ -525,12 +487,6 @@ const NoteDetailPage: React.FC = () => {
         </>
       )}
 
-      <PdfExportModal
-        isOpen={showPdfSettings}
-        onClose={() => setShowPdfSettings(false)}
-        previewRef={previewRef}
-        htmlContent={htmlContent}
-      />
     </div>
   );
 };
