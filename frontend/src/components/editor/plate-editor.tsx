@@ -27,7 +27,6 @@ export function PlateEditor({ initialValue, onContentChange }: PlateEditorProps)
   const getInitialValue = () => {
     if (!initialValue) {
       return normalizeNodeId([]);
-;
     }
     
     try {

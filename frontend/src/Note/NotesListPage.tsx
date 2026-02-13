@@ -95,7 +95,6 @@ const NotesListPage: React.FC = () => {
       setLoading(false);
     }
   };
-
   // 初始化加载
   useEffect(() => {
     fetchNotes();

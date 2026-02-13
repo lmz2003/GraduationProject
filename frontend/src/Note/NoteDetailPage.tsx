@@ -27,6 +27,7 @@ const NoteDetailPage: React.FC = () => {
   const [note, setNote] = useState<Note | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [summary, setSummary] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [status, setStatus] = useState('draft');
@@ -74,6 +75,7 @@ const NoteDetailPage: React.FC = () => {
         setNote(noteData);
         setTitle(noteData.title);
         setContent(noteData.content);
+        setSummary(noteData.summary || '');
         setTags(noteData.tags || []);
         setStatus(noteData.status);
       }
@@ -118,6 +120,7 @@ const NoteDetailPage: React.FC = () => {
       const changed =
         title !== note.title ||
         content !== note.content ||
+        summary !== (note.summary || '') ||
         JSON.stringify(tags) !== JSON.stringify(note.tags) ||
         status !== note.status;
       setHasChanges(changed);
@@ -128,7 +131,7 @@ const NoteDetailPage: React.FC = () => {
       setHasChanges(title.length > 0 || content.length > 0 || tags.length > 0);
       setShowSyncButton(false);
     }
-  }, [title, content, tags, status, note, isNewNote]);
+  }, [title, content, summary, tags, status, note, isNewNote]);
 
   const handleSave = useCallback(async () => {
     setSaving(true);
@@ -138,6 +141,7 @@ const NoteDetailPage: React.FC = () => {
       const noteData = {
         title: title || '未命名笔记',
         content: content,
+        summary: summary || undefined,
         tags,
         status,
       };
@@ -172,6 +176,7 @@ const NoteDetailPage: React.FC = () => {
         setNote(savedNote);
         setTitle(savedNote.title);
         setContent(savedNote.content);
+        setSummary(savedNote.summary || '');
         setTags(savedNote.tags || []);
         setStatus(savedNote.status);
         setHasChanges(false);
@@ -188,7 +193,7 @@ const NoteDetailPage: React.FC = () => {
     } finally {
       setSaving(false);
     }
-  }, [title, content, tags, status, isNewNote, id, API_BASE, navigate]);
+  }, [title, content, summary, tags, status, isNewNote, id, API_BASE, navigate]);
 
   const handleDelete = async () => {
     if (!confirm('确认删除这条笔记吗？删除后将无法恢复。')) {
@@ -434,27 +439,51 @@ const NoteDetailPage: React.FC = () => {
 
 
         <div className={styles.metaBar}>
-          <span className={styles.metaLabel}>标签:</span>
-          <div className={styles.tagsList}>
-            {tags.map((tag, index) => (
-              <span key={index} className={styles.tag}>
-                {tag}
-                <button
-                  className={styles.tagRemove}
-                  onClick={() => handleRemoveTag(tag)}
-                >
-                  ×
-                </button>
-              </span>
-            ))}
+          <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: '8px' }}>
+            {/* 摘要编辑区域 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span className={styles.metaLabel} style={{ minWidth: '60px' }}>摘要:</span>
+              <input
+                style={{
+                  flex: 1,
+                  padding: '6px 8px',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '4px',
+                  fontSize: '14px',
+                  fontFamily: 'inherit',
+                }}
+                placeholder="笔记摘要（留空则自动生成）"
+                value={summary}
+                onChange={(e) => setSummary(e.target.value)}
+                title="输入自定义摘要，或留空让 AI 自动生成"
+              />
+            </div>
+            
+            {/* 标签编辑区域 */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span className={styles.metaLabel} style={{ minWidth: '60px' }}>标签:</span>
+              <div className={styles.tagsList}>
+                {tags.map((tag, index) => (
+                  <span key={index} className={styles.tag}>
+                    {tag}
+                    <button
+                      className={styles.tagRemove}
+                      onClick={() => handleRemoveTag(tag)}
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <input
+                className={styles.tagsInput}
+                placeholder="添加标签（回车确认）"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
+              />
+            </div>
           </div>
-          <input
-            className={styles.tagsInput}
-            placeholder="添加标签（回车确认）"
-            value={tagInput}
-            onChange={(e) => setTagInput(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleAddTag()}
-          />
         </div>
 
         <div className={styles.contentWrapper}>

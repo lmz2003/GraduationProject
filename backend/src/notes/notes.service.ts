@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Like } from 'typeorm';
 import { Note } from './entities/note.entity';
@@ -9,17 +9,132 @@ import { UpdateNoteDto } from './dto/update-note.dto';
 import { QueryNotesDto } from './dto/query-notes.dto';
 import { UsersService } from '../users/users.service';
 import { KnowledgeBaseService } from '../knowledge-base/services/knowledge-base.service';
+import { LLMIntegrationService } from '../knowledge-base/services/llm-integration.service';
 import { CreateDocumentDto } from '../knowledge-base/dto/create-document.dto';
 
 @Injectable()
 export class NotesService {
+  private readonly logger = new Logger(NotesService.name);
+
   constructor(
     @InjectRepository(Note) private noteRepository: Repository<Note>,
     @InjectRepository(NoteVersion) private noteVersionRepository: Repository<NoteVersion>,
     @InjectRepository(NoteComment) private noteCommentRepository: Repository<NoteComment>,
     private readonly usersService: UsersService,
     private readonly knowledgeBaseService: KnowledgeBaseService,
+    private readonly llmIntegrationService: LLMIntegrationService,
   ) {}
+
+  /**
+   * 从 Plate 编辑器内容中提取纯文本
+   * @param content Plate 编辑器的 JSON 格式内容
+   * @returns 提取后的纯文本
+   */
+  private extractPlainText(content: string): string {
+    try {
+      // 尝试解析 JSON 格式的 Plate 内容
+      const parsed = JSON.parse(content);
+      
+      if (Array.isArray(parsed)) {
+        // 提取所有文本块中的文本内容
+        const textParts: string[] = [];
+        
+        for (const block of parsed) {
+          if (block.children && Array.isArray(block.children)) {
+            for (const child of block.children) {
+              if (child.text) {
+                textParts.push(child.text);
+              }
+            }
+          }
+        }
+        
+        // 合并文本并清理空白
+        let plainText = textParts.join('').trim().replace(/\s+/g, ' ');
+        return plainText || '(空笔记)';
+      }
+    } catch (error) {
+      // 如果不是有效的 JSON，直接使用原内容处理
+    }
+    
+    // 降级方案：直接处理纯文本或其他格式
+    let plainText = content.trim().replace(/\s+/g, ' ');
+    return plainText || '(空笔记)';
+  }
+
+  /**
+   * 使用 AI 生成笔记摘要
+   * @param content Plate 编辑器的 JSON 格式内容或纯文本
+   * @param maxLength 摘要的最大长度，默认 200
+   * @returns AI 生成的摘要
+   */
+  private async generateSummaryWithAI(content: string, maxLength: number = 200): Promise<string> {
+    try {
+      // 先提取纯文本内容
+      const plainText = this.extractPlainText(content);
+      
+      // 如果是空笔记或文本过短，直接返回
+      if (plainText === '(空笔记)' || plainText.length === 0) {
+        return plainText;
+      }
+      
+      // 调用 AI 服务生成摘要
+      this.logger.log(`[AI摘要] 开始为长度 ${plainText.length} 的内容生成摘要...`);
+      const aiSummary = await this.llmIntegrationService.summarizeDocument(plainText, maxLength);
+      
+      // 清理 AI 生成的摘要（移除可能的引号或特殊符号）
+      let cleanedSummary = aiSummary.trim().replace(/^"|"$/g, '').replace(/^'|'$/g, '');
+      
+      // 如果清理后还是过长，截取
+      if (cleanedSummary.length > maxLength) {
+        cleanedSummary = cleanedSummary.substring(0, maxLength) + '...';
+      }
+      
+      this.logger.log(`[AI摘要] 摘要生成成功，长度: ${cleanedSummary.length}`);
+      return cleanedSummary || plainText;
+    } catch (error) {
+      // AI 生成失败时，降级到纯文本摘要
+      this.logger.warn(`[AI摘要] 使用AI生成摘要失败，降级到纯文本摘要: ${error}`);
+      return this.generatePlainTextSummary(content, maxLength);
+    }
+  }
+
+  /**
+   * 生成纯文本摘要（降级方案）
+   * @param content Plate 编辑器的 JSON 格式内容或纯文本
+   * @param maxLength 摘要的最大长度，默认 200
+   * @returns 纯文本摘要
+   */
+  private generatePlainTextSummary(content: string, maxLength: number = 200): string {
+    const plainText = this.extractPlainText(content);
+    
+    if (plainText === '(空笔记)' || plainText.length === 0) {
+      return plainText;
+    }
+    
+    if (plainText.length > maxLength) {
+      return plainText.substring(0, maxLength) + '...';
+    }
+    
+    return plainText;
+  }
+
+  /**
+   * 同步生成摘要（用于保存流程）
+   * 在 AI 服务不可用时，自动降级到纯文本摘要
+   * @param content Plate 编辑器的 JSON 格式内容
+   * @param maxLength 摘要的最大长度，默认 200
+   * @returns Promise<string>
+   */
+  private async generateSummary(content: string, maxLength: number = 200): Promise<string> {
+    // 如果 LLM 服务可用，使用 AI 生成；否则降级
+    try {
+      return await this.generateSummaryWithAI(content, maxLength);
+    } catch (error) {
+      this.logger.warn(`[摘要生成] AI 生成失败，使用纯文本降级: ${error}`);
+      return this.generatePlainTextSummary(content, maxLength);
+    }
+  }
 
   // Create a new note
   async createNote(createNoteDto: CreateNoteDto, ownerId: string): Promise<Note> {
@@ -28,11 +143,8 @@ export class NotesService {
     // 如果没有提供标题，使用默认值
     const title = createNoteDto.title || '未命名笔记';
     
-    // 如果没有提供摘要，自动生成（取内容前100个字符）
-    const summary = createNoteDto.summary || 
-      (createNoteDto.content.length > 100 
-        ? createNoteDto.content.substring(0, 100) + '...' 
-        : createNoteDto.content);
+    // 如果没有提供摘要，自动从内容生成智能摘要
+    const summary = createNoteDto.summary || await this.generateSummary(createNoteDto.content);
 
     const note = this.noteRepository.create({
       ...createNoteDto,
@@ -130,12 +242,10 @@ export class NotesService {
     const note = await this.getNoteById(noteId);
     const user = await this.usersService.getUserById(userId);
 
-    // 如果更新了内容但没有提供摘要，自动生成摘要
+    // 如果更新了内容但没有提供摘要，自动生成智能摘要
     let summary = updateNoteDto.summary;
     if (updateNoteDto.content && !summary) {
-      summary = updateNoteDto.content.length > 100
-        ? updateNoteDto.content.substring(0, 100) + '...'
-        : updateNoteDto.content;
+      summary = await this.generateSummary(updateNoteDto.content);
     }
 
     // 检查是否需要标记为需要同步
@@ -175,11 +285,15 @@ export class NotesService {
       needsSync = true;
     }
 
+    // 内容变化时，自动更新摘要
+    const summary = await this.generateSummary(content);
+
     // Update note
     const updatedNote = await this.noteRepository.save({
       ...note,
       content,
       title,
+      summary,
       needsSync,
     });
 
