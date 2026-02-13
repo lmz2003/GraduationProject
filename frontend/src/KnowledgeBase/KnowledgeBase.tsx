@@ -319,6 +319,29 @@ const SupportedFormats = styled.div`
   color: #475569;
 `;
 
+const ProcessingIndicator = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #fef3c7;
+  border: 1px solid #fcd34d;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #92400e;
+  margin-bottom: 10px;
+  
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  
+  &::before {
+    content: '⏳';
+    display: inline-block;
+    animation: spin 2s linear infinite;
+  }
+`;
+
 interface Document {
   id: string;
   title: string;
@@ -358,6 +381,7 @@ const KnowledgeBase: React.FC = () => {
 
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [processingDocuments, setProcessingDocuments] = useState<Set<string>>(new Set());
 
   const [query, setQuery] = useState('');
 
@@ -718,11 +742,19 @@ const KnowledgeBase: React.FC = () => {
 
       if (data.success) {
         setUploadProgress(100);
-        alert(`成功上传 ${data.data?.length || 0} 个文档`);
+        alert(`成功上传 ${data.data?.length || 0} 个文档，后台处理中...`);
         setSelectedFiles([]);
+        
+        // 获取上传的文档 ID，开始轮询其处理状态
+        const uploadedDocumentIds = data.data?.map((doc: Document) => doc.id) || [];
+        if (uploadedDocumentIds.length > 0) {
+          setProcessingDocuments(new Set(uploadedDocumentIds));
+          
+          // 开始轮询这些文档的处理状态
+          pollDocumentProcessing(uploadedDocumentIds);
+        }
+        
         setUploadProgress(0);
-        fetchDocuments();
-        fetchStats();
       } else {
         const errorMsg = data.message || '上传失败';
         alert(`上传失败: ${errorMsg}`);
@@ -735,6 +767,65 @@ const KnowledgeBase: React.FC = () => {
     } finally {
       setLoadingUpload(false);
     }
+  };
+
+  // 轮询文档处理状态
+  const pollDocumentProcessing = async (documentIds: string[]) => {
+    const maxAttempts = 120; // 最多轮询 120 次
+    let attempts = 0;
+
+    const poll = async () => {
+      try {
+        attempts++;
+        
+        // 获取最新的文档列表
+        const response = await fetch(`${API_BASE}/documents`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+        const result = await response.json();
+        
+        if (result.success && result.data) {
+          const documents = result.data as Document[];
+          
+          // 检查这些文档是否都已处理
+          const stillProcessing = documentIds.filter(
+            (id) => {
+              const doc = documents.find((d) => d.id === id);
+              return doc && !doc.isProcessed;
+            }
+          );
+
+          if (stillProcessing.length === 0) {
+            // 所有文档都已处理
+            setProcessingDocuments(new Set());
+            fetchDocuments();
+            fetchStats();
+            return;
+          }
+
+          // 继续轮询或超时
+          if (attempts < maxAttempts) {
+            // 每 3 秒轮询一次
+            setTimeout(poll, 3000);
+          } else {
+            // 超时后停止轮询，但不清除状态（让用户手动刷新）
+            console.warn('文档处理超时');
+            setProcessingDocuments(new Set());
+          }
+        }
+      } catch (error) {
+        console.error('轮询文档状态失败:', error);
+        // 错误时继续轮询
+        if (attempts < maxAttempts) {
+          setTimeout(poll, 3000);
+        }
+      }
+    };
+
+    // 立即开始第一次轮询
+    poll();
   };
 
   return (
@@ -914,6 +1005,11 @@ const KnowledgeBase: React.FC = () => {
       {/* 文档列表 */}
       <Section>
         <SectionTitle>📚 我的文档</SectionTitle>
+        {processingDocuments.size > 0 && (
+          <ProcessingIndicator>
+            {processingDocuments.size} 个文档处理中...
+          </ProcessingIndicator>
+        )}
         {documents.length > 0 ? (
           <DocumentList>
             {documents.map((doc) => (
@@ -923,10 +1019,11 @@ const KnowledgeBase: React.FC = () => {
                   <DocumentMeta>
                     {doc.isProcessed ? '✅ 已处理' : '⏳ 待处理'} · 
                     {new Date(doc.createdAt).toLocaleDateString()}
+                    {processingDocuments.has(doc.id) && ' · 后台处理中'}
                   </DocumentMeta>
                 </DocumentInfo>
                 <ButtonGroup>
-                  {!doc.isProcessed && (
+                  {!doc.isProcessed && !processingDocuments.has(doc.id) && (
                     <Button
                       onClick={() => handleReprocessDocument(doc.id)}
                       disabled={loadingReprocess === doc.id}

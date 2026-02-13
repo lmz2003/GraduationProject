@@ -19,7 +19,7 @@ export class KnowledgeBaseService {
   ) {}
 
   /**
-   * 添加文档到知识库
+   * 添加文档到知识库（同步处理）
    */
   async addDocument(
     createDocumentDto: CreateDocumentDto,
@@ -82,6 +82,101 @@ export class KnowledgeBaseService {
       const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
       this.logger.error('添加文档失败:', error);
       throw new BadRequestException(`添加文档失败: ${errorMsg}`);
+    }
+  }
+
+  /**
+   * 添加文档到知识库（异步处理）
+   * 立即返回，后台处理向量化
+   */
+  async addDocumentAsync(
+    createDocumentDto: CreateDocumentDto,
+    userId: string
+  ): Promise<KnowledgeDocument> {
+    try {
+      // 1. 保存文档到数据库（待处理状态）
+      const document = this.documentRepository.create({
+        ...createDocumentDto,
+        documentType: createDocumentDto.documentType || 'text',
+        ownerId: userId,
+        isProcessed: false, // 初始状态为未处理
+      });
+
+      const savedDocument = await this.documentRepository.save(document);
+      this.logger.log(`文档已保存: ${savedDocument.id}，等待后台处理...`);
+
+      // 2. 在后台处理文档（不等待）
+      this.processDocumentInBackground(savedDocument.id, createDocumentDto, userId)
+        .catch((error) => {
+          this.logger.error(`后台处理文档失败: ${savedDocument.id}`, error);
+        });
+
+      return savedDocument;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+      this.logger.error('添加文档失败:', error);
+      throw new BadRequestException(`添加文档失败: ${errorMsg}`);
+    }
+  }
+
+  /**
+   * 在后台处理文档的向量化
+   */
+  private async processDocumentInBackground(
+    documentId: string,
+    createDocumentDto: CreateDocumentDto,
+    userId: string
+  ): Promise<void> {
+    try {
+      const document = await this.documentRepository.findOne({
+        where: { id: documentId },
+      });
+
+      if (!document) {
+        this.logger.warn(`文档不存在，无法处理: ${documentId}`);
+        return;
+      }
+
+      try {
+        const chunks = await this.langChainService.processDocument(
+          createDocumentDto.content,
+          createDocumentDto.title,
+          {
+            source: createDocumentDto.source,
+            ...createDocumentDto.metadata,
+          }
+        );
+
+        // 将向量插入 Milvus
+        for (const chunk of chunks) {
+          await this.milvusService.insertVector(
+            `${documentId}_${chunk.metadata.chunkIndex}`,
+            chunk.embedding,
+            chunk.metadata.title,
+            chunk.chunk,
+            chunk.metadata.source || null,
+            userId
+          );
+        }
+
+        // 更新文档状态为已处理
+        document.isProcessed = true;
+        document.vectorId = documentId;
+        await this.documentRepository.save(document);
+
+        this.logger.log(`后台处理完成: ${documentId} (${chunks.length} 个向量)`);
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+        this.logger.error(`文档向量处理失败: ${documentId} - ${errorMsg}`, error);
+
+        // 保持未处理状态，用户可以重试
+        document.isProcessed = false;
+        await this.documentRepository.save(document);
+
+        this.logger.warn(`文档处理失败，标记为待处理: ${documentId}。错误: ${errorMsg}`);
+      }
+    } catch (error) {
+      this.logger.error(`后台处理文档异常: ${documentId}`, error);
     }
   }
 

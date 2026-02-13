@@ -194,6 +194,8 @@ export class KnowledgeBaseController {
 
       const uploadResults = await this.documentUploadService.uploadDocuments(files);
 
+      // 只保存文档到数据库，返回待处理状态
+      // 后台异步处理向量化
       const documents = [];
       for (const uploadResult of uploadResults) {
         const createDocumentDto: CreateDocumentDto = {
@@ -210,7 +212,7 @@ export class KnowledgeBaseController {
         };
 
         try {
-          const document = await this.knowledgeBaseService.addDocument(createDocumentDto, userId);
+          const document = await this.knowledgeBaseService.addDocumentAsync(createDocumentDto, userId);
           documents.push(document);
         } catch (error: any) {
           console.error(`文档 ${uploadResult.originalFileName} 添加失败:`, error.message);
@@ -219,7 +221,7 @@ export class KnowledgeBaseController {
 
       return {
         success: true,
-        message: `成功处理 ${documents.length} 个文档`,
+        message: `成功上传 ${documents.length} 个文档，后台处理中...`,
         data: documents,
       };
     } catch (error: any) {
