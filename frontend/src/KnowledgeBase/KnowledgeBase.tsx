@@ -341,6 +341,7 @@ const KnowledgeBase: React.FC = () => {
   const [loadingAdd, setLoadingAdd] = useState(false);  // 添加文档的 loading 状态
   const [loadingQuery, setLoadingQuery] = useState(false);  // 查询的 loading 状态
   const [loadingUpload, setLoadingUpload] = useState(false);  // 文件上传的 loading 状态
+  const [loadingReprocess, setLoadingReprocess] = useState<string | null>(null);  // 重新处理文档的 loading 状态（存储文档 ID）
 
   // 选项卡状态
   const [activeTab, setActiveTab] = useState<'text' | 'file'>('text');
@@ -546,6 +547,7 @@ const KnowledgeBase: React.FC = () => {
       return;
     }
 
+    setLoadingReprocess(docId);
     try {
       const response = await fetch(`${API_BASE}/documents/${docId}/reprocess`, {
         method: 'POST',
@@ -568,6 +570,8 @@ const KnowledgeBase: React.FC = () => {
       const errorMsg = error instanceof Error ? error.message : '网络错误';
       console.error('重新处理文档失败:', error);
       alert(`重新处理文档失败: ${errorMsg}。请检查服务器连接`);
+    } finally {
+      setLoadingReprocess(null);
     }
   };
 
@@ -670,16 +674,50 @@ const KnowledgeBase: React.FC = () => {
         formData.append('files', file);
       });
 
-      const response = await fetch(`${API_BASE}/upload-documents`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-        body: formData,
+      // 使用 XMLHttpRequest 来跟踪上传进度
+      const xhr = new XMLHttpRequest();
+
+      // 监听上传进度
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          const percentComplete = Math.round((event.loaded / event.total) * 100);
+          setUploadProgress(percentComplete);
+        }
       });
 
-      const data = await response.json();
+      // 返回 Promise 来处理上传完成
+      const uploadPromise = new Promise<string>((resolve, reject) => {
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              JSON.parse(xhr.responseText);
+              resolve(xhr.responseText);
+            } catch {
+              reject(new Error('响应解析失败'));
+            }
+          } else {
+            reject(new Error(`上传失败: ${xhr.status}`));
+          }
+        });
+
+        xhr.addEventListener('error', () => {
+          reject(new Error('网络错误'));
+        });
+
+        xhr.addEventListener('abort', () => {
+          reject(new Error('上传被中止'));
+        });
+
+        xhr.open('POST', `${API_BASE}/upload-documents`);
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+        xhr.send(formData);
+      });
+
+      const responseText = await uploadPromise;
+      const data = JSON.parse(responseText);
+
       if (data.success) {
+        setUploadProgress(100);
         alert(`成功上传 ${data.data?.length || 0} 个文档`);
         setSelectedFiles([]);
         setUploadProgress(0);
@@ -891,9 +929,10 @@ const KnowledgeBase: React.FC = () => {
                   {!doc.isProcessed && (
                     <Button
                       onClick={() => handleReprocessDocument(doc.id)}
+                      disabled={loadingReprocess === doc.id}
                       title="重新提交文档到处理队列"
                     >
-                      🔄 重新上传
+                      {loadingReprocess === doc.id ? '处理中...' : '🔄 重新上传'}
                     </Button>
                   )}
                   <Button
