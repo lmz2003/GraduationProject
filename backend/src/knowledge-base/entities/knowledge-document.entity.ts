@@ -26,6 +26,17 @@ export class KnowledgeDocument {
   @Column({ default: false })
   isProcessed!: boolean; // 是否已处理为向量
 
+  @Column({ 
+    type: 'varchar', 
+    length: 50, 
+    default: 'uploaded',
+    comment: 'uploaded=已上传待处理, processing=处理中, processed=已处理, failed=处理失败'
+  })
+  status!: string; // 文档状态: uploaded | processing | processed | failed
+
+  @Column({ nullable: true })
+  processingError?: string; // 处理错误信息
+
   @Column({ type: 'varchar', length: 100 })
   ownerId!: string; // 用户ID，存储字符串类型
 

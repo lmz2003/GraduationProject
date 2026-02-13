@@ -99,7 +99,8 @@ export class KnowledgeBaseService {
         ...createDocumentDto,
         documentType: createDocumentDto.documentType || 'text',
         ownerId: userId,
-        isProcessed: false, // 初始状态为未处理
+        isProcessed: false,
+        status: 'uploaded', // 状态为已上传
       });
 
       const savedDocument = await this.documentRepository.save(document);
@@ -138,6 +139,11 @@ export class KnowledgeBaseService {
       }
 
       try {
+        // 标记为处理中
+        document.status = 'processing';
+        await this.documentRepository.save(document);
+        this.logger.log(`开始处理文档: ${documentId}`);
+
         const chunks = await this.langChainService.processDocument(
           createDocumentDto.content,
           createDocumentDto.title,
@@ -161,7 +167,9 @@ export class KnowledgeBaseService {
 
         // 更新文档状态为已处理
         document.isProcessed = true;
+        document.status = 'processed'; // 成功
         document.vectorId = documentId;
+        document.processingError = undefined;
         await this.documentRepository.save(document);
 
         this.logger.log(`后台处理完成: ${documentId} (${chunks.length} 个向量)`);
@@ -169,11 +177,13 @@ export class KnowledgeBaseService {
         const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
         this.logger.error(`文档向量处理失败: ${documentId} - ${errorMsg}`, error);
 
-        // 保持未处理状态，用户可以重试
+        // 标记为处理失败，用户可以重新上传
         document.isProcessed = false;
+        document.status = 'failed'; // 失败
+        document.processingError = errorMsg;
         await this.documentRepository.save(document);
 
-        this.logger.warn(`文档处理失败，标记为待处理: ${documentId}。错误: ${errorMsg}`);
+        this.logger.warn(`文档处理失败，标记为失败: ${documentId}。错误: ${errorMsg}`);
       }
     } catch (error) {
       this.logger.error(`后台处理文档异常: ${documentId}`, error);

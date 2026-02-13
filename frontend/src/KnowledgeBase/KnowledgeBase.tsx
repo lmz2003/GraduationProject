@@ -347,6 +347,8 @@ interface Document {
   title: string;
   content: string;
   isProcessed: boolean;
+  status: 'uploaded' | 'processing' | 'processed' | 'failed'; // 文档状态
+  processingError?: string; // 处理错误信息
   createdAt: string;
 }
 
@@ -771,7 +773,7 @@ const KnowledgeBase: React.FC = () => {
 
   // 轮询文档处理状态
   const pollDocumentProcessing = async (documentIds: string[]) => {
-    const maxAttempts = 120; // 最多轮询 120 次
+    const maxAttempts = 120; // 最多轮询 120 次（360 秒 = 6 分钟）
     let attempts = 0;
 
     const poll = async () => {
@@ -789,17 +791,39 @@ const KnowledgeBase: React.FC = () => {
         if (result.success && result.data) {
           const documents = result.data as Document[];
           
-          // 检查这些文档是否都已处理
-          const stillProcessing = documentIds.filter(
-            (id) => {
-              const doc = documents.find((d) => d.id === id);
-              return doc && !doc.isProcessed;
+          // 检查这些文档的处理状态
+          const stillProcessing: Document[] = [];
+          const failedDocs: Document[] = [];
+          
+          documentIds.forEach((id) => {
+            const doc = documents.find((d) => d.id === id);
+            if (!doc) return;
+            
+            // 根据 status 判断状态
+            if (doc.status === 'processed') {
+              // 已处理，不需要继续轮询
+            } else if (doc.status === 'failed') {
+              // 处理失败，记录
+              failedDocs.push(doc);
+            } else if (doc.status === 'uploaded' || doc.status === 'processing') {
+              // 还在处理中
+              stillProcessing.push(doc);
             }
-          );
+          });
 
+          // 如果没有文档还在处理中，轮询结束
           if (stillProcessing.length === 0) {
-            // 所有文档都已处理
             setProcessingDocuments(new Set());
+            
+            if (failedDocs.length > 0) {
+              const failureMsg = failedDocs
+                .map((doc) => `${doc.title}${doc.processingError ? ': ' + doc.processingError : ''}`)
+                .join('\n');
+              alert(`${failedDocs.length} 个文档处理失败:\n${failureMsg}\n\n请重新上传或检查日志`);
+            } else {
+              alert('所有文档处理完成！');
+            }
+            
             fetchDocuments();
             fetchStats();
             return;
@@ -810,9 +834,12 @@ const KnowledgeBase: React.FC = () => {
             // 每 3 秒轮询一次
             setTimeout(poll, 3000);
           } else {
-            // 超时后停止轮询，但不清除状态（让用户手动刷新）
+            // 超时后停止轮询
             console.warn('文档处理超时');
             setProcessingDocuments(new Set());
+            alert(`${stillProcessing.length} 个文档处理超时，请稍后手动刷新查看状态`);
+            fetchDocuments();
+            fetchStats();
           }
         }
       } catch (error) {
@@ -820,6 +847,8 @@ const KnowledgeBase: React.FC = () => {
         // 错误时继续轮询
         if (attempts < maxAttempts) {
           setTimeout(poll, 3000);
+        } else {
+          setProcessingDocuments(new Set());
         }
       }
     };
@@ -1012,35 +1041,59 @@ const KnowledgeBase: React.FC = () => {
         )}
         {documents.length > 0 ? (
           <DocumentList>
-            {documents.map((doc) => (
-              <DocumentCard key={doc.id}>
-                <DocumentInfo>
-                  <DocumentTitle>{doc.title}</DocumentTitle>
-                  <DocumentMeta>
-                    {doc.isProcessed ? '✅ 已处理' : '⏳ 待处理'} · 
-                    {new Date(doc.createdAt).toLocaleDateString()}
-                    {processingDocuments.has(doc.id) && ' · 后台处理中'}
-                  </DocumentMeta>
-                </DocumentInfo>
-                <ButtonGroup>
-                  {!doc.isProcessed && !processingDocuments.has(doc.id) && (
+            {documents.map((doc) => {
+              // 根据状态决定显示的内容
+              const getStatusDisplay = () => {
+                switch (doc.status) {
+                  case 'processed':
+                    return '✅ 已处理';
+                  case 'processing':
+                    return '⏳ 处理中...';
+                  case 'uploaded':
+                    return '📤 待处理';
+                  case 'failed':
+                    return '❌ 处理失败';
+                  default:
+                    return '⏳ 待处理';
+                }
+              };
+
+              return (
+                <DocumentCard key={doc.id}>
+                  <DocumentInfo>
+                    <DocumentTitle>{doc.title}</DocumentTitle>
+                    <DocumentMeta>
+                      {getStatusDisplay()} · {new Date(doc.createdAt).toLocaleDateString()}
+                      {doc.status === 'failed' && doc.processingError && (
+                        <>
+                          <br />
+                          <span style={{ color: '#dc2626', fontSize: '0.75rem' }}>
+                            错误: {doc.processingError.substring(0, 100)}
+                          </span>
+                        </>
+                      )}
+                    </DocumentMeta>
+                  </DocumentInfo>
+                  <ButtonGroup>
+                    {(doc.status === 'uploaded' || doc.status === 'failed') && (
+                      <Button
+                        onClick={() => handleReprocessDocument(doc.id)}
+                        disabled={loadingReprocess === doc.id}
+                        title={doc.status === 'failed' ? '重新处理此文档' : '手动处理此文档'}
+                      >
+                        {loadingReprocess === doc.id ? '处理中...' : '🔄 重新处理'}
+                      </Button>
+                    )}
                     <Button
-                      onClick={() => handleReprocessDocument(doc.id)}
-                      disabled={loadingReprocess === doc.id}
-                      title="重新提交文档到处理队列"
+                      $variant="secondary"
+                      onClick={() => handleDeleteDocument(doc.id)}
                     >
-                      {loadingReprocess === doc.id ? '处理中...' : '🔄 重新上传'}
+                      删除
                     </Button>
-                  )}
-                  <Button
-                    $variant="secondary"
-                    onClick={() => handleDeleteDocument(doc.id)}
-                  >
-                    删除
-                  </Button>
-                </ButtonGroup>
-              </DocumentCard>
-            ))}
+                  </ButtonGroup>
+                </DocumentCard>
+              );
+            })}
           </DocumentList>
         ) : (
           <p style={{ color: '#64748b', margin: 0 }}>暂无文档</p>
