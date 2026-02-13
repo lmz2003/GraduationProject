@@ -449,6 +449,39 @@ export class KnowledgeBaseController {
   }
 
   /**
+   * 重新处理文档
+   */
+  @Post('documents/:id/reprocess')
+  async reprocessDocument(@Param('id') documentId: string, @Request() req: AuthRequest) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new HttpException(
+          {
+            success: false,
+            message: '未授权的请求，请先登录',
+          },
+          HttpStatus.UNAUTHORIZED
+        );
+      }
+      const document = await this.knowledgeBaseService.reprocessDocument(documentId, userId);
+      return {
+        success: true,
+        message: '文档已重新处理',
+        data: document,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message || '重新处理文档失败',
+        },
+        error instanceof HttpException ? error.getStatus() : HttpStatus.BAD_REQUEST
+      );
+    }
+  }
+
+  /**
    * 删除文档
    */
   @Delete('documents/:id')

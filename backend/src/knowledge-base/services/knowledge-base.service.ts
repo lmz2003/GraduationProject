@@ -239,6 +239,71 @@ export class KnowledgeBaseService {
   }
 
   /**
+   * 重新处理文档
+   */
+  async reprocessDocument(documentId: string, userId: string): Promise<KnowledgeDocument> {
+    try {
+      const document = await this.getDocument(documentId, userId);
+
+      if (!document.content) {
+        throw new BadRequestException('文档内容为空，无法处理');
+      }
+
+      try {
+        // 1. 删除旧向量
+        await this.milvusService.deleteVector(documentId);
+      } catch (error) {
+        this.logger.warn(`删除旧向量失败: ${documentId}`, error);
+        // 继续处理，不中断流程
+      }
+
+      try {
+        // 2. 处理文档内容并生成新的向量
+        const chunks = await this.langChainService.processDocument(
+          document.content,
+          document.title,
+          {
+            source: document.source,
+            ...document.metadata,
+          }
+        );
+
+        // 3. 将新向量插入 Milvus
+        for (const chunk of chunks) {
+          await this.milvusService.insertVector(
+            `${documentId}_${chunk.metadata.chunkIndex}`,
+            chunk.embedding,
+            chunk.metadata.title,
+            chunk.chunk,
+            chunk.metadata.source || null,
+            userId
+          );
+        }
+
+        // 4. 更新文档状态为已处理
+        document.isProcessed = true;
+        document.vectorId = documentId;
+        const updated = await this.documentRepository.save(document);
+
+        this.logger.log(`文档已重新处理: ${documentId} (${chunks.length} 个向量)`);
+        return updated;
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+        this.logger.error(`文档向量处理失败: ${documentId} - ${errorMsg}`, error);
+
+        // 标记为未处理状态，但保存文档
+        document.isProcessed = false;
+        await this.documentRepository.save(document);
+
+        throw new BadRequestException(`文档处理失败: ${errorMsg}`);
+      }
+    } catch (error) {
+      this.logger.error('重新处理文档失败:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 删除文档
    */
   async deleteDocument(documentId: string, userId: string): Promise<void> {

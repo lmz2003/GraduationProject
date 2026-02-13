@@ -540,6 +540,37 @@ const KnowledgeBase: React.FC = () => {
     }
   };
 
+  // 重新处理文档
+  const handleReprocessDocument = async (docId: string) => {
+    if (!window.confirm('确定要重新处理此文档吗？')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`${API_BASE}/documents/${docId}/reprocess`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert('文档已提交处理队列，请稍候');
+        fetchDocuments();
+        fetchStats();
+      } else {
+        const errorMsg = data.message || '重新处理失败';
+        alert(`重新处理失败: ${errorMsg}`);
+        console.error('重新处理文档错误:', errorMsg);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : '网络错误';
+      console.error('重新处理文档失败:', error);
+      alert(`重新处理文档失败: ${errorMsg}。请检查服务器连接`);
+    }
+  };
+
   // 获取文件图标
   const getFileIcon = (fileName: string): string => {
     const ext = fileName.split('.').pop()?.toLowerCase() || '';
@@ -857,6 +888,14 @@ const KnowledgeBase: React.FC = () => {
                   </DocumentMeta>
                 </DocumentInfo>
                 <ButtonGroup>
+                  {!doc.isProcessed && (
+                    <Button
+                      onClick={() => handleReprocessDocument(doc.id)}
+                      title="重新提交文档到处理队列"
+                    >
+                      🔄 重新上传
+                    </Button>
+                  )}
                   <Button
                     $variant="secondary"
                     onClick={() => handleDeleteDocument(doc.id)}
