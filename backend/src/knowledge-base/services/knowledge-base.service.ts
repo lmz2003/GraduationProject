@@ -429,6 +429,53 @@ export class KnowledgeBaseService {
   }
 
   /**
+   * 批量删除文档
+   */
+  async batchDeleteDocuments(
+    documentIds: string[],
+    userId: string
+  ): Promise<{ deletedCount: number; failedCount: number }> {
+    try {
+      if (!documentIds || documentIds.length === 0) {
+        throw new BadRequestException('未指定要删除的文档');
+      }
+
+      let deletedCount = 0;
+      let failedCount = 0;
+
+      // 逐个删除文档
+      for (const documentId of documentIds) {
+        try {
+          const document = await this.getDocument(documentId, userId);
+
+          // 从 Milvus 删除向量
+          try {
+            await this.milvusService.deleteVector(documentId);
+          } catch (error) {
+            this.logger.warn(`删除向量失败: ${documentId}`, error);
+            // 继续删除数据库记录
+          }
+
+          // 从数据库删除文档
+          await this.documentRepository.remove(document);
+          deletedCount++;
+          this.logger.log(`文档已删除: ${documentId}`);
+        } catch (error) {
+          failedCount++;
+          this.logger.warn(`删除文档失败: ${documentId}`, error);
+          // 继续删除其他文档
+        }
+      }
+
+      this.logger.log(`批量删除完成: 成功 ${deletedCount} 个，失败 ${failedCount} 个`);
+      return { deletedCount, failedCount };
+    } catch (error) {
+      this.logger.error('批量删除文档失败:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 获取知识库统计信息
    */
   async getStatistics(userId: string): Promise<{

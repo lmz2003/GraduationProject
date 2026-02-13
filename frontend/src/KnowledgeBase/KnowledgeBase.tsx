@@ -98,14 +98,15 @@ const DocumentList = styled.div`
   gap: 10px;
 `;
 
-const DocumentCard = styled.div`
+const DocumentCard = styled.div<{ $selected?: boolean }>`
   padding: 15px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: ${props => props.$selected ? '#f0f4ff' : '#f8fafc'};
+  border: 2px solid ${props => props.$selected ? '#4f46e5' : '#e2e8f0'};
   border-radius: 6px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  transition: all 0.2s;
 `;
 
 const DocumentInfo = styled.div`
@@ -342,6 +343,42 @@ const ProcessingIndicator = styled.div`
   }
 `;
 
+const DocumentCardInner = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+`;
+
+const CheckboxContainer = styled.div`
+  display: flex;
+  align-items: center;
+`;
+
+const Checkbox = styled.input`
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: #4f46e5;
+`;
+
+const SelectionActions = styled.div`
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  background: #f0f4ff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  margin-bottom: 15px;
+  align-items: center;
+`;
+
+const SelectionInfo = styled.span`
+  color: #475569;
+  font-weight: 500;
+  margin-right: 10px;
+`;
+
 interface Document {
   id: string;
   title: string;
@@ -384,6 +421,8 @@ const KnowledgeBase: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [processingDocuments, setProcessingDocuments] = useState<Set<string>>(new Set());
+  const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set());
+  const [loadingBatchDelete, setLoadingBatchDelete] = useState(false);
 
   const [query, setQuery] = useState('');
 
@@ -598,6 +637,70 @@ const KnowledgeBase: React.FC = () => {
       alert(`重新处理文档失败: ${errorMsg}。请检查服务器连接`);
     } finally {
       setLoadingReprocess(null);
+    }
+  };
+
+  // 切换文档选择状态
+  const handleDocumentSelect = (docId: string) => {
+    const newSelected = new Set(selectedDocuments);
+    if (newSelected.has(docId)) {
+      newSelected.delete(docId);
+    } else {
+      newSelected.add(docId);
+    }
+    setSelectedDocuments(newSelected);
+  };
+
+  // 全选所有文档
+  const handleSelectAll = () => {
+    if (selectedDocuments.size === documents.length) {
+      setSelectedDocuments(new Set());
+    } else {
+      setSelectedDocuments(new Set(documents.map(doc => doc.id)));
+    }
+  };
+
+  // 批量删除文档
+  const handleBatchDelete = async () => {
+    if (selectedDocuments.size === 0) {
+      alert('请先选择要删除的文档');
+      return;
+    }
+
+    if (!window.confirm(`确定要删除 ${selectedDocuments.size} 个文档吗？此操作不可撤销`)) {
+      return;
+    }
+
+    setLoadingBatchDelete(true);
+    try {
+      const response = await fetch(`${API_BASE}/documents/batch-delete`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          documentIds: Array.from(selectedDocuments),
+        }),
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        alert(`成功删除 ${data.data?.deletedCount || selectedDocuments.size} 个文档`);
+        setSelectedDocuments(new Set());
+        fetchDocuments();
+        fetchStats();
+      } else {
+        const errorMsg = data.message || '批量删除失败';
+        alert(`批量删除失败: ${errorMsg}`);
+        console.error('批量删除错误:', errorMsg);
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : '网络错误';
+      console.error('批量删除失败:', error);
+      alert(`批量删除失败: ${errorMsg}。请检查服务器连接`);
+    } finally {
+      setLoadingBatchDelete(false);
     }
   };
 
@@ -1040,61 +1143,90 @@ const KnowledgeBase: React.FC = () => {
           </ProcessingIndicator>
         )}
         {documents.length > 0 ? (
-          <DocumentList>
-            {documents.map((doc) => {
-              // 根据状态决定显示的内容
-              const getStatusDisplay = () => {
-                switch (doc.status) {
-                  case 'processed':
-                    return '✅ 已处理';
-                  case 'processing':
-                    return '⏳ 处理中...';
-                  case 'uploaded':
-                    return '📤 待处理';
-                  case 'failed':
-                    return '❌ 处理失败';
-                  default:
-                    return '⏳ 待处理';
-                }
-              };
+          <>
+            {selectedDocuments.size > 0 && (
+              <SelectionActions>
+                <SelectionInfo>已选择 {selectedDocuments.size} 个文档</SelectionInfo>
+                <Button
+                  onClick={handleSelectAll}
+                  $variant="secondary"
+                >
+                  取消全选
+                </Button>
+                <Button
+                  onClick={handleBatchDelete}
+                  disabled={loadingBatchDelete}
+                  style={{ background: '#dc2626' }}
+                >
+                  {loadingBatchDelete ? '删除中...' : `🗑️ 删除 ${selectedDocuments.size} 个文档`}
+                </Button>
+              </SelectionActions>
+            )}
+            <DocumentList>
+              {documents.map((doc) => {
+                // 根据状态决定显示的内容
+                const getStatusDisplay = () => {
+                  switch (doc.status) {
+                    case 'processed':
+                      return '✅ 已处理';
+                    case 'processing':
+                      return '⏳ 处理中...';
+                    case 'uploaded':
+                      return '📤 待处理';
+                    case 'failed':
+                      return '❌ 处理失败';
+                    default:
+                      return '⏳ 待处理';
+                  }
+                };
 
-              return (
-                <DocumentCard key={doc.id}>
-                  <DocumentInfo>
-                    <DocumentTitle>{doc.title}</DocumentTitle>
-                    <DocumentMeta>
-                      {getStatusDisplay()} · {new Date(doc.createdAt).toLocaleDateString()}
-                      {doc.status === 'failed' && doc.processingError && (
-                        <>
-                          <br />
-                          <span style={{ color: '#dc2626', fontSize: '0.75rem' }}>
-                            错误: {doc.processingError.substring(0, 100)}
-                          </span>
-                        </>
+                return (
+                  <DocumentCard key={doc.id} $selected={selectedDocuments.has(doc.id)}>
+                    <DocumentCardInner>
+                      <CheckboxContainer>
+                        <Checkbox
+                          type="checkbox"
+                          checked={selectedDocuments.has(doc.id)}
+                          onChange={() => handleDocumentSelect(doc.id)}
+                        />
+                      </CheckboxContainer>
+                      <DocumentInfo>
+                        <DocumentTitle>{doc.title}</DocumentTitle>
+                        <DocumentMeta>
+                          {getStatusDisplay()} · {new Date(doc.createdAt).toLocaleDateString()}
+                          {doc.status === 'failed' && doc.processingError && (
+                            <>
+                              <br />
+                              <span style={{ color: '#dc2626', fontSize: '0.75rem' }}>
+                                错误: {doc.processingError.substring(0, 100)}
+                              </span>
+                            </>
+                          )}
+                        </DocumentMeta>
+                      </DocumentInfo>
+                    </DocumentCardInner>
+                    <ButtonGroup>
+                      {(doc.status === 'uploaded' || doc.status === 'failed') && (
+                        <Button
+                          onClick={() => handleReprocessDocument(doc.id)}
+                          disabled={loadingReprocess === doc.id}
+                          title={doc.status === 'failed' ? '重新处理此文档' : '手动处理此文档'}
+                        >
+                          {loadingReprocess === doc.id ? '处理中...' : '🔄 重新处理'}
+                        </Button>
                       )}
-                    </DocumentMeta>
-                  </DocumentInfo>
-                  <ButtonGroup>
-                    {(doc.status === 'uploaded' || doc.status === 'failed') && (
                       <Button
-                        onClick={() => handleReprocessDocument(doc.id)}
-                        disabled={loadingReprocess === doc.id}
-                        title={doc.status === 'failed' ? '重新处理此文档' : '手动处理此文档'}
+                        $variant="secondary"
+                        onClick={() => handleDeleteDocument(doc.id)}
                       >
-                        {loadingReprocess === doc.id ? '处理中...' : '🔄 重新处理'}
+                        删除
                       </Button>
-                    )}
-                    <Button
-                      $variant="secondary"
-                      onClick={() => handleDeleteDocument(doc.id)}
-                    >
-                      删除
-                    </Button>
-                  </ButtonGroup>
-                </DocumentCard>
-              );
-            })}
-          </DocumentList>
+                    </ButtonGroup>
+                  </DocumentCard>
+                );
+              })}
+            </DocumentList>
+          </>
         ) : (
           <p style={{ color: '#64748b', margin: 0 }}>暂无文档</p>
         )}

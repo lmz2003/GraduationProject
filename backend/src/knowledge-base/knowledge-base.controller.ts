@@ -516,6 +516,45 @@ export class KnowledgeBaseController {
   }
 
   /**
+   * 批量删除文档
+   */
+  @Post('documents/batch-delete')
+  async batchDeleteDocuments(
+    @Body() deleteDto: { documentIds: string[] },
+    @Request() req: AuthRequest
+  ) {
+    try {
+      const userId = req.user?.id;
+      if (!userId) {
+        throw new HttpException(
+          {
+            success: false,
+            message: '未授权的请求，请先登录',
+          },
+          HttpStatus.UNAUTHORIZED
+        );
+      }
+      const result = await this.knowledgeBaseService.batchDeleteDocuments(
+        deleteDto.documentIds,
+        userId
+      );
+      return {
+        success: true,
+        message: `成功删除 ${result.deletedCount} 个文档`,
+        data: result,
+      };
+    } catch (error: any) {
+      throw new HttpException(
+        {
+          success: false,
+          message: error.message || '批量删除文档失败',
+        },
+        error instanceof HttpException ? error.getStatus() : HttpStatus.BAD_REQUEST
+      );
+    }
+  }
+
+  /**
    * 获取知识库统计信息
    */
   @Get('statistics')
