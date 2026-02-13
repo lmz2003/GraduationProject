@@ -862,9 +862,18 @@ const KnowledgeBase: React.FC = () => {
         alert(`成功上传 ${data.data?.length || 0} 个文档，后台处理中...`);
         setSelectedFiles([]);
         
-        // 获取上传的文档 ID，开始轮询其处理状态
-        const uploadedDocumentIds = data.data?.map((doc: Document) => doc.id) || [];
-        if (uploadedDocumentIds.length > 0) {
+        // 获取上传的文档，立即加入文档列表
+        const uploadedDocuments = data.data || [];
+        const uploadedDocumentIds = uploadedDocuments.map((doc: Document) => doc.id);
+        
+        if (uploadedDocuments.length > 0) {
+          // 立即将新上传的文档加入列表（状态为处理中）
+          setDocuments((prevDocs) => {
+            // 将新文档和现有文档合并，新文档排在前面
+            return [...uploadedDocuments, ...prevDocs];
+          });
+          
+          // 标记这些文档为处理中
           setProcessingDocuments(new Set(uploadedDocumentIds));
           
           // 开始轮询这些文档的处理状态
@@ -904,14 +913,17 @@ const KnowledgeBase: React.FC = () => {
         const result = await response.json();
         
         if (result.success && result.data) {
-          const documents = result.data as Document[];
+          const allDocuments = result.data as Document[];
+          
+          // 实时更新文档列表中所有文档的状态
+          setDocuments(allDocuments);
           
           // 检查这些文档的处理状态
           const stillProcessing: Document[] = [];
           const failedDocs: Document[] = [];
           
           documentIds.forEach((id) => {
-            const doc = documents.find((d) => d.id === id);
+            const doc = allDocuments.find((d) => d.id === id);
             if (!doc) return;
             
             // 根据 status 判断状态
@@ -939,7 +951,6 @@ const KnowledgeBase: React.FC = () => {
               alert('所有文档处理完成！');
             }
             
-            fetchDocuments();
             fetchStats();
             return;
           }
@@ -953,7 +964,6 @@ const KnowledgeBase: React.FC = () => {
             console.warn('文档处理超时');
             setProcessingDocuments(new Set());
             alert(`${stillProcessing.length} 个文档处理超时，请稍后手动刷新查看状态`);
-            fetchDocuments();
             fetchStats();
           }
         }
