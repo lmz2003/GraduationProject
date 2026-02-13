@@ -18,8 +18,16 @@ const Section = styled.div`
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 `;
 
+const SectionTitleContainer = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+`;
+
 const SectionTitle = styled.h3`
-  margin: 0 0 15px 0;
+  margin: 0;
   color: #0f172a;
   font-size: 1.1rem;
   font-weight: 600;
@@ -106,7 +114,16 @@ const DocumentCard = styled.div<{ $selected?: boolean }>`
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 12px;
   transition: all 0.2s;
+`;
+
+const DocumentCardContent = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
 `;
 
 const DocumentInfo = styled.div`
@@ -343,12 +360,6 @@ const ProcessingIndicator = styled.div`
   }
 `;
 
-const DocumentCardInner = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-`;
 
 const CheckboxContainer = styled.div`
   display: flex;
@@ -423,6 +434,7 @@ const KnowledgeBase: React.FC = () => {
   const [processingDocuments, setProcessingDocuments] = useState<Set<string>>(new Set());
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set());
   const [loadingBatchDelete, setLoadingBatchDelete] = useState(false);
+  const [isBatchDeleteMode, setIsBatchDeleteMode] = useState(false);
 
   const [query, setQuery] = useState('');
 
@@ -1136,53 +1148,73 @@ const KnowledgeBase: React.FC = () => {
 
       {/* 文档列表 */}
       <Section>
-        <SectionTitle>📚 我的文档</SectionTitle>
+        <SectionTitleContainer>
+          <SectionTitle>📚 我的文档</SectionTitle>
+          {documents.length > 0 && (
+            <>
+              <Button
+                $variant={isBatchDeleteMode ? 'primary' : 'secondary'}
+                onClick={() => {
+                  setIsBatchDeleteMode(!isBatchDeleteMode);
+                  if (isBatchDeleteMode) {
+                    setSelectedDocuments(new Set());
+                  }
+                }}
+              >
+                {isBatchDeleteMode ? '✓ 批量删除模式' : '批量删除'}
+              </Button>
+            </>
+          )}
+        </SectionTitleContainer>
+
         {processingDocuments.size > 0 && (
           <ProcessingIndicator>
             {processingDocuments.size} 个文档处理中...
           </ProcessingIndicator>
         )}
-        {documents.length > 0 ? (
-          <>
-            {selectedDocuments.size > 0 && (
-              <SelectionActions>
-                <SelectionInfo>已选择 {selectedDocuments.size} 个文档</SelectionInfo>
-                <Button
-                  onClick={handleSelectAll}
-                  $variant="secondary"
-                >
-                  取消全选
-                </Button>
-                <Button
-                  onClick={handleBatchDelete}
-                  disabled={loadingBatchDelete}
-                  style={{ background: '#dc2626' }}
-                >
-                  {loadingBatchDelete ? '删除中...' : `🗑️ 删除 ${selectedDocuments.size} 个文档`}
-                </Button>
-              </SelectionActions>
-            )}
-            <DocumentList>
-              {documents.map((doc) => {
-                // 根据状态决定显示的内容
-                const getStatusDisplay = () => {
-                  switch (doc.status) {
-                    case 'processed':
-                      return '✅ 已处理';
-                    case 'processing':
-                      return '⏳ 处理中...';
-                    case 'uploaded':
-                      return '📤 待处理';
-                    case 'failed':
-                      return '❌ 处理失败';
-                    default:
-                      return '⏳ 待处理';
-                  }
-                };
 
-                return (
-                  <DocumentCard key={doc.id} $selected={selectedDocuments.has(doc.id)}>
-                    <DocumentCardInner>
+        {isBatchDeleteMode && selectedDocuments.size > 0 && (
+          <SelectionActions>
+            <SelectionInfo>已选择 {selectedDocuments.size} 个文档</SelectionInfo>
+            <Button
+              onClick={handleSelectAll}
+              $variant="secondary"
+            >
+              {selectedDocuments.size === documents.length ? '取消全选' : '全选'}
+            </Button>
+            <Button
+              onClick={handleBatchDelete}
+              disabled={loadingBatchDelete}
+              style={{ background: '#dc2626' }}
+            >
+              {loadingBatchDelete ? '删除中...' : `🗑️ 删除 ${selectedDocuments.size} 个文档`}
+            </Button>
+          </SelectionActions>
+        )}
+
+        {documents.length > 0 ? (
+          <DocumentList>
+            {documents.map((doc) => {
+              // 根据状态决定显示的内容
+              const getStatusDisplay = () => {
+                switch (doc.status) {
+                  case 'processed':
+                    return '✅ 已处理';
+                  case 'processing':
+                    return '⏳ 处理中...';
+                  case 'uploaded':
+                    return '📤 待处理';
+                  case 'failed':
+                    return '❌ 处理失败';
+                  default:
+                    return '⏳ 待处理';
+                }
+              };
+
+              return (
+                <DocumentCard key={doc.id} $selected={selectedDocuments.has(doc.id)}>
+                  <DocumentCardContent>
+                    {isBatchDeleteMode && (
                       <CheckboxContainer>
                         <Checkbox
                           type="checkbox"
@@ -1190,21 +1222,23 @@ const KnowledgeBase: React.FC = () => {
                           onChange={() => handleDocumentSelect(doc.id)}
                         />
                       </CheckboxContainer>
-                      <DocumentInfo>
-                        <DocumentTitle>{doc.title}</DocumentTitle>
-                        <DocumentMeta>
-                          {getStatusDisplay()} · {new Date(doc.createdAt).toLocaleDateString()}
-                          {doc.status === 'failed' && doc.processingError && (
-                            <>
-                              <br />
-                              <span style={{ color: '#dc2626', fontSize: '0.75rem' }}>
-                                错误: {doc.processingError.substring(0, 100)}
-                              </span>
-                            </>
-                          )}
-                        </DocumentMeta>
-                      </DocumentInfo>
-                    </DocumentCardInner>
+                    )}
+                    <DocumentInfo>
+                      <DocumentTitle>{doc.title}</DocumentTitle>
+                      <DocumentMeta>
+                        {getStatusDisplay()} · {new Date(doc.createdAt).toLocaleDateString()}
+                        {doc.status === 'failed' && doc.processingError && (
+                          <>
+                            <br />
+                            <span style={{ color: '#dc2626', fontSize: '0.75rem' }}>
+                              错误: {doc.processingError.substring(0, 100)}
+                            </span>
+                          </>
+                        )}
+                      </DocumentMeta>
+                    </DocumentInfo>
+                  </DocumentCardContent>
+                  {!isBatchDeleteMode && (
                     <ButtonGroup>
                       {(doc.status === 'uploaded' || doc.status === 'failed') && (
                         <Button
@@ -1222,11 +1256,11 @@ const KnowledgeBase: React.FC = () => {
                         删除
                       </Button>
                     </ButtonGroup>
-                  </DocumentCard>
-                );
-              })}
-            </DocumentList>
-          </>
+                  )}
+                </DocumentCard>
+              );
+            })}
+          </DocumentList>
         ) : (
           <p style={{ color: '#64748b', margin: 0 }}>暂无文档</p>
         )}
