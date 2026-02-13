@@ -34,7 +34,7 @@ const NoteDetailPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
-  const [showAI, setShowAI] = useState(true);
+  const [showAI, setShowAI] = useState(false);
   const [mainWidthPercent, setMainWidthPercent] = useState<number>(() => {
     const saved = localStorage.getItem('noteLayoutWidth');
     const defaultValue = saved ? parseInt(saved) : 67;
