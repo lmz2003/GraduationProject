@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useToastModal } from '../components/ui/toast-modal';
 import styles from './NotesListPage.module.scss';
 
 // ========== 接口类型 ==========
@@ -30,6 +31,7 @@ interface QueryParams {
 // ========== 主组件 ==========
 const NotesListPage: React.FC = () => {
   const navigate = useNavigate();
+  const toastModal = useToastModal();
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
@@ -90,7 +92,7 @@ const NotesListPage: React.FC = () => {
       }
     } catch (error) {
       console.error('获取笔记列表失败:', error);
-      alert('获取笔记列表失败');
+      toastModal.error('获取笔记列表失败');
     } finally {
       setLoading(false);
     }
@@ -119,7 +121,8 @@ const NotesListPage: React.FC = () => {
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    if (!confirm('确认删除这条笔记吗？删除后将无法恢复。')) {
+    const confirmed = await toastModal.confirm('确认删除这条笔记吗？删除后将无法恢复。', '确认删除');
+    if (!confirmed) {
       return;
     }
 
@@ -134,14 +137,14 @@ const NotesListPage: React.FC = () => {
 
       const result = await response.json();
       if (result.code === 0) {
-        alert('删除成功');
+        await toastModal.success('删除成功');
         fetchNotes();
       } else {
         throw new Error(result.message || '删除失败');
       }
     } catch (error) {
       console.error('删除失败:', error);
-      alert('删除失败');
+      await toastModal.error('删除失败');
     }
   };
 
@@ -152,7 +155,11 @@ const NotesListPage: React.FC = () => {
       return;
     }
 
-    if (!confirm(`确认删除选中的 ${selectedIds.length} 条笔记吗？删除后将无法恢复。`)) {
+    const confirmed = await toastModal.confirm(
+      `确认删除选中的 ${selectedIds.length} 条笔记吗？删除后将无法恢复。`,
+      '确认批量删除'
+    );
+    if (!confirmed) {
       return;
     }
 
@@ -171,9 +178,12 @@ const NotesListPage: React.FC = () => {
       if (result.code === 0) {
         const { successIds, failedIds } = result.data;
         if (failedIds.length > 0) {
-          alert(`成功删除 ${successIds.length} 条笔记，失败 ${failedIds.length} 条`);
+          await toastModal.warning(
+            `成功删除 ${successIds.length} 条笔记，失败 ${failedIds.length} 条`,
+            '批量删除结果'
+          );
         } else {
-          alert(`成功删除 ${successIds.length} 条笔记`);
+          await toastModal.success(`成功删除 ${successIds.length} 条笔记`);
         }
         handleExitBatchMode();
         fetchNotes();
@@ -182,7 +192,7 @@ const NotesListPage: React.FC = () => {
       }
     } catch (error) {
       console.error('批量删除失败:', error);
-      alert('批量删除失败');
+      await toastModal.error('批量删除失败');
     }
   };
 
@@ -203,7 +213,11 @@ const NotesListPage: React.FC = () => {
   const handleUploadToKnowledge = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    if (!confirm('确认将此笔记上传到知识库吗？上传后可在 AI 助手中使用此笔记内容。')) {
+    const confirmed = await toastModal.confirm(
+      '确认将此笔记上传到知识库吗？上传后可在 AI 助手中使用此笔记内容。',
+      '确认上传'
+    );
+    if (!confirmed) {
       return;
     }
 
@@ -218,14 +232,14 @@ const NotesListPage: React.FC = () => {
 
       const result = await response.json();
       if (result.code === 0) {
-        alert('笔记已成功上传到知识库');
+        await toastModal.success('笔记已成功上传到知识库');
         fetchNotes();
       } else {
         throw new Error(result.message || '上传到知识库失败');
       }
     } catch (error) {
       console.error('上传到知识库失败:', error);
-      alert('上传到知识库失败，请稍后重试');
+      await toastModal.error('上传到知识库失败，请稍后重试');
     }
   };
 
@@ -233,7 +247,11 @@ const NotesListPage: React.FC = () => {
   const handleSyncToKnowledge = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     
-    if (!confirm('确认将更新后的笔记内容同步到知识库吗？')) {
+    const confirmed = await toastModal.confirm(
+      '确认将更新后的笔记内容同步到知识库吗？',
+      '确认同步'
+    );
+    if (!confirmed) {
       return;
     }
 
@@ -248,14 +266,14 @@ const NotesListPage: React.FC = () => {
 
       const result = await response.json();
       if (result.code === 0) {
-        alert('笔记已成功同步到知识库');
+        await toastModal.success('笔记已成功同步到知识库');
         fetchNotes();
       } else {
         throw new Error(result.message || '同步到知识库失败');
       }
     } catch (error) {
       console.error('同步到知识库失败:', error);
-      alert('同步到知识库失败，请稍后重试');
+      await toastModal.error('同步到知识库失败，请稍后重试');
     }
   };
 

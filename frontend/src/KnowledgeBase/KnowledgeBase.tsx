@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import styled from 'styled-components';
+import { useToastModal } from '../components/ui/toast-modal';
 
 // Styled Components
 const Container = styled.div`
@@ -408,6 +409,7 @@ interface QueryResult {
 }
 
 const KnowledgeBase: React.FC = () => {
+  const toastModal = useToastModal();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [queryResults, setQueryResults] = useState<QueryResult[]>([]);
   const [stats, setStats] = useState({ totalDocuments: 0, processedDocuments: 0, pendingDocuments: 0 });
@@ -490,18 +492,18 @@ const KnowledgeBase: React.FC = () => {
   // 添加文档
   const handleAddDocument = async () => {
     if (!newDoc.title || !newDoc.content) {
-      alert('请填写标题和内容');
+      await toastModal.warning('请填写标题和内容', '验证失败');
       return;
     }
 
     // 客户端验证
     if (newDoc.title.length > 500) {
-      alert('文档标题不能超过 500 个字符');
+      await toastModal.warning('文档标题不能超过 500 个字符', '验证失败');
       return;
     }
 
     if (newDoc.source && newDoc.source.length > 2000) {
-      alert('文档来源不能超过 2000 个字符');
+      await toastModal.warning('文档来源不能超过 2000 个字符', '验证失败');
       return;
     }
 
@@ -518,20 +520,20 @@ const KnowledgeBase: React.FC = () => {
 
       const data = await response.json();
       if (data.success) {
-        alert('文档已添加');
+        await toastModal.success('文档已添加');
         setNewDoc({ title: '', content: '', source: '' });
         fetchDocuments();
         fetchStats();
       } else {
         // 显示更详细的错误信息
         const errorMsg = data.message || '添加失败';
-        alert(`添加失败: ${errorMsg}`);
+        await toastModal.error(`添加失败: ${errorMsg}`);
         console.error('添加文档错误:', errorMsg);
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : '网络错误';
       console.error('添加文档失败:', error);
-      alert(`添加文档失败: ${errorMsg}。请检查服务器连接`);
+      await toastModal.error(`添加文档失败: ${errorMsg}。请检查服务器连接`);
     } finally {
       setLoadingAdd(false);
     }
@@ -540,13 +542,13 @@ const KnowledgeBase: React.FC = () => {
   // 查询知识库
   const handleQuery = async () => {
     if (!query) {
-      alert('请输入查询内容');
+      await toastModal.warning('请输入查询内容', '验证失败');
       return;
     }
 
     // 客户端验证
     if (query.length > 5000) {
-      alert('查询内容不能超过 5000 个字符');
+      await toastModal.warning('查询内容不能超过 5000 个字符', '验证失败');
       return;
     }
 
@@ -569,18 +571,18 @@ const KnowledgeBase: React.FC = () => {
       if (data.success) {
         setQueryResults(data.data);
         if (data.data.length === 0) {
-          alert('未找到匹配的文档');
+          await toastModal.info('未找到匹配的文档');
         }
       } else {
         // 显示更详细的错误信息
         const errorMsg = data.message || '查询失败';
-        alert(`查询失败: ${errorMsg}`);
+        await toastModal.error(`查询失败: ${errorMsg}`);
         console.error('查询知识库错误:', errorMsg);
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : '网络错误';
       console.error('查询失败:', error);
-      alert(`查询失败: ${errorMsg}。请检查服务器连接`);
+      await toastModal.error(`查询失败: ${errorMsg}。请检查服务器连接`);
     } finally {
       setLoadingQuery(false);
     }
@@ -588,7 +590,8 @@ const KnowledgeBase: React.FC = () => {
 
   // 删除文档
   const handleDeleteDocument = async (docId: string) => {
-    if (!window.confirm('确定要删除此文档吗？')) {
+    const confirmed = await toastModal.confirm('确定要删除此文档吗？', '确认删除');
+    if (!confirmed) {
       return;
     }
 
@@ -602,25 +605,26 @@ const KnowledgeBase: React.FC = () => {
 
       const data = await response.json();
       if (data.success) {
-        alert('文档已删除');
+        await toastModal.success('文档已删除');
         fetchDocuments();
         fetchStats();
       } else {
         // 显示更详细的错误信息
         const errorMsg = data.message || '删除失败';
-        alert(`删除失败: ${errorMsg}`);
+        await toastModal.error(`删除失败: ${errorMsg}`);
         console.error('删除文档错误:', errorMsg);
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : '网络错误';
       console.error('删除文档失败:', error);
-      alert(`删除文档失败: ${errorMsg}。请检查服务器连接`);
+      await toastModal.error(`删除文档失败: ${errorMsg}。请检查服务器连接`);
     }
   };
 
   // 重新处理文档
   const handleReprocessDocument = async (docId: string) => {
-    if (!window.confirm('确定要重新处理此文档吗？')) {
+    const confirmed = await toastModal.confirm('确定要重新处理此文档吗？', '确认处理');
+    if (!confirmed) {
       return;
     }
 
@@ -635,18 +639,18 @@ const KnowledgeBase: React.FC = () => {
 
       const data = await response.json();
       if (data.success) {
-        alert('文档已提交处理队列，请稍候');
+        await toastModal.success('文档已提交处理队列，请稍候');
         fetchDocuments();
         fetchStats();
       } else {
         const errorMsg = data.message || '重新处理失败';
-        alert(`重新处理失败: ${errorMsg}`);
+        await toastModal.error(`重新处理失败: ${errorMsg}`);
         console.error('重新处理文档错误:', errorMsg);
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : '网络错误';
       console.error('重新处理文档失败:', error);
-      alert(`重新处理文档失败: ${errorMsg}。请检查服务器连接`);
+      await toastModal.error(`重新处理文档失败: ${errorMsg}。请检查服务器连接`);
     } finally {
       setLoadingReprocess(null);
     }
@@ -675,11 +679,15 @@ const KnowledgeBase: React.FC = () => {
   // 批量删除文档
   const handleBatchDelete = async () => {
     if (selectedDocuments.size === 0) {
-      alert('请先选择要删除的文档');
+      await toastModal.warning('请先选择要删除的文档', '提示');
       return;
     }
 
-    if (!window.confirm(`确定要删除 ${selectedDocuments.size} 个文档吗？此操作不可撤销`)) {
+    const confirmed = await toastModal.confirm(
+      `确定要删除 ${selectedDocuments.size} 个文档吗？此操作不可撤销`,
+      '确认批量删除'
+    );
+    if (!confirmed) {
       return;
     }
 
@@ -698,19 +706,19 @@ const KnowledgeBase: React.FC = () => {
 
       const data = await response.json();
       if (data.success) {
-        alert(`成功删除 ${data.data?.deletedCount || selectedDocuments.size} 个文档`);
+        await toastModal.success(`成功删除 ${data.data?.deletedCount || selectedDocuments.size} 个文档`);
         setSelectedDocuments(new Set());
         fetchDocuments();
         fetchStats();
       } else {
         const errorMsg = data.message || '批量删除失败';
-        alert(`批量删除失败: ${errorMsg}`);
+        await toastModal.error(`批量删除失败: ${errorMsg}`);
         console.error('批量删除错误:', errorMsg);
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : '网络错误';
       console.error('批量删除失败:', error);
-      alert(`批量删除失败: ${errorMsg}。请检查服务器连接`);
+      await toastModal.error(`批量删除失败: ${errorMsg}。请检查服务器连接`);
     } finally {
       setLoadingBatchDelete(false);
     }
@@ -743,7 +751,7 @@ const KnowledgeBase: React.FC = () => {
   };
 
   // 处理文件选择
-  const handleFileSelect = (files: FileList) => {
+  const handleFileSelect = async (files: FileList) => {
     if (!files) return;
     
     const newFiles = Array.from(files);
@@ -755,12 +763,15 @@ const KnowledgeBase: React.FC = () => {
       const ext = '.' + file.name.split('.').pop()?.toLowerCase();
       
       if (!supportedFormats.includes(ext)) {
-        alert(`不支持的文件类型: ${ext}。支持的类型: ${supportedFormats.join(', ')}`);
+        await toastModal.warning(
+          `不支持的文件类型: ${ext}。支持的类型: ${supportedFormats.join(', ')}`,
+          '文件格式错误'
+        );
         continue;
       }
 
       if (file.size > maxFileSize) {
-        alert(`文件 ${file.name} 过大，最大支持 50MB`);
+        await toastModal.warning(`文件 ${file.name} 过大，最大支持 50MB`, '文件过大');
         continue;
       }
 
@@ -802,7 +813,7 @@ const KnowledgeBase: React.FC = () => {
   // 上传文件
   const handleUploadFiles = async () => {
     if (selectedFiles.length === 0) {
-      alert('请选择至少一个文件');
+      await toastModal.warning('请选择至少一个文件', '提示');
       return;
     }
 
@@ -859,7 +870,7 @@ const KnowledgeBase: React.FC = () => {
 
       if (data.success) {
         setUploadProgress(100);
-        alert(`成功上传 ${data.data?.length || 0} 个文档，后台处理中...`);
+        await toastModal.success(`成功上传 ${data.data?.length || 0} 个文档，后台处理中...`);
         setSelectedFiles([]);
         
         // 获取上传的文档，立即加入文档列表
@@ -883,13 +894,13 @@ const KnowledgeBase: React.FC = () => {
         setUploadProgress(0);
       } else {
         const errorMsg = data.message || '上传失败';
-        alert(`上传失败: ${errorMsg}`);
+        await toastModal.error(`上传失败: ${errorMsg}`);
         console.error('上传文档错误:', errorMsg);
       }
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : '网络错误';
       console.error('上传文档失败:', error);
-      alert(`上传文档失败: ${errorMsg}。请检查服务器连接`);
+      await toastModal.error(`上传文档失败: ${errorMsg}。请检查服务器连接`);
     } finally {
       setLoadingUpload(false);
     }
@@ -946,9 +957,9 @@ const KnowledgeBase: React.FC = () => {
               const failureMsg = failedDocs
                 .map((doc) => `${doc.title}${doc.processingError ? ': ' + doc.processingError : ''}`)
                 .join('\n');
-              alert(`${failedDocs.length} 个文档处理失败:\n${failureMsg}\n\n请重新上传或检查日志`);
+              toastModal.error(`${failedDocs.length} 个文档处理失败:\n${failureMsg}\n\n请重新上传或检查日志`);
             } else {
-              alert('所有文档处理完成！');
+              toastModal.success('所有文档处理完成！');
             }
             
             fetchStats();
@@ -963,7 +974,7 @@ const KnowledgeBase: React.FC = () => {
             // 超时后停止轮询
             console.warn('文档处理超时');
             setProcessingDocuments(new Set());
-            alert(`${stillProcessing.length} 个文档处理超时，请稍后手动刷新查看状态`);
+            toastModal.warning(`${stillProcessing.length} 个文档处理超时，请稍后手动刷新查看状态`);
             fetchStats();
           }
         }

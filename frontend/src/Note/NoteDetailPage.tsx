@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useToastModal } from '../components/ui/toast-modal';
 import {PlateEditor} from '../components/editor/plate-editor';
 // import { Toaster } from 'sonner';
 import AIAssistant from '../AIAssistant/AIAssistant';
@@ -24,6 +25,7 @@ interface Note {
 const NoteDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const toastModal = useToastModal();
   const [note, setNote] = useState<Note | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -81,7 +83,7 @@ const NoteDetailPage: React.FC = () => {
       }
     } catch (error) {
       console.error('获取笔记失败:', error);
-      alert('获取笔记失败');
+      toastModal.error('获取笔记失败');
       navigate('/dashboard/notes');
     } finally {
       setLoading(false);
@@ -169,7 +171,7 @@ const NoteDetailPage: React.FC = () => {
 
       const result = await response.json();
       if (result.code === 0) {
-        alert('保存成功');
+        await toastModal.success('保存成功');
 
         // 保存成功后，更新 note 和 content 确保 hasChanges 判断正确
         const savedNote = result.data;
@@ -189,14 +191,18 @@ const NoteDetailPage: React.FC = () => {
       }
     } catch (error) {
       console.error('保存失败:', error);
-      alert('保存失败');
+      await toastModal.error('保存失败');
     } finally {
       setSaving(false);
     }
   }, [title, content, summary, tags, status, isNewNote, id, API_BASE, navigate]);
 
   const handleDelete = async () => {
-    if (!confirm('确认删除这条笔记吗？删除后将无法恢复。')) {
+    const confirmed = await toastModal.confirm(
+      '确认删除这条笔记吗？删除后将无法恢复。',
+      '确认删除'
+    );
+    if (!confirmed) {
       return;
     }
 
@@ -211,14 +217,14 @@ const NoteDetailPage: React.FC = () => {
 
       const result = await response.json();
       if (result.code === 0) {
-        alert('删除成功');
+        await toastModal.success('删除成功');
         navigate('/dashboard/notes');
       } else {
         throw new Error(result.message || '删除失败');
       }
     } catch (error) {
       console.error('删除失败:', error);
-      alert('删除失败');
+      await toastModal.error('删除失败');
     }
   };
 
@@ -235,9 +241,15 @@ const NoteDetailPage: React.FC = () => {
     setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
-  const handleBack = () => {
-    if (hasChanges && !confirm('有未保存的修改，确定要离开吗？')) {
-      return;
+  const handleBack = async () => {
+    if (hasChanges) {
+      const confirmed = await toastModal.confirm(
+        '有未保存的修改，确定要离开吗？',
+        '确认离开'
+      );
+      if (!confirmed) {
+        return;
+      }
     }
     navigate('/dashboard/notes');
   };
@@ -305,7 +317,11 @@ const NoteDetailPage: React.FC = () => {
   }, [isDragging, mainWidthPercent]);
 
   const handleSyncToKnowledge = async () => {
-    if (!confirm('确认将更新后的笔记内容同步到知识库吗？')) {
+    const confirmed = await toastModal.confirm(
+      '确认将更新后的笔记内容同步到知识库吗？',
+      '确认同步'
+    );
+    if (!confirmed) {
       return;
     }
 
@@ -320,7 +336,7 @@ const NoteDetailPage: React.FC = () => {
 
       const result = await response.json();
       if (result.code === 0) {
-        alert('笔记已成功同步到知识库');
+        await toastModal.success('笔记已成功同步到知识库');
         setNeedsSync(false);
         setShowSyncButton(false);
         await fetchNote();
@@ -329,7 +345,7 @@ const NoteDetailPage: React.FC = () => {
       }
     } catch (error) {
       console.error('同步到知识库失败:', error);
-      alert('同步到知识库失败，请稍后重试');
+      await toastModal.error('同步到知识库失败，请稍后重试');
     }
   };
 
