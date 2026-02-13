@@ -88,6 +88,12 @@ export class FileParserService {
 
       content = this.fixEncoding(content);
 
+      // 改进文本格式化：添加段落分隔符，便于后续分割
+      // 移除多余空行，保留必要的段落分隔
+      content = content
+        .replace(/\n{3,}/g, '\n\n')  // 将多个空行替换为两个空行
+        .replace(/([。！？\n])\n(?=[^\n])/g, '$1\n');  // 确保标点后有换行
+
       return {
         title: baseName,
         content: content.trim(),

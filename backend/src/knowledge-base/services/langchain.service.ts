@@ -31,9 +31,9 @@ export class LangChainService {
     }
 
     this.textSplitter = new RecursiveCharacterTextSplitter({
-      chunkSize: 1000,
-      chunkOverlap: 200,
-      separators: ['\n\n', '\n', ' ', ''],
+      chunkSize: 2000,
+      chunkOverlap: 400,
+      separators: ['\n\n', '\n', '。', '！', '？', '，', ' ', ''],
     });
   }
 
@@ -93,7 +93,29 @@ export class LangChainService {
    */
   async splitText(text: string): Promise<Document[]> {
     try {
-      const docs = await this.textSplitter.createDocuments([text]);
+      let docs = await this.textSplitter.createDocuments([text]);
+      
+      // 如果分割后文本块数量太少（小于3），尝试更激进的分割
+      if (docs.length < 3 && text.length > 5000) {
+        this.logger.warn(`文本分割块数过少 (${docs.length})，使用更激进的分割策略`);
+        
+        // 尝试使用更小的 chunkSize
+        const aggressiveSplitter = new RecursiveCharacterTextSplitter({
+          chunkSize: 1000,
+          chunkOverlap: 200,
+          separators: ['\n\n', '\n', '。', '！', '？', '，', ' ', ''],
+        });
+        
+        docs = await aggressiveSplitter.createDocuments([text]);
+        this.logger.log(`使用激进策略后，文本分割完成，共 ${docs.length} 个块`);
+      }
+      
+      if (docs.length === 0) {
+        // 如果分割完全失败，至少返回整个文本作为一个块
+        this.logger.warn('文本分割结果为空，将整个文本作为一个块');
+        docs = [new Document({ pageContent: text })];
+      }
+      
       this.logger.log(`文本分割完成，共 ${docs.length} 个块`);
       return docs;
     } catch (error) {
