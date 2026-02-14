@@ -4,6 +4,7 @@ import HomePage from '../LoginPage/HomePage';
 import MainPageLayout from '../MainPage/MainPage';
 import LoginCallback from '../LoginPage/LoginCallback';
 import NoteDetailPage from '../Note/NoteDetailPage';
+import ResumeDetail from '../ResumeAnalysis/ResumeDetail';
 
 // Protected Route Component
 interface ProtectedRouteProps {
@@ -43,7 +44,19 @@ export const router = createBrowserRouter([
     element: <ProtectedRoute element={<NoteDetailPage />} />,
   },
   {
+    path: '/dashboard/resume/:id',
+    element: <ProtectedRoute element={<ResumeDetail />} />,
+  },
+  {
     path: '/dashboard/:module',
+    element: <ProtectedRoute element={<MainPageLayout />} />,
+  },
+  {
+    path: '/dashboard/:module/:subPage',
+    element: <ProtectedRoute element={<MainPageLayout />} />,
+  },
+  {
+    path: '/dashboard/:module/:subPage/:id',
     element: <ProtectedRoute element={<MainPageLayout />} />,
   },
   {

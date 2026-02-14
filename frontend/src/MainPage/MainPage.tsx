@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import styles from './MainPage.module.scss';
 import NotesListPage from '../Note/NotesListPage';
-import ResumeAnalysisModule from '../components/ResumeAnalysisModule';
+import ResumeAnalysis from '../ResumeAnalysis';
 import AIIInterviewModule from '../components/AIIInterviewModule';
 import KnowledgeBase from '../KnowledgeBase/KnowledgeBase';
 import AIAssistant from '../AIAssistant/AIAssistant';
@@ -316,7 +316,7 @@ const MainPageLayout: React.FC = () => {
               </div>
             )}
             {activeModule === 'notes' && <NotesListPage />}
-            {activeModule === 'resume' && <ResumeAnalysisModule />}
+            {activeModule === 'resume' && <ResumeAnalysis />}
             {activeModule === 'interview' && <AIIInterviewModule />}
             {activeModule === 'knowledge' && <KnowledgeBase />}
           </main>

@@ -8,6 +8,7 @@ import { UsersModule } from './users/users.module';
 import { KnowledgeBaseModule } from './knowledge-base/knowledge-base.module';
 import { AIAssistantModule } from './ai-assistant/ai-assistant.module';
 import { UploadModule } from './upload/upload.module';
+import { ResumeAnalysisModule } from './resume-analysis/resume-analysis.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { UploadModule } from './upload/upload.module';
     KnowledgeBaseModule,
     AIAssistantModule,
     UploadModule,
+    ResumeAnalysisModule,
   ],
   controllers: [],
   providers: [],
