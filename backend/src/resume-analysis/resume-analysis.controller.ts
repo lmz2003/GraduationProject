@@ -101,6 +101,7 @@ export class ResumeAnalysisController {
 
   /**
    * 上传简历（文本或文件）
+   * 必须在 GET :id 之前定义
    */
   @Post('upload')
   @UseInterceptors(FileInterceptor('file', getMulterOptions()))
@@ -150,37 +151,8 @@ export class ResumeAnalysisController {
   }
 
   /**
-   * 获取用户的所有简历
-   */
-  @Get()
-  async getResumes(@Request() req: AuthRequest) {
-    const userId = req.user?.id as string;
-    const resumes = await this.resumeAnalysisService.getResumesByUserId(userId);
-
-    return {
-      code: 0,
-      message: 'ok',
-      data: resumes,
-    };
-  }
-
-  /**
-   * 获取简历详情
-   */
-  @Get(':id')
-  async getResumeDetail(@Param('id') id: string, @Request() req: AuthRequest) {
-    const userId = req.user?.id as string;
-    const resume = await this.resumeAnalysisService.getResumeById(id, userId);
-
-    return {
-      code: 0,
-      message: 'ok',
-      data: resume,
-    };
-  }
-
-  /**
    * 获取简历分析结果
+   * 必须在 GET :id 之前定义（更具体的路由）
    */
   @Get(':id/analysis')
   async getAnalysis(@Param('id') id: string, @Request() req: AuthRequest) {
@@ -204,6 +176,63 @@ export class ResumeAnalysisController {
       code: 0,
       message: 'ok',
       data: result,
+    };
+  }
+
+  /**
+   * 对标职位描述
+   * 必须在 GET :id 之前定义（更具体的路由）
+   */
+  @Post(':id/compare')
+  async compareWithJob(
+    @Param('id') id: string,
+    @Body() body: { jobDescription: string },
+    @Request() req: AuthRequest
+  ) {
+    const userId = req.user?.id as string;
+    const analysis = await this.resumeAnalysisService.compareWithJobDescription(
+      id,
+      userId,
+      body.jobDescription
+    );
+
+    return {
+      code: 0,
+      message: 'ok',
+      data: {
+        matchAnalysis: analysis,
+      },
+    };
+  }
+
+  /**
+   * 获取用户的所有简历
+   */
+  @Get()
+  async getResumes(@Request() req: AuthRequest) {
+    const userId = req.user?.id as string;
+    const resumes = await this.resumeAnalysisService.getResumesByUserId(userId);
+
+    return {
+      code: 0,
+      message: 'ok',
+      data: resumes,
+    };
+  }
+
+  /**
+   * 获取简历详情
+   * 必须在最后定义（最通用的路由）
+   */
+  @Get(':id')
+  async getResumeDetail(@Param('id') id: string, @Request() req: AuthRequest) {
+    const userId = req.user?.id as string;
+    const resume = await this.resumeAnalysisService.getResumeById(id, userId);
+
+    return {
+      code: 0,
+      message: 'ok',
+      data: resume,
     };
   }
 
@@ -237,31 +266,6 @@ export class ResumeAnalysisController {
     return {
       code: 0,
       message: 'Resume deleted successfully',
-    };
-  }
-
-  /**
-   * 对标职位描述
-   */
-  @Post(':id/compare')
-  async compareWithJob(
-    @Param('id') id: string,
-    @Body() body: { jobDescription: string },
-    @Request() req: AuthRequest
-  ) {
-    const userId = req.user?.id as string;
-    const analysis = await this.resumeAnalysisService.compareWithJobDescription(
-      id,
-      userId,
-      body.jobDescription
-    );
-
-    return {
-      code: 0,
-      message: 'ok',
-      data: {
-        matchAnalysis: analysis,
-      },
     };
   }
 }
