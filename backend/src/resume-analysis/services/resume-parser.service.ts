@@ -54,13 +54,22 @@ export class ResumeParserService {
    */
   async parsePDF(filePath: string): Promise<string> {
     try {
+      this.logger.log(`[PDF Parser] Starting to parse PDF file: ${filePath}`);
       const fileBuffer = fs.readFileSync(filePath);
+      this.logger.log(`[PDF Parser] File buffer size: ${fileBuffer.length} bytes`);
+      
       const pdfData = await PDFParser(fileBuffer);
       const text = pdfData.text || '';
+      
+      this.logger.log(`[PDF Parser] PDF parsed successfully. Total characters: ${text.length}`);
+      this.logger.log(`[PDF Parser] Number of pages: ${pdfData.numpages}`);
+      this.logger.log(`[PDF Parser] Extracted text preview (first 500 chars):\n${text.substring(0, 500)}`);
+      this.logger.log(`[PDF Parser] Full extracted text:\n${text}`);
+      
       return text;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`PDF parsing failed: ${errorMsg}`, error);
+      this.logger.error(`[PDF Parser] PDF parsing failed: ${errorMsg}`, error);
       throw new BadRequestException(`PDF parsing failed: ${errorMsg}`);
     }
   }
@@ -70,12 +79,21 @@ export class ResumeParserService {
    */
   async parseDocx(filePath: string): Promise<string> {
     try {
+      this.logger.log(`[DOCX Parser] Starting to parse DOCX file: ${filePath}`);
       const fileBuffer = fs.readFileSync(filePath);
+      this.logger.log(`[DOCX Parser] File buffer size: ${fileBuffer.length} bytes`);
+      
       const result = await mammoth.extractRawText({ buffer: fileBuffer });
-      return result.value;
+      const text = result.value;
+      
+      this.logger.log(`[DOCX Parser] DOCX parsed successfully. Total characters: ${text.length}`);
+      this.logger.log(`[DOCX Parser] Extracted text preview (first 500 chars):\n${text.substring(0, 500)}`);
+      this.logger.log(`[DOCX Parser] Full extracted text:\n${text}`);
+      
+      return text;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`DOCX parsing failed: ${errorMsg}`, error);
+      this.logger.error(`[DOCX Parser] DOCX parsing failed: ${errorMsg}`, error);
       throw new BadRequestException(`DOCX parsing failed: ${errorMsg}`);
     }
   }
@@ -85,11 +103,17 @@ export class ResumeParserService {
    */
   async parseTextFile(filePath: string): Promise<string> {
     try {
+      this.logger.log(`[Text Parser] Starting to parse text file: ${filePath}`);
       const content = fs.readFileSync(filePath, 'utf-8');
+      
+      this.logger.log(`[Text Parser] Text file parsed successfully. Total characters: ${content.length}`);
+      this.logger.log(`[Text Parser] Extracted text preview (first 500 chars):\n${content.substring(0, 500)}`);
+      this.logger.log(`[Text Parser] Full extracted text:\n${content}`);
+      
       return content;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Text file parsing failed: ${errorMsg}`, error);
+      this.logger.error(`[Text Parser] Text file parsing failed: ${errorMsg}`, error);
       throw new BadRequestException(`Text file parsing failed: ${errorMsg}`);
     }
   }
@@ -256,12 +280,30 @@ export class ResumeParserService {
       throw new BadRequestException('Resume content is empty');
     }
 
+    this.logger.log(`[Resume Parser] Starting to parse resume content (${text.length} characters)`);
+
     const parsedData: ParsedResume = {
       personalInfo: this.extractPersonalInfo(text),
       workExperience: this.extractWorkExperience(text),
       skills: this.extractSkills(text),
       education: this.extractEducation(text),
     };
+
+    // 详细日志输出
+    this.logger.log(`[Resume Parser] ========== PARSING RESULT ==========`);
+    
+    this.logger.log(`[Resume Parser] Personal Info:`, JSON.stringify(parsedData.personalInfo, null, 2));
+    
+    this.logger.log(`[Resume Parser] Skills (${parsedData.skills?.length || 0} total):`, 
+      JSON.stringify(parsedData.skills, null, 2));
+    
+    this.logger.log(`[Resume Parser] Education (${parsedData.education?.length || 0} total):`, 
+      JSON.stringify(parsedData.education, null, 2));
+    
+    this.logger.log(`[Resume Parser] Work Experience (${parsedData.workExperience?.length || 0} total):`, 
+      JSON.stringify(parsedData.workExperience, null, 2));
+    
+    this.logger.log(`[Resume Parser] ====================================`);
 
     return parsedData;
   }

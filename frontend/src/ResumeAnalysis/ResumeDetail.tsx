@@ -4,6 +4,7 @@ import styled from 'styled-components';
 import { useToastModal } from '../components/ui/toast-modal';
 import PDFViewer from './components/PDFViewer';
 import AnalysisPanel from './components/AnalysisPanel';
+import LoadingModal from './components/LoadingModal';
 
 const Container = styled.div`
   display: flex;
@@ -83,25 +84,6 @@ const LoadingContainer = styled.div`
   color: #64748b;
 `;
 
-const Spinner = styled.div`
-  width: 40px;
-  height: 40px;
-  border: 3px solid #e2e8f0;
-  border-top-color: #4f46e5;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-`;
-
-const LoadingText = styled.p`
-  margin-top: 16px;
-  font-size: 0.95rem;
-`;
 
 interface Resume {
   id: string;
@@ -162,7 +144,7 @@ const ResumeDetail: React.FC = () => {
         }),
         fetch(`${apiBaseUrl}/resume-analysis/${id}/analysis`, {
           headers: { 'Authorization': `Bearer ${token}` },
-        }).catch(() => ({ ok: false })),
+        }).catch(() => ({ ok: false }) as any),
       ]);
 
       if (!resumeRes.ok) throw new Error('Failed to fetch resume');
@@ -171,7 +153,7 @@ const ResumeDetail: React.FC = () => {
       setResume(resumeData.data);
 
       // 如果分析不存在，等待后重试
-      if (analysisRes.ok) {
+      if (analysisRes.ok && 'json' in analysisRes) {
         const analysisData = await analysisRes.json();
         setAnalysis(analysisData.data);
       } else if (retryCount < 5) {
@@ -221,19 +203,25 @@ const ResumeDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <Container>
-        <Header>
-          <BackButton onClick={() => navigate('/dashboard/resume')}>← 返回</BackButton>
-          <Title>简历分析</Title>
-          <div />
-        </Header>
-        <Content>
-          <LoadingContainer>
-            <Spinner />
-            <LoadingText>加载简历中...</LoadingText>
-          </LoadingContainer>
-        </Content>
-      </Container>
+      <>
+        <Container>
+          <Header>
+            <BackButton onClick={() => navigate('/dashboard/resume')}>← 返回</BackButton>
+            <Title>简历分析</Title>
+            <div />
+          </Header>
+          <Content>
+            <LoadingContainer>
+              <p>加载中...</p>
+            </LoadingContainer>
+          </Content>
+        </Container>
+        <LoadingModal
+          isOpen={loading}
+          title="📄 加载简历"
+          description="正在获取简历信息..."
+        />
+      </>
     );
   }
 
@@ -278,13 +266,22 @@ const ResumeDetail: React.FC = () => {
         <RightPanel>
           {!analysis ? (
             <LoadingContainer>
-              <Spinner />
-              <LoadingText>分析中... ({retryCount}/5)</LoadingText>
+              <p>等待分析完成...</p>
             </LoadingContainer>
           ) : (
             <AnalysisPanel analysis={analysis} parsedData={resume.parsedData} />
           )}
         </RightPanel>
+
+        {/* 分析加载弹窗 */}
+        <LoadingModal
+          isOpen={!analysis}
+          title="✨ AI 分析中"
+          description="正在使用 AI 为您的简历进行深度分析..."
+          showProgress={true}
+          progress={retryCount}
+          maxProgress={5}
+        />
       </Content>
     </Container>
   );

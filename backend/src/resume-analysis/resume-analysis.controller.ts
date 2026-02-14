@@ -15,6 +15,7 @@ import {
   BadRequestException,
   Response,
   StreamableFile,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -99,6 +100,8 @@ interface AuthRequest extends Request {
 @Controller('resume-analysis')
 @UseGuards(AuthGuard('jwt'))
 export class ResumeAnalysisController {
+  private readonly logger = new Logger('ResumeAnalysisController');
+
   constructor(private readonly resumeAnalysisService: ResumeAnalysisService) {}
 
   /**
@@ -119,6 +122,10 @@ export class ResumeAnalysisController {
 
       if (file) {
         // 文件上传
+        this.logger.log(`[Upload] File upload started: ${file.originalname} (${file.size} bytes) by user ${userId}`);
+        this.logger.log(`[Upload] File path: ${file.path}`);
+        this.logger.log(`[Upload] Resume title: ${dto.title}`);
+        
         resume = await this.resumeAnalysisService.uploadResumeFile(
           dto.title,
           file.path,
@@ -127,12 +134,18 @@ export class ResumeAnalysisController {
           file.size,
           userId
         );
+        
+        this.logger.log(`[Upload] Resume file uploaded successfully. Resume ID: ${resume.id}`);
       } else {
         // 文本上传
         if (!dto.content || dto.content.trim().length === 0) {
           throw new BadRequestException('Resume content is required');
         }
+        this.logger.log(`[Upload] Text resume upload started: ${dto.title} by user ${userId}`);
+        
         resume = await this.resumeAnalysisService.uploadResume(dto, userId);
+        
+        this.logger.log(`[Upload] Resume text uploaded successfully. Resume ID: ${resume.id}`);
       }
 
       return {
@@ -142,6 +155,7 @@ export class ResumeAnalysisController {
       };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`[Upload] Upload failed: ${errorMsg}`, error instanceof Error ? error.stack : '');
       throw new HttpException(
         {
           code: -1,

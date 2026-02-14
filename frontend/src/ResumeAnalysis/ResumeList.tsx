@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { useToastModal } from '../components/ui/toast-modal';
+import LoadingModal from './components/LoadingModal';
 
 const Container = styled.div`
   display: flex;
@@ -200,6 +201,7 @@ const ResumeList: React.FC = () => {
 
   useEffect(() => {
     fetchResumes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchResumes = async () => {
@@ -235,7 +237,8 @@ const ResumeList: React.FC = () => {
                 overallScore: analysisData.data?.overallScore,
               };
             }
-          } catch (e) {
+          } catch {
+            // 分析获取失败，忽略并返回原始简历
             console.warn(`Failed to fetch analysis for resume ${resume.id}`);
           }
           return resume;
@@ -256,8 +259,8 @@ const ResumeList: React.FC = () => {
     navigate(`/dashboard/resume/${resumeId}`);
   };
 
-  const handleDeleteResume = async (e: React.MouseEvent, resumeId: string) => {
-    e.stopPropagation();
+  const handleDeleteResume = async (event: React.MouseEvent, resumeId: string) => {
+    event.stopPropagation();
 
     if (!window.confirm('确定要删除这份简历吗？')) {
       return;
@@ -302,12 +305,18 @@ const ResumeList: React.FC = () => {
 
   if (loading) {
     return (
-      <Container>
-        <EmptyState>
-          <LoadingSpinner />
-          <EmptyText>加载中...</EmptyText>
-        </EmptyState>
-      </Container>
+      <>
+        <Container>
+          <EmptyState>
+            <EmptyText>加载中...</EmptyText>
+          </EmptyState>
+        </Container>
+        <LoadingModal
+          isOpen={loading}
+          title="📋 加载简历列表"
+          description="正在获取您的简历..."
+        />
+      </>
     );
   }
 
@@ -321,8 +330,7 @@ const ResumeList: React.FC = () => {
       {resumes.length === 0 ? (
         <EmptyState>
           <EmptyIcon>📋</EmptyIcon>
-          <EmptyText>暂无简历，点击下方按钮上传你的第一份简历</EmptyText>
-          <UploadButton onClick={handleUpload}>上传简历</UploadButton>
+          <EmptyText>暂无简历，点击右上方按钮上传你的第一份简历</EmptyText>
         </EmptyState>
       ) : (
         <CardGrid>
