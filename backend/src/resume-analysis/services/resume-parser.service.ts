@@ -95,6 +95,20 @@ export class ResumeParserService {
   }
 
   /**
+   * 读取文件的原始二进制数据
+   */
+  async readFileBinary(filePath: string): Promise<Buffer> {
+    try {
+      const fileBuffer = fs.readFileSync(filePath);
+      return fileBuffer;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Failed to read file binary: ${errorMsg}`, error);
+      throw new BadRequestException(`Failed to read file binary: ${errorMsg}`);
+    }
+  }
+
+  /**
    * 根据文件类型解析简历
    */
   async parseResumeFile(filePath: string, fileType: string): Promise<string> {

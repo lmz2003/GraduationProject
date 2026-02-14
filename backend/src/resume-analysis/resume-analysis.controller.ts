@@ -13,6 +13,8 @@ import {
   HttpException,
   HttpStatus,
   BadRequestException,
+  Response,
+  StreamableFile,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -148,6 +150,39 @@ export class ResumeAnalysisController {
         HttpStatus.BAD_REQUEST
       );
     }
+  }
+
+  /**
+   * 获取简历 PDF 二进制数据
+   * 必须在 GET :id 之前定义（更具体的路由）
+   */
+  @Get(':id/pdf')
+  async getResumePdf(
+    @Param('id') id: string,
+    @Request() req: AuthRequest,
+    @Response({ passthrough: true }) res: any
+  ) {
+    const userId = req.user?.id as string;
+    const resume = await this.resumeAnalysisService.getResumeById(id, userId);
+
+    if (!resume.fileBinary) {
+      throw new HttpException(
+        {
+          code: -1,
+          message: 'PDF file not found',
+        },
+        HttpStatus.NOT_FOUND
+      );
+    }
+
+    // 设置响应头
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename="${resume.fileName || 'resume.pdf'}"`,
+      'Content-Length': resume.fileBinary.length,
+    });
+
+    return new StreamableFile(resume.fileBinary);
   }
 
   /**

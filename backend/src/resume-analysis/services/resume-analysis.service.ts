@@ -67,12 +67,16 @@ export class ResumeAnalysisService {
     userId: string
   ): Promise<Resume> {
     try {
-      // 首先解析文件内容
-      const content = await this.parserService.parseResumeFile(filePath, fileType);
+      // 首先解析文件内容和读取二进制数据
+      const [content, fileBinary] = await Promise.all([
+        this.parserService.parseResumeFile(filePath, fileType),
+        this.parserService.readFileBinary(filePath),
+      ]);
 
       const resume = this.resumeRepository.create({
         title,
         content,
+        fileBinary,
         fileName,
         fileType: fileType.toLowerCase().replace(/^\./, ''),
         fileUrl: filePath,

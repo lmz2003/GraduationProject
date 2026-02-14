@@ -265,8 +265,8 @@ const ResumeDetail: React.FC = () => {
       <Content>
         <LeftPanel>
           <PDFContainer>
-            {resume.fileType === 'pdf' && resume.fileUrl ? (
-              <PDFViewer filePath={resume.fileUrl} />
+            {resume.fileType === 'pdf' ? (
+              <PDFViewer resumeId={resume.id} />
             ) : (
               <div style={{ padding: '20px', whiteSpace: 'pre-wrap', wordWrap: 'break-word', overflow: 'auto' }}>
                 {resume.content}

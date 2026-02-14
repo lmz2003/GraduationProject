@@ -31,6 +31,9 @@ export class Resume {
   @Column({ nullable: true })
   fileUrl?: string; // 文件保存路径
 
+  @Column({ type: 'bytea', nullable: true })
+  fileBinary?: Buffer; // 原始文件二进制数据（用于 PDF 预览）
+
   @Column({ type: 'jsonb', nullable: true })
   parsedData?: {
     personalInfo?: {

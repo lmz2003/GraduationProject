@@ -45,12 +45,6 @@ const PDFEmbed = styled.embed`
   border: none;
 `;
 
-const PDFObject = styled.object`
-  width: 100%;
-  height: 100%;
-  border: none;
-`;
-
 const FallbackContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -82,27 +76,54 @@ const DownloadLink = styled.a`
 `;
 
 interface PDFViewerProps {
-  filePath: string;
+  resumeId: string;
 }
 
-const PDFViewer: React.FC<PDFViewerProps> = ({ filePath }) => {
+const PDFViewer: React.FC<PDFViewerProps> = ({ resumeId }) => {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [pdfUrl, setPdfUrl] = useState<string>('');
 
   useEffect(() => {
-    // 构建完整的 PDF URL
-    let url = filePath;
-    
-    // 如果是相对路径，添加 API 基础 URL
-    if (!filePath.startsWith('http')) {
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001';
-      url = `${apiBaseUrl}/${filePath}`;
-    }
-    
-    setPdfUrl(url);
-    setLoading(false);
-  }, [filePath]);
+    // 从数据库获取 PDF 二进制数据
+    const fetchPdfFromDatabase = async () => {
+      try {
+        const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+        const token = localStorage.getItem('token');
+
+        const response = await fetch(`${apiBaseUrl}/resume-analysis/${resumeId}/pdf`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch PDF from database');
+        }
+
+        // 获取二进制数据
+        const blob = await response.blob();
+        
+        // 创建本地 Blob URL
+        const blobUrl = URL.createObjectURL(blob);
+        setPdfUrl(blobUrl);
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Failed to load PDF';
+        setError(errorMsg);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPdfFromDatabase();
+
+    // 清理 Blob URL
+    return () => {
+      if (pdfUrl) {
+        URL.revokeObjectURL(pdfUrl);
+      }
+    };
+  }, [resumeId]);
 
   if (error) {
     return (
