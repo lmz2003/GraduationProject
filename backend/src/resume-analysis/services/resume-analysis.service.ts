@@ -1,6 +1,7 @@
 import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { validate as validateUUID } from 'uuid';
 import { Resume } from '../entities/resume.entity';
 import { ResumeAnalysis } from '../entities/resume-analysis.entity';
 import { ResumeParserService } from './resume-parser.service';
@@ -226,6 +227,11 @@ export class ResumeAnalysisService {
    * 获取简历详情
    */
   async getResumeById(id: string, userId: string): Promise<Resume> {
+    // 验证 ID 是否为有效的 UUID
+    if (!validateUUID(id)) {
+      throw new BadRequestException('Invalid resume ID format');
+    }
+
     const resume = await this.resumeRepository.findOne({
       where: { id, ownerId: userId },
     });
@@ -241,6 +247,11 @@ export class ResumeAnalysisService {
    * 获取简历分析结果
    */
   async getResumeAnalysis(resumeId: string, userId: string): Promise<ResumeAnalysis> {
+    // 验证 ID 是否为有效的 UUID
+    if (!validateUUID(resumeId)) {
+      throw new BadRequestException('Invalid resume ID format');
+    }
+
     const resume = await this.resumeRepository.findOne({
       where: { id: resumeId, ownerId: userId },
     });
@@ -264,6 +275,11 @@ export class ResumeAnalysisService {
    * 更新简历
    */
   async updateResume(id: string, userId: string, title: string, content: string): Promise<Resume> {
+    // 验证 ID 是否为有效的 UUID
+    if (!validateUUID(id)) {
+      throw new BadRequestException('Invalid resume ID format');
+    }
+
     const resume = await this.resumeRepository.findOne({
       where: { id, ownerId: userId },
     });
@@ -290,6 +306,11 @@ export class ResumeAnalysisService {
    * 删除简历
    */
   async deleteResume(id: string, userId: string): Promise<void> {
+    // 验证 ID 是否为有效的 UUID
+    if (!validateUUID(id)) {
+      throw new BadRequestException('Invalid resume ID format');
+    }
+
     const resume = await this.resumeRepository.findOne({
       where: { id, ownerId: userId },
     });
@@ -311,6 +332,11 @@ export class ResumeAnalysisService {
     userId: string,
     jobDescription: string
   ): Promise<string> {
+    // 验证 ID 是否为有效的 UUID
+    if (!validateUUID(resumeId)) {
+      throw new BadRequestException('Invalid resume ID format');
+    }
+
     const resume = await this.resumeRepository.findOne({
       where: { id: resumeId, ownerId: userId },
     });

@@ -5,6 +5,7 @@ import MainPageLayout from '../MainPage/MainPage';
 import LoginCallback from '../LoginPage/LoginCallback';
 import NoteDetailPage from '../Note/NoteDetailPage';
 import ResumeDetail from '../ResumeAnalysis/ResumeDetail';
+import ResumeUpload from '../ResumeAnalysis/ResumeUpload';
 
 // Protected Route Component
 interface ProtectedRouteProps {
@@ -44,11 +45,15 @@ export const router = createBrowserRouter([
     element: <ProtectedRoute element={<NoteDetailPage />} />,
   },
   {
+    path: '/dashboard/resume/upload',
+    element: <ProtectedRoute element={<ResumeUpload />} />,
+  },
+  {
     path: '/dashboard/resume/:id',
     element: <ProtectedRoute element={<ResumeDetail />} />,
   },
   {
-    path: '/dashboard/:module',
+    path: '/dashboard/:module/:subPage/:id',
     element: <ProtectedRoute element={<MainPageLayout />} />,
   },
   {
@@ -56,7 +61,7 @@ export const router = createBrowserRouter([
     element: <ProtectedRoute element={<MainPageLayout />} />,
   },
   {
-    path: '/dashboard/:module/:subPage/:id',
+    path: '/dashboard/:module',
     element: <ProtectedRoute element={<MainPageLayout />} />,
   },
   {
