@@ -135,7 +135,7 @@ interface Analysis {
 const ResumeDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { toast } = useToastModal();
+  const { error } = useToastModal();
 
   const [resume, setResume] = useState<Resume | null>(null);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -178,14 +178,10 @@ const ResumeDetail: React.FC = () => {
         // 分析可能还在处理，5秒后重试
         setTimeout(() => setRetryCount(prev => prev + 1), 5000);
       }
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Failed to fetch data';
-      toast({
-        type: 'error',
-        title: '加载失败',
-        message: errorMsg,
-      });
-      console.error('Error fetching data:', error);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to fetch data';
+      error(errorMsg, '加载失败');
+      console.error('Error fetching data:', err);
     } finally {
       setLoading(false);
     }

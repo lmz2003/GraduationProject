@@ -227,7 +227,7 @@ const Progress = styled.div<{ $progress: number }>`
 
 const ResumeUpload: React.FC = () => {
   const navigate = useNavigate();
-  const { toast } = useToastModal();
+  const { error, success } = useToastModal();
   const [uploadType, setUploadType] = useState<'file' | 'text'>('file');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
@@ -252,11 +252,10 @@ const ResumeUpload: React.FC = () => {
         setFile(selectedFile);
         setTitle(selectedFile.name.replace(/\.[^.]+$/, ''));
       } else {
-        toast({
-          type: 'error',
-          title: '文件类型不支持',
-          message: `仅支持 ${supportedTypes.join(', ')} 格式`,
-        });
+        error(
+          `仅支持 ${supportedTypes.join(', ')} 格式`,
+          '文件类型不支持'
+        );
       }
     }
   };
@@ -276,31 +275,29 @@ const ResumeUpload: React.FC = () => {
     }
   };
 
+  const clearForm = () => {
+    setTitle('');
+    setContent('');
+    setFile(null);
+    setUploadType('file');
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const handleUpload = async () => {
     if (!title.trim()) {
-      toast({
-        type: 'error',
-        title: '标题缺失',
-        message: '请输入简历标题',
-      });
+      error('请输入简历标题', '标题缺失');
       return;
     }
 
     if (uploadType === 'file' && !file) {
-      toast({
-        type: 'error',
-        title: '文件缺失',
-        message: '请选择要上传的文件',
-      });
+      error('请选择要上传的文件', '文件缺失');
       return;
     }
 
     if (uploadType === 'text' && !content.trim()) {
-      toast({
-        type: 'error',
-        title: '内容缺失',
-        message: '请输入简历内容',
-      });
+      error('请输入简历内容', '内容缺失');
       return;
     }
 
@@ -341,24 +338,15 @@ const ResumeUpload: React.FC = () => {
         throw new Error(error.message || 'Upload failed');
       }
 
-      const data = await response.json();
-
-      toast({
-        type: 'success',
-        title: '上传成功',
-        message: '简历已上传，正在分析中...',
-      });
+      success('简历已上传，正在分析中...', '上传成功');
+      clearForm();
 
       setTimeout(() => {
         navigate('/dashboard/resume');
       }, 1000);
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Upload failed';
-      toast({
-        type: 'error',
-        title: '上传失败',
-        message: errorMsg,
-      });
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Upload failed';
+      error(errorMsg, '上传失败');
     } finally {
       setLoading(false);
       setProgress(0);

@@ -193,7 +193,7 @@ interface Resume {
 
 const ResumeList: React.FC = () => {
   const navigate = useNavigate();
-  const { toast } = useToastModal();
+  const { error, success } = useToastModal();
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -243,14 +243,10 @@ const ResumeList: React.FC = () => {
       );
 
       setResumes(resumesWithAnalysis);
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Failed to fetch resumes';
-      toast({
-        type: 'error',
-        title: '获取简历失败',
-        message: errorMsg,
-      });
-      console.error('Error fetching resumes:', error);
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to fetch resumes';
+      error(errorMsg, '获取简历失败');
+      console.error('Error fetching resumes:', err);
     } finally {
       setLoading(false);
     }
@@ -282,18 +278,10 @@ const ResumeList: React.FC = () => {
       if (!response.ok) throw new Error('Failed to delete resume');
 
       setResumes(resumes.filter(r => r.id !== resumeId));
-      toast({
-        type: 'success',
-        title: '删除成功',
-        message: '简历已删除',
-      });
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Failed to delete resume';
-      toast({
-        type: 'error',
-        title: '删除失败',
-        message: errorMsg,
-      });
+      success('简历已删除', '删除成功');
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Failed to delete resume';
+      error(errorMsg, '删除失败');
     } finally {
       setDeletingId(null);
     }
