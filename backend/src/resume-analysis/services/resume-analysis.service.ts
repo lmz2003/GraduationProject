@@ -194,15 +194,14 @@ export class ResumeAnalysisService {
         ];
       }
 
-      if (skillsOpt) {
-        analysis.skillsSuggestions = {
-          suggestion: skillsOpt,
-        };
-      }
-
-      // 将详细报告添加到 suggestions 中
+      // 将详细报告和其他建议添加到 suggestions 中
       const suggestions = JSON.parse(analysis.suggestions || '{}');
       suggestions.detailedReport = detailedReport;
+      
+      if (skillsOpt) {
+        suggestions.skillsOptimization = skillsOpt;
+      }
+      
       analysis.suggestions = JSON.stringify(suggestions);
 
       await this.analysisRepository.save(analysis);
