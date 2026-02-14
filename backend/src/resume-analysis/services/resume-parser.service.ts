@@ -163,23 +163,34 @@ export class ResumeParserService {
   private extractPersonalInfo(text: string): ParsedResume['personalInfo'] {
     const personalInfo: ParsedResume['personalInfo'] = {};
 
-    // 提取邮箱
-    const emailMatch = text.match(/[\w.-]+@[\w.-]+\.\w+/);
-    if (emailMatch) {
-      personalInfo.email = emailMatch[0];
+    // 提取邮箱 - 使用最简单的方法，提取第一个 @xxx.xxx 模式
+    const emailMatches = text.match(/[\w.-]+@[\w.-]+\.\w{2,}/g);
+    if (emailMatches && emailMatches.length > 0) {
+      // 取第一个匹配的邮箱，并清理掉可能的尾部垃圾
+      let email = emailMatches[0];
+      // 如果邮箱后面跟了"https"或其他字母，则只取到com为止
+      if (email.match(/\.com[a-z]/i)) {
+        email = email.match(/[\w.-]+@[\w.-]+\.com/i)?.[0] || email;
+      } else if (email.match(/\.[a-z]{2,}/i)) {
+        const match = email.match(/[\w.-]+@[\w.-]+\.[a-z]{2,}(?=\s|$|[^a-z])/i);
+        email = match ? match[0] : email;
+      }
+      personalInfo.email = email;
     }
 
-    // 提取电话号码 (支持多种格式)
-    const phoneMatch = text.match(/(\+?86[-.\s]?)?1[3-9]\d{9}|(\+?1[-.\s]?)?(\d{3}[-.\s]?){2}\d{4}/);
+    // 提取电话号码 (支持多种格式，使用更通用的模式)
+    const phoneMatch = text.match(/\b(?:\+?86[-.\s]?)?1[3-9]\d{9}\b/);
     if (phoneMatch) {
-      personalInfo.phone = phoneMatch[0];
+      const phone = phoneMatch[0].trim();
+      personalInfo.phone = phone;
     }
 
     // 提取名字（通常在开头）
     const lines = text.split('\n');
     if (lines.length > 0) {
       const firstLine = lines[0].trim();
-      if (firstLine.length > 0 && firstLine.length < 30 && !firstLine.includes('@')) {
+      // 名字通常不包含特殊符号和邮箱，且长度合理
+      if (firstLine.length > 0 && firstLine.length < 30 && !firstLine.includes('@') && !firstLine.includes('http')) {
         personalInfo.name = firstLine;
       }
     }
@@ -193,29 +204,61 @@ export class ResumeParserService {
   private extractWorkExperience(text: string): ParsedResume['workExperience'] {
     const experiences: ParsedResume['workExperience'] = [];
     
-    // 寻找工作经历相关的关键词
-    const workSectionRegex = /(?:Work Experience|工作经验|职位经历|Professional Experience|Career|工作履历)([\s\S]*?)(?=(?:Education|Skills|Projects|语言|Languages|技能|项目|教育|学历|$))/i;
+    // 寻找工作经历相关的关键词，使用更精确的分界符
+    const workSectionRegex = /(?:Work Experience|工作经验|实习经历|职位经历|Professional Experience|Career|工作履历|ë实习经历)([\s\S]*?)(?=(?:Education|Skills|Projects|语言|Languages|技能|项目|教育|学历|获奖|certification|award|đ项目|教学|$))/i;
     const workMatch = text.match(workSectionRegex);
     
-    if (!workMatch) return experiences;
+    if (!workMatch) {
+      this.logger.debug('[Resume Parser] No work experience section found');
+      return experiences;
+    }
 
     const workSection = workMatch[1];
     
-    // 分割各个工作经验条目
-    const entryRegex = /[\n\r]{2,}(?=\S)/g;
-    const entries = workSection.split(entryRegex).filter(e => e.trim().length > 0);
-
-    for (const entry of entries) {
-      const lines = entry.split('\n').filter(l => l.trim().length > 0);
-      if (lines.length > 0) {
-        experiences.push({
-          company: lines[0] || 'Unknown',
-          position: lines[1] || 'Unknown Position',
+    // 使用更严格的分隔逻辑：以公司名称和时间模式开头的行
+    const lines = workSection.split('\n').filter(l => l.trim().length > 0);
+    
+    let currentEntry: any = null;
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      // 检测是否是新的工作条目（通常包含日期范围）
+      const datePattern = /\d{4}\.\d{1,2}\s*[–-]\s*\d{4}\.\d{1,2}|\d{4}年\d{1,2}月|present|current|至今|now/i;
+      
+      if (datePattern.test(trimmedLine) && trimmedLine.length < 100) {
+        // 这是一条日期行，属于公司/职位行
+        if (currentEntry && currentEntry.company) {
+          currentEntry.position = trimmedLine.split(/\s{2,}|-/)[0] || 'Unknown Position';
+          // 从日期行提取日期
+          const dateMatch = trimmedLine.match(/(\d{4}\.\d{1,2})\s*[–-]\s*(\d{4}\.\d{1,2})/);
+          if (dateMatch) {
+            currentEntry.startDate = dateMatch[1];
+            currentEntry.endDate = dateMatch[2];
+          }
+        }
+      } else if (trimmedLine.length > 5 && trimmedLine.length < 60 && !trimmedLine.startsWith('•') && !trimmedLine.startsWith('-')) {
+        // 这可能是公司名称行
+        if (currentEntry && currentEntry.company) {
+          // 保存前一个条目
+          experiences.push(currentEntry);
+        }
+        currentEntry = {
+          company: trimmedLine,
+          position: 'Unknown Position',
           startDate: 'N/A',
           endDate: 'N/A',
-          description: lines.slice(2).join(' '),
-        });
+          description: '',
+        };
+      } else if (currentEntry && (trimmedLine.startsWith('•') || trimmedLine.startsWith('-'))) {
+        // 这是描述行
+        currentEntry.description = (currentEntry.description + ' ' + trimmedLine.substring(1)).trim();
       }
+    }
+    
+    // 不要忘记最后一个条目
+    if (currentEntry && currentEntry.company) {
+      experiences.push(currentEntry);
     }
 
     return experiences;
@@ -227,20 +270,101 @@ export class ResumeParserService {
   private extractSkills(text: string): string[] {
     const skills: string[] = [];
     
-    const skillsSectionRegex = /(?:Skills|技能|Technical Skills|Expertise)([\s\S]*?)(?=(?:Experience|Projects|Education|Languages|工作经验|项目|教育|语言|$))/i;
+    // 更灵活的正则表达式，匹配"专业技能"、"Ð专业技能"等变体
+    const skillsSectionRegex = /(?:Skills|技能|Technical Skills|Expertise|专业技能|Ð专业技能|ð专业技能)([\s\S]*?)(?=(?:Experience|Projects|Education|Languages|工作经验|项目|教育|语言|实习|职位|Career|ë实习经历|đ项目|ô|获奖|award|certification|$))/i;
     const skillsMatch = text.match(skillsSectionRegex);
 
-    if (!skillsMatch) return skills;
+    if (!skillsMatch) {
+      this.logger.debug('[Resume Parser] No skills section found');
+      return skills;
+    }
 
     const skillsSection = skillsMatch[1];
+    this.logger.debug(`[Resume Parser] Skills section found, length: ${skillsSection.length}`);
     
-    // 分割技能（可能用逗号、分号或其他方式分隔）
-    const skillList = skillsSection
-      .split(/[,;•\n-]/)
-      .map(s => s.trim())
-      .filter(s => s.length > 0 && s.length < 50);
+    // 按照主要项点（以•或其他符号+冒号格式）来分割
+    // 例如："•语言基础：..." 或 "• 框架生态：..."
+    const skillCategories = skillsSection.split(/•/).filter(s => s.trim().length > 0);
+    
+    for (const category of skillCategories) {
+      const categoryTrimmed = category.trim();
+      
+      // 检测是否有冒号（表示这是一个分类）
+      if (categoryTrimmed.includes('：') || categoryTrimmed.includes(':')) {
+        // 提取冒号后的部分
+        const colonIndex = Math.max(
+          categoryTrimmed.indexOf('：'),
+          categoryTrimmed.indexOf(':')
+        );
+        const skillContent = categoryTrimmed.substring(colonIndex + 1).trim();
+        
+        // 从描述性文本中尽可能提取关键技能/工具
+        // 按照第一句或技能特征来分割
+        const sentences = skillContent.split(/[。，、；;\n]/);
+        
+        for (const sentence of sentences) {
+          const sentenceTrimmed = sentence.trim();
+          
+          if (sentenceTrimmed.length === 0 || sentenceTrimmed.length > 100) continue;
+          
+          // 尽量从第一句提取关键技能
+          // 例如 "拥有扎实的HTML、CSS、JavaScript、TypeScript基础" -> 提取 HTML, CSS, JavaScript, TypeScript
+          if (sentenceTrimmed.includes('HTML') || sentenceTrimmed.includes('CSS') || 
+              sentenceTrimmed.includes('JavaScript') || sentenceTrimmed.includes('TypeScript')) {
+            // 从这类特定列表中提取
+            const techSkills = sentenceTrimmed.match(/[A-Za-z]+(\s+[A-Za-z]+)?/g) || [];
+            skills.push(...techSkills.filter(s => s.length > 1 && s.length < 30));
+          } else if (sentenceTrimmed.match(/React|Vue|Angular|Node|Express|Webpack|Vite|Python|Java|Go|Rust/)) {
+            // 提取技术栈关键词
+            const matches = sentenceTrimmed.match(/React|Vue|Angular|Node|Express|Webpack|Vite|Python|Java|Go|Rust|MongoDB|MySQL|PostgreSQL|Docker|Kubernetes|Git|GraphQL/g);
+            if (matches) skills.push(...matches);
+          }
+        }
+      } else {
+        // 没有冒号，直接是简短的技能列表
+        const skillItems = categoryTrimmed
+          .split(/[,，、；;\n]/)
+          .map(s => s.trim())
+          .filter(s => s.length > 1 && s.length < 50);
+        skills.push(...skillItems);
+      }
+    }
+    
+    // 添加一些基于关键词的技能识别
+    const keywordSkills = {
+      'HTML': /(html|web|页面)/i,
+      'CSS': /(css|样式|布局)/i,
+      'JavaScript': /(javascript|js|escript)/i,
+      'TypeScript': /(typescript|ts)/i,
+      'React': /react/i,
+      'Vue': /vue/i,
+      'Node.js': /node|nodejs/i,
+      'Express': /express/i,
+      'MongoDB': /mongodb/i,
+      'MySQL': /mysql/i,
+      'PostgreSQL': /postgresql/i,
+      'Docker': /docker/i,
+      'Webpack': /webpack/i,
+      'Vite': /vite/i,
+      'Git': /git/i,
+      'Zustand': /zustand/i,
+      'Redux': /redux/i,
+      'Ant Design': /ant\s*design|antd/i,
+      'Element Plus': /element\s*plus/i,
+    };
+    
+    for (const [skillName, pattern] of Object.entries(keywordSkills)) {
+      if (pattern.test(skillsSection)) {
+        skills.push(skillName);
+      }
+    }
+    
+    // 去重和过滤
+    const uniqueSkills = Array.from(new Set(skills))
+      .filter(s => s.length > 0 && s.length < 50)
+      .slice(0, 40); // 最多返回40个技能
 
-    return skillList.slice(0, 20); // 最多返回20个技能
+    return uniqueSkills;
   }
 
   /**
@@ -249,24 +373,66 @@ export class ResumeParserService {
   private extractEducation(text: string): ParsedResume['education'] {
     const education: ParsedResume['education'] = [];
     
-    const eduSectionRegex = /(?:Education|教育|学历|Academic Background)([\s\S]*?)(?=(?:Skills|Experience|Projects|技能|工作经验|项目|$))/i;
+    // 更灵活的正则表达式，匹配各种教育部分的标题
+    const eduSectionRegex = /(?:Education|教育|学历|Academic Background|教育经历|ŵ教育经历)([\s\S]*?)(?=(?:Skills|Experience|Projects|技能|工作经验|项目|Professional|Ð专业|实习|ë实习|$))/i;
     const eduMatch = text.match(eduSectionRegex);
 
-    if (!eduMatch) return education;
+    if (!eduMatch) {
+      this.logger.debug('[Resume Parser] No education section found');
+      return education;
+    }
 
     const eduSection = eduMatch[1];
     const lines = eduSection.split('\n').filter(l => l.trim().length > 0);
 
-    for (let i = 0; i < lines.length; i++) {
-      if (i + 1 < lines.length) {
-        education.push({
-          school: lines[i],
-          degree: lines[i + 1],
-          field: 'N/A',
-          graduationDate: 'N/A',
-        });
-        i++;
+    let currentEntry: any = null;
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      // 检测日期模式（如2022.08 – 2026.06）
+      const datePattern = /\d{4}\.\d{1,2}\s*[–-]\s*\d{4}\.\d{1,2}|\d{4}年\d{1,2}月/;
+      
+      if (datePattern.test(trimmedLine) && trimmedLine.length < 100) {
+        // 这是日期行，属于学校名称或学位信息
+        if (currentEntry && currentEntry.school) {
+          // 提取日期
+          const dateMatch = trimmedLine.match(/(\d{4})\.(\d{1,2})\s*[–-]\s*(\d{4})\.(\d{1,2})/);
+          if (dateMatch) {
+            currentEntry.graduationDate = `${dateMatch[3]}-${dateMatch[4]}`;
+          }
+        }
+      } else if (trimmedLine.length > 3 && !trimmedLine.startsWith('•') && !trimmedLine.startsWith('-')) {
+        // 这可能是学校名称或学位/专业
+        
+        // 检测是否是学位/专业行（通常包含"本科"、"硕士"、"专科"等关键词）
+        const degreePattern = /本科|硕士|博士|专科|学士|Master|Bachelor|PhD|Associate/i;
+        
+        if (degreePattern.test(trimmedLine)) {
+          // 这是学位/专业/成绩行
+          if (currentEntry && currentEntry.school && !currentEntry.degree) {
+            currentEntry.degree = trimmedLine;
+          } else if (currentEntry && currentEntry.school && !currentEntry.field) {
+            currentEntry.field = trimmedLine;
+          }
+        } else if (!currentEntry || currentEntry.school) {
+          // 这是新的学校记录
+          if (currentEntry && currentEntry.school) {
+            education.push(currentEntry);
+          }
+          currentEntry = {
+            school: trimmedLine,
+            degree: 'N/A',
+            field: 'N/A',
+            graduationDate: 'N/A',
+          };
+        }
       }
+    }
+    
+    // 不要忘记最后一个条目
+    if (currentEntry && currentEntry.school) {
+      education.push(currentEntry);
     }
 
     return education;
