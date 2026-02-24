@@ -1,4 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ResumeLLMService } from './resume-llm.service';
 
 interface AnalysisResult {
   overallScore: number;
@@ -13,7 +14,8 @@ interface AnalysisResult {
     [key: string]: string;
   };
   keywordAnalysis: {
-    [key: string]: number;
+    keywords: { [key: string]: number };
+    categoryScores: { [key: string]: number };
   };
   structureAnalysis: {
     issues: string[];
@@ -25,12 +27,27 @@ interface AnalysisResult {
       [key: string]: number;
     };
   };
+  jobMatchAnalysis?: {
+    matchScore: number;
+    matchingSkills: string[];
+    missingSkills: string[];
+    jobSpecificSuggestions: string[];
+  };
+  competencyAnalysis?: {
+    coreCompetencies: string[];
+    technicalSkillsLevel: string;
+    projectExperienceValue: string;
+    careerPotential: string;
+  };
+  detailedReport?: string;
   resumeType?: 'freshman' | 'experienced';  // ✨ 新增：简历类型识别
 }
 
 @Injectable()
 export class ResumeAnalyzerService {
   private readonly logger = new Logger(ResumeAnalyzerService.name);
+
+  constructor(private resumeLLMService: ResumeLLMService) {}
 
   private readonly commonKeywords = {
     // 技能关键词
@@ -177,26 +194,95 @@ export class ResumeAnalyzerService {
   }
 
   /**
-   * 计算关键词评分
+   * 计算关键词评分（支持岗位特定关键词和权重）
    */
-  private calculateKeywordScore(text: string): { score: number; keywords: { [key: string]: number } } {
+  private async calculateKeywordScore(
+    text: string, 
+    jobDescription?: string
+  ): Promise<{ score: number; keywords: { [key: string]: number }; categoryScores: { [key: string]: number } }> {
+    // 1. 准备文本（支持中英文）
     const textLower = text.toLowerCase();
     const foundKeywords: { [key: string]: number } = {};
-    let score = 0;
+    const categoryScores: { [key: string]: number } = {};
+    let totalScore = 0;
 
+    // 2. 定义关键词类别权重
+    const categoryWeights = {
+      skills: 3,          // 技能关键词权重最高
+      experience: 2.5,    // 经验关键词权重次之
+      education: 1.5,     // 教育关键词权重较低
+      jobSpecific: 3.5,   // 岗位特定关键词权重最高
+    };
+
+    // 3. 基础关键词匹配
     for (const category in this.commonKeywords) {
+      const weight = categoryWeights[category as keyof typeof categoryWeights] || 1;
+      let categoryScore = 0;
+
       for (const keyword of (this.commonKeywords as any)[category]) {
         if (textLower.includes(keyword.toLowerCase())) {
           foundKeywords[keyword] = (foundKeywords[keyword] || 0) + 1;
-          score += 2;
+          const keywordScore = weight * 2;
+          categoryScore += keywordScore;
+          totalScore += keywordScore;
+        }
+      }
+
+      if (categoryScore > 0) {
+        categoryScores[category] = categoryScore;
+      }
+    }
+
+    // 4. 如果提供了职位描述，使用LLM提取岗位特定关键词并评分
+    if (jobDescription) {
+      const jobSpecificKeywords = await this.extractJobSpecificKeywords(jobDescription);
+      
+      for (const keyword of jobSpecificKeywords) {
+        if (textLower.includes(keyword.toLowerCase())) {
+          foundKeywords[keyword] = (foundKeywords[keyword] || 0) + 1;
+          const keywordScore = categoryWeights.jobSpecific * 2;
+          categoryScores.jobSpecific = (categoryScores.jobSpecific || 0) + keywordScore;
+          totalScore += keywordScore;
         }
       }
     }
 
-    // 标准化评分到 0-100
-    score = Math.min(100, Math.round(score * 2.5));
+    // 5. 标准化评分到 0-100
+    // 基于预期的最大可能分数进行标准化
+    const maxPossibleScore = 200; // 预估的最大分数
+    const normalizedScore = Math.min(100, Math.round((totalScore / maxPossibleScore) * 100));
 
-    return { score, keywords: foundKeywords };
+    return { 
+      score: normalizedScore, 
+      keywords: foundKeywords,
+      categoryScores 
+    };
+  }
+
+  /**
+   * 使用LLM提取岗位特定关键词
+   */
+  private async extractJobSpecificKeywords(jobDescription: string): Promise<string[]> {
+    try {
+      const prompt = `请从以下职位描述中提取10-15个最关键的技能、经验和要求关键词（中英文都可以）：
+
+${jobDescription}
+
+请以逗号分隔的形式返回关键词，不要包含任何解释或引言。`;
+
+      const response = await this.resumeLLMService.llm.invoke([new HumanMessage(prompt)]);
+      const content = response.content as string;
+
+      // 解析返回的关键词列表
+      return content
+        .split(',')
+        .map(keyword => keyword.trim())
+        .filter(keyword => keyword.length > 0)
+        .slice(0, 15); // 限制最多15个关键词
+    } catch (error) {
+      this.logger.error('Error extracting job specific keywords:', error);
+      return [];
+    }
   }
 
   /**
@@ -646,17 +732,26 @@ export class ResumeAnalyzerService {
   /**
    * 主分析方法（优化：根据简历类型差异化评分）
    */
-  async analyzeResume(text: string, parsedData: any): Promise<AnalysisResult> {
+  async analyzeResume(text: string, parsedData: any, jobDescription?: string): Promise<AnalysisResult> {
     // ✨ 第一步：识别简历类型
     const resumeType = this.detectResumeType(parsedData);
 
     // ✨ 第二步：根据简历类型进行差异化评分
+    const [keywordScoreData, formatScore, experienceScore, skillsScore] = await Promise.all([
+      this.calculateKeywordScore(text, jobDescription),
+      Promise.resolve(this.calculateFormatScore(text, parsedData)),
+      Promise.resolve(this.calculateExperienceScore(parsedData, resumeType)),
+      Promise.resolve(this.calculateSkillsScore(parsedData.skills))
+    ]);
+
+    const completenessScore = this.calculateCompletenessScore(parsedData, resumeType);
+
     const scores = {
-      completenessScore: this.calculateCompletenessScore(parsedData, resumeType),
-      keywordScoreData: this.calculateKeywordScore(text),
-      formatScore: this.calculateFormatScore(text, parsedData),
-      experienceScore: this.calculateExperienceScore(parsedData, resumeType),
-      skillsScore: this.calculateSkillsScore(parsedData.skills),
+      completenessScore,
+      keywordScoreData,
+      formatScore,
+      experienceScore,
+      skillsScore,
     };
 
     // ✨ 第三步：计算总体评分（加权平均）
@@ -669,9 +764,28 @@ export class ResumeAnalyzerService {
       scores.skillsScore * 0.2
     );
 
-    const strengths = this.generateStrengths(parsedData, scores, resumeType);
-    const weaknesses = this.generateWeaknesses(parsedData, scores, text, resumeType);
-    const suggestions = this.generateSuggestions(parsedData, scores, resumeType);
+    // ✨ 第四步：使用LLM生成详细分析报告
+    const basicScores = {
+      overallScore,
+      completenessScore: scores.completenessScore,
+      keywordScore: scores.keywordScoreData.score,
+    };
+    
+    const detailedReport = await this.resumeLLMService.generateDetailedAnalysisReport(text, parsedData, basicScores);
+    
+    // ✨ 第五步：使用LLM生成优势和劣势分析
+    const strengths = await this.generateLLMStrengths(text, parsedData, resumeType);
+    const weaknesses = await this.generateLLMWeaknesses(text, parsedData, resumeType);
+    const suggestions = await this.generateLLMSuggestions(text, parsedData, resumeType);
+
+    // ✨ 第六步：生成岗位匹配度分析
+    let jobMatchAnalysis = undefined;
+    if (jobDescription) {
+      jobMatchAnalysis = await this.generateJobMatchAnalysis(text, jobDescription);
+    }
+
+    // ✨ 第七步：生成能力素质评估
+    const competencyAnalysis = await this.generateCompetencyAnalysis(text, parsedData, resumeType);
 
     const contentAnalysis = this.analyzeContent(text, parsedData);
 
@@ -685,12 +799,18 @@ export class ResumeAnalyzerService {
       strengths,
       weaknesses,
       suggestions,
-      keywordAnalysis: scores.keywordScoreData.keywords,
+      keywordAnalysis: {
+        keywords: scores.keywordScoreData.keywords,
+        categoryScores: scores.keywordScoreData.categoryScores
+      },
       structureAnalysis: {
         issues: [],
         suggestions: [],
       },
       contentAnalysis,
+      jobMatchAnalysis,
+      competencyAnalysis,
+      detailedReport,
       resumeType,  // ✨ 返回简历类型
     };
   }
@@ -716,6 +836,225 @@ export class ResumeAnalyzerService {
       totalWords: words,
       sections,
     };
+  }
+
+  /**
+   * 使用LLM生成优势分析
+   */
+  private async generateLLMStrengths(text: string, parsedData: any, resumeType: 'freshman' | 'experienced'): Promise<string[]> {
+    try {
+      const content = await this.resumeLLMService.generateStrengthsAnalysis(text, resumeType);
+      
+      // 解析LLM返回的列表
+      return content
+        .split('\n')
+        .filter(line => line.trim() && !line.trim().match(/^(\d+\.|-|\*|•)\s*$/))
+        .map(line => line.trim().replace(/^(\d+\.|-|\*|•)\s*/, ''))
+        .filter(Boolean)
+        .slice(0, 5);
+    } catch (error) {
+      this.logger.error('Error generating LLM strengths:', error);
+      // 回退到传统方法
+      return this.generateStrengths(parsedData, {}, resumeType);
+    }
+  }
+
+  /**
+   * 使用LLM生成劣势分析
+   */
+  private async generateLLMWeaknesses(text: string, parsedData: any, resumeType: 'freshman' | 'experienced'): Promise<string[]> {
+    try {
+      const content = await this.resumeLLMService.generateWeaknessesAnalysis(text, resumeType);
+      
+      // 解析LLM返回的列表
+      return content
+        .split('\n')
+        .filter(line => line.trim() && !line.trim().match(/^(\d+\.|-|\*|•)\s*$/))
+        .map(line => line.trim().replace(/^(\d+\.|-|\*|•)\s*/, ''))
+        .filter(Boolean)
+        .slice(0, 5);
+    } catch (error) {
+      this.logger.error('Error generating LLM weaknesses:', error);
+      // 回退到传统方法
+      return this.generateWeaknesses(parsedData, {}, text, resumeType);
+    }
+  }
+
+  /**
+   * 使用LLM生成改进建议
+   */
+  private async generateLLMSuggestions(text: string, parsedData: any, resumeType: 'freshman' | 'experienced'): Promise<{ [key: string]: string }> {
+    try {
+      const content = await this.resumeLLMService.generateSuggestionsAnalysis(text, resumeType);
+      
+      // 解析LLM返回的建议并转换为对象格式
+      const suggestions: { [key: string]: string } = {};
+      const lines = content.split('\n');
+      let currentSection = '';
+      
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (trimmedLine.includes('内容结构')) {
+          currentSection = 'structure';
+        } else if (trimmedLine.includes('工作/实习经验')) {
+          currentSection = 'experience';
+        } else if (trimmedLine.includes('技能展示')) {
+          currentSection = 'skills';
+        } else if (trimmedLine.includes('格式排版')) {
+          currentSection = 'format';
+        } else if (currentSection && trimmedLine && !trimmedLine.match(/^(\d+\.|-|\*|•)\s*$/)) {
+          if (suggestions[currentSection]) {
+            suggestions[currentSection] += ' ' + trimmedLine.replace(/^(\d+\.|-|\*|•)\s*/, '');
+          } else {
+            suggestions[currentSection] = trimmedLine.replace(/^(\d+\.|-|\*|•)\s*/, '');
+          }
+        }
+      }
+      
+      return suggestions;
+    } catch (error) {
+      this.logger.error('Error generating LLM suggestions:', error);
+      // 回退到传统方法
+      return this.generateSuggestions(parsedData, {}, resumeType);
+    }
+  }
+
+  /**
+   * 生成岗位匹配度分析
+   */
+  private async generateJobMatchAnalysis(resumeContent: string, jobDescription: string): Promise<{
+    matchScore: number;
+    matchingSkills: string[];
+    missingSkills: string[];
+    jobSpecificSuggestions: string[];
+  }> {
+    try {
+      const matchAnalysis = await this.resumeLLMService.generateJobMatchAnalysis(resumeContent, jobDescription);
+      
+      // 解析匹配度分析结果
+      const lines = matchAnalysis.split('\n');
+      let matchScore = 5; // 默认分数
+      const matchingSkills: string[] = [];
+      const missingSkills: string[] = [];
+      const jobSpecificSuggestions: string[] = [];
+      
+      let currentSection = '';
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (trimmedLine.includes('整体匹配度评分')) {
+          const scoreMatch = trimmedLine.match(/\d+/);
+          if (scoreMatch) {
+            matchScore = parseInt(scoreMatch[0]);
+          }
+        } else if (trimmedLine.includes('符合的关键要求')) {
+          currentSection = 'matching';
+        } else if (trimmedLine.includes('缺失的关键能力')) {
+          currentSection = 'missing';
+        } else if (trimmedLine.includes('如何改进简历')) {
+          currentSection = 'suggestions';
+        } else if (currentSection && trimmedLine && !trimmedLine.match(/^(\d+\.|-|\*|•)\s*$/)) {
+          const cleanedLine = trimmedLine.replace(/^(\d+\.|-|\*|•)\s*/, '');
+          if (currentSection === 'matching') {
+            matchingSkills.push(cleanedLine);
+          } else if (currentSection === 'missing') {
+            missingSkills.push(cleanedLine);
+          } else if (currentSection === 'suggestions') {
+            jobSpecificSuggestions.push(cleanedLine);
+          }
+        }
+      }
+      
+      return {
+        matchScore,
+        matchingSkills,
+        missingSkills,
+        jobSpecificSuggestions,
+      };
+    } catch (error) {
+      this.logger.error('Error generating job match analysis:', error);
+      return {
+        matchScore: 5,
+        matchingSkills: [],
+        missingSkills: [],
+        jobSpecificSuggestions: [],
+      };
+    }
+  }
+
+  /**
+   * 生成能力素质评估
+   */
+  private async generateCompetencyAnalysis(text: string, parsedData: any, resumeType: 'freshman' | 'experienced'): Promise<{
+    coreCompetencies: string[];
+    technicalSkillsLevel: string;
+    projectExperienceValue: string;
+    careerPotential: string;
+  }> {
+    try {
+      const prompt = `作为资深HR和技术专家，请对以下简历进行能力素质评估（用中文回答）：
+
+简历类型：${resumeType === 'freshman' ? '校招生' : '社招'}
+
+简历内容（前500字）：
+${text.substring(0, 500)}
+
+请从以下方面进行评估：
+1. 核心竞争力（列出3-5个最突出的能力）
+2. 技术技能水平（描述整体技术能力水平）
+3. 项目经验价值（评估项目经验的质量和相关性）
+4. 职业发展潜力（分析未来职业发展的可能性）
+
+每个方面用简洁的中文描述，不要添加任何引言或结论。`;
+
+      const response = await this.resumeLLMService.generateDetailedAnalysisReport(text, parsedData, {});
+      
+      // 解析能力素质评估结果
+      const lines = response.split('\n');
+      const coreCompetencies: string[] = [];
+      let technicalSkillsLevel = '一般';
+      let projectExperienceValue = '一般';
+      let careerPotential = '一般';
+      
+      let currentSection = '';
+      for (const line of lines) {
+        const trimmedLine = line.trim();
+        if (trimmedLine.includes('最突出的')) {
+          currentSection = 'competencies';
+        } else if (trimmedLine.includes('技术技能')) {
+          currentSection = 'technical';
+        } else if (trimmedLine.includes('项目经验')) {
+          currentSection = 'project';
+        } else if (trimmedLine.includes('职业发展')) {
+          currentSection = 'potential';
+        } else if (currentSection && trimmedLine && !trimmedLine.match(/^(\d+\.|-|\*|•)\s*$/)) {
+          const cleanedLine = trimmedLine.replace(/^(\d+\.|-|\*|•)\s*/, '');
+          if (currentSection === 'competencies') {
+            coreCompetencies.push(cleanedLine);
+          } else if (currentSection === 'technical') {
+            technicalSkillsLevel = cleanedLine;
+          } else if (currentSection === 'project') {
+            projectExperienceValue = cleanedLine;
+          } else if (currentSection === 'potential') {
+            careerPotential = cleanedLine;
+          }
+        }
+      }
+      
+      return {
+        coreCompetencies,
+        technicalSkillsLevel,
+        projectExperienceValue,
+        careerPotential,
+      };
+    } catch (error) {
+      this.logger.error('Error generating competency analysis:', error);
+      return {
+        coreCompetencies: [],
+        technicalSkillsLevel: '一般',
+        projectExperienceValue: '一般',
+        careerPotential: '一般',
+      };
+    }
   }
 
   /**

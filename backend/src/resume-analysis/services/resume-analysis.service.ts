@@ -24,6 +24,32 @@ export class ResumeAnalysisService {
   ) {}
 
   /**
+   * 验证UUID格式
+   */
+  private validateId(id: string): void {
+    if (!validateUUID(id)) {
+      throw new BadRequestException('Invalid resume ID format');
+    }
+  }
+
+  /**
+   * 获取用户的简历
+   */
+  private async getUserResume(id: string, userId: string): Promise<Resume> {
+    this.validateId(id);
+    
+    const resume = await this.resumeRepository.findOne({
+      where: { id, ownerId: userId },
+    });
+
+    if (!resume) {
+      throw new NotFoundException('Resume not found');
+    }
+
+    return resume;
+  }
+
+  /**
    * 上传简历（文本）
    */
   async uploadResume(
@@ -34,7 +60,7 @@ export class ResumeAnalysisService {
       const resume = this.resumeRepository.create({
         title: dto.title,
         content: dto.content || '',
-        jobDescription: dto.jobDescription || undefined,
+        jobDescription: dto.jobDescription,
         fileType: 'txt',
         ownerId: userId,
         isProcessed: false,
@@ -75,7 +101,7 @@ export class ResumeAnalysisService {
       const resume = this.resumeRepository.create({
         title,
         content,
-        jobDescription: jobDescription || undefined,
+        jobDescription,
         fileBinary: fileBuffer,
         fileName,
         fileType: fileType.toLowerCase().replace(/^\./, ''),
@@ -111,7 +137,7 @@ export class ResumeAnalysisService {
         return;
       }
 
-      // 1. 解析简历内容 - 使用 LLM
+      // 1. 解析简历内容
       const parsedData = await this.parserService.parseResumeContent(resume.content);
 
       // 2. 更新解析数据
@@ -121,10 +147,11 @@ export class ResumeAnalysisService {
       // 3. 执行分析
       const analysisResult = await this.analyzerService.analyzeResume(
         resume.content,
-        parsedData
+        parsedData,
+        resume.jobDescription
       );
 
-      // 4. 保存分析结果（✨ 支持简历类型）
+      // 4. 保存分析结果
       const analysis = this.analysisRepository.create({
         resumeId,
         overallScore: analysisResult.overallScore,
@@ -136,25 +163,26 @@ export class ResumeAnalysisService {
         strengths: JSON.stringify(analysisResult.strengths),
         weaknesses: JSON.stringify(analysisResult.weaknesses),
         suggestions: JSON.stringify(analysisResult.suggestions),
-        keywordAnalysis: JSON.stringify(analysisResult.keywordAnalysis),
+        keywordAnalysis: JSON.stringify(analysisResult.keywordAnalysis), // 包含keywords和categoryScores
         structureAnalysis: JSON.stringify(analysisResult.structureAnalysis),
         contentAnalysis: JSON.stringify(analysisResult.contentAnalysis),
+        jobMatchAnalysis: analysisResult.jobMatchAnalysis ? JSON.stringify(analysisResult.jobMatchAnalysis) : undefined,
+        competencyAnalysis: analysisResult.competencyAnalysis ? JSON.stringify(analysisResult.competencyAnalysis) : undefined,
+        detailedReport: analysisResult.detailedReport,
       });
 
       await this.analysisRepository.save(analysis);
 
-      // 5. 异步调用 LLM 生成更详细的建议（✨ 传递简历类型）
+      // 5. 异步调用 LLM 生成更详细的建议
       this.generateLLMSuggestionsAsync(
         analysis.id,
         resume,
         parsedData,
         analysisResult,
-        analysisResult.resumeType || 'freshman'  // ✨ 使用识别的简历类型
-      ).catch(
-        (error) => {
-          this.logger.error(`Error generating LLM suggestions for analysis ${analysis.id}:`, error);
-        }
-      );
+        analysisResult.resumeType || 'freshman'
+      ).catch((error) => {
+        this.logger.error(`Error generating LLM suggestions for analysis ${analysis.id}:`, error);
+      });
 
       // 更新简历状态
       resume.isProcessed = true;
@@ -167,7 +195,7 @@ export class ResumeAnalysisService {
   }
 
   /**
-   * 异步生成 LLM 建议（✨ 优化：根据简历类型生成针对性的建议）
+   * 异步生成 LLM 建议
    */
   private async generateLLMSuggestionsAsync(
     analysisId: string,
@@ -180,25 +208,16 @@ export class ResumeAnalysisService {
       const analysis = await this.analysisRepository.findOne({ where: { id: analysisId } });
       if (!analysis) return;
 
-      // ✨ 根据简历类型生成针对性的建议
-      const [personalInfoOpt, experienceOpt, skillsOpt, detailedReport] = await Promise.all([
+      // 根据简历类型生成针对性的建议
+      const [personalInfoOpt, experienceOpt, skillsOpt] = await Promise.all([
         this.llmService.generatePersonalInfoOptimization(parsedData.personalInfo),
         
         // 校招 vs 社招差异化处理
         resumeType === 'freshman'
-          ? (parsedData.internshipExperience && parsedData.internshipExperience.length > 0
-              ? this.llmService.generateExperienceOptimization(parsedData.internshipExperience)
-              : Promise.resolve(''))
-          : (parsedData.workExperience && parsedData.workExperience.length > 0
-              ? this.llmService.generateExperienceOptimization(parsedData.workExperience)
-              : Promise.resolve('')),
+          ? (parsedData.internshipExperience?.length ? this.llmService.generateExperienceOptimization(parsedData.internshipExperience) : Promise.resolve(''))
+          : (parsedData.workExperience?.length ? this.llmService.generateExperienceOptimization(parsedData.workExperience) : Promise.resolve('')),
         
-        parsedData.skills && parsedData.skills.length > 0
-          ? this.llmService.generateSkillsOptimization(parsedData.skills)
-          : Promise.resolve(''),
-        
-        // 生成针对性的详细报告
-        this.llmService.generateDetailedAnalysisReport(resume.content, parsedData, analysisResult),
+        parsedData.skills?.length ? this.llmService.generateSkillsOptimization(parsedData.skills) : Promise.resolve(''),
       ]);
 
       // 更新分析结果
@@ -214,14 +233,13 @@ export class ResumeAnalysisService {
         ];
       }
 
-      // 将详细报告和其他建议添加到 suggestions 中
+      // 将其他建议添加到 suggestions 中
       const suggestions = JSON.parse(analysis.suggestions || '{}');
-      suggestions.detailedReport = detailedReport;
       
-      // ✨ 添加简历类型信息到建议中
+      // 添加简历类型信息到建议中
       suggestions.resumeType = resumeType;
       
-      // ✨ 根据简历类型添加针对性的优化建议
+      // 根据简历类型添加针对性的优化建议
       if (resumeType === 'freshman') {
         suggestions.freshmanSpecificTips = {
           education: '教育背景是校招简历的核心，确保突出学校、学位和GPA（如果优秀）',
@@ -268,38 +286,14 @@ export class ResumeAnalysisService {
    * 获取简历详情
    */
   async getResumeById(id: string, userId: string): Promise<Resume> {
-    // 验证 ID 是否为有效的 UUID
-    if (!validateUUID(id)) {
-      throw new BadRequestException('Invalid resume ID format');
-    }
-
-    const resume = await this.resumeRepository.findOne({
-      where: { id, ownerId: userId },
-    });
-
-    if (!resume) {
-      throw new NotFoundException('Resume not found');
-    }
-
-    return resume;
+    return this.getUserResume(id, userId);
   }
 
   /**
    * 获取简历分析结果
    */
   async getResumeAnalysis(resumeId: string, userId: string): Promise<ResumeAnalysis> {
-    // 验证 ID 是否为有效的 UUID
-    if (!validateUUID(resumeId)) {
-      throw new BadRequestException('Invalid resume ID format');
-    }
-
-    const resume = await this.resumeRepository.findOne({
-      where: { id: resumeId, ownerId: userId },
-    });
-
-    if (!resume) {
-      throw new NotFoundException('Resume not found');
-    }
+    await this.getUserResume(resumeId, userId);
 
     const analysis = await this.analysisRepository.findOne({
       where: { resumeId },
@@ -316,18 +310,7 @@ export class ResumeAnalysisService {
    * 更新简历
    */
   async updateResume(id: string, userId: string, title: string, content: string): Promise<Resume> {
-    // 验证 ID 是否为有效的 UUID
-    if (!validateUUID(id)) {
-      throw new BadRequestException('Invalid resume ID format');
-    }
-
-    const resume = await this.resumeRepository.findOne({
-      where: { id, ownerId: userId },
-    });
-
-    if (!resume) {
-      throw new NotFoundException('Resume not found');
-    }
+    const resume = await this.getUserResume(id, userId);
 
     resume.title = title;
     resume.content = content;
@@ -347,18 +330,7 @@ export class ResumeAnalysisService {
    * 删除简历
    */
   async deleteResume(id: string, userId: string): Promise<void> {
-    // 验证 ID 是否为有效的 UUID
-    if (!validateUUID(id)) {
-      throw new BadRequestException('Invalid resume ID format');
-    }
-
-    const resume = await this.resumeRepository.findOne({
-      where: { id, ownerId: userId },
-    });
-
-    if (!resume) {
-      throw new NotFoundException('Resume not found');
-    }
+    const resume = await this.getUserResume(id, userId);
 
     // 逻辑删除
     resume.status = 'deleted';
@@ -373,24 +345,11 @@ export class ResumeAnalysisService {
     userId: string,
     jobDescription: string
   ): Promise<string> {
-    // 验证 ID 是否为有效的 UUID
-    if (!validateUUID(resumeId)) {
-      throw new BadRequestException('Invalid resume ID format');
-    }
+    const resume = await this.getUserResume(resumeId, userId);
 
-    const resume = await this.resumeRepository.findOne({
-      where: { id: resumeId, ownerId: userId },
-    });
-
-    if (!resume) {
-      throw new NotFoundException('Resume not found');
-    }
-
-    const matchAnalysis = await this.llmService.generateJobMatchAnalysis(
+    return this.llmService.generateJobMatchAnalysis(
       resume.content,
       jobDescription
     );
-
-    return matchAnalysis;
   }
 }
