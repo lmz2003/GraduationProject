@@ -8,6 +8,10 @@ export class UploadResumeDto {
   @IsOptional()
   @IsString()
   content?: string; // 文本内容（直接输入时使用）
+
+  @IsOptional()
+  @IsString()
+  jobDescription?: string; // 职位描述（可选，用于对标匹配度）
 }
 
 export class UploadResumeWithFileDto {

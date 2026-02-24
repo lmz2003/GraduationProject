@@ -19,6 +19,9 @@ export class Resume {
   @Column('text')
   content!: string; // 原始内容
 
+  @Column('text', { nullable: true })
+  jobDescription?: string; // 职位描述（可选，用于对标匹配度）
+
   @Column({ nullable: true })
   fileName?: string; // 原始文件名
 

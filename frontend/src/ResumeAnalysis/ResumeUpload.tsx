@@ -231,6 +231,7 @@ const ResumeUpload: React.FC = () => {
   const [uploadType, setUploadType] = useState<'file' | 'text'>('file');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [jobDescription, setJobDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -278,6 +279,7 @@ const ResumeUpload: React.FC = () => {
   const clearForm = () => {
     setTitle('');
     setContent('');
+    setJobDescription('');
     setFile(null);
     setUploadType('file');
     if (fileInputRef.current) {
@@ -310,6 +312,10 @@ const ResumeUpload: React.FC = () => {
 
       const formData = new FormData();
       formData.append('title', title);
+      
+      if (jobDescription.trim()) {
+        formData.append('jobDescription', jobDescription);
+      }
 
       if (uploadType === 'file' && file) {
         formData.append('file', file);
@@ -380,6 +386,17 @@ const ResumeUpload: React.FC = () => {
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             disabled={loading}
+          />
+        </FormGroup>
+
+        <FormGroup>
+          <Label>职位描述 <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>(可选)</span></Label>
+          <Textarea
+            placeholder="粘贴职位描述，用于对标简历和职位的匹配度...（可选）"
+            value={jobDescription}
+            onChange={(e) => setJobDescription(e.target.value)}
+            disabled={loading}
+            style={{ minHeight: '120px' }}
           />
         </FormGroup>
 

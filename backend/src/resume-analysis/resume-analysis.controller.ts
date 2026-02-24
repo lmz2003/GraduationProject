@@ -88,7 +88,8 @@ export class ResumeAnalysisController {
           file.originalname,
           path.extname(file.originalname),
           file.size,
-          userId
+          userId,
+          dto.jobDescription
         );
         
         this.logger.log(`[Upload] Resume file uploaded successfully. Resume ID: ${resume.id}`);

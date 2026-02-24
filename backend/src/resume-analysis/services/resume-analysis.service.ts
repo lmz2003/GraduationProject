@@ -34,6 +34,7 @@ export class ResumeAnalysisService {
       const resume = this.resumeRepository.create({
         title: dto.title,
         content: dto.content || '',
+        jobDescription: dto.jobDescription || undefined,
         fileType: 'txt',
         ownerId: userId,
         isProcessed: false,
@@ -64,7 +65,8 @@ export class ResumeAnalysisService {
     fileName: string,
     fileType: string,
     fileSize: number,
-    userId: string
+    userId: string,
+    jobDescription?: string
   ): Promise<Resume> {
     try {
       // 解析文件内容
@@ -73,6 +75,7 @@ export class ResumeAnalysisService {
       const resume = this.resumeRepository.create({
         title,
         content,
+        jobDescription: jobDescription || undefined,
         fileBinary: fileBuffer,
         fileName,
         fileType: fileType.toLowerCase().replace(/^\./, ''),
@@ -121,7 +124,7 @@ export class ResumeAnalysisService {
         parsedData
       );
 
-      // 4. 保存分析结果
+      // 4. 保存分析结果（✨ 支持简历类型）
       const analysis = this.analysisRepository.create({
         resumeId,
         overallScore: analysisResult.overallScore,
@@ -140,8 +143,14 @@ export class ResumeAnalysisService {
 
       await this.analysisRepository.save(analysis);
 
-      // 5. 异步调用 LLM 生成更详细的建议
-      this.generateLLMSuggestionsAsync(analysis.id, resume, parsedData, analysisResult).catch(
+      // 5. 异步调用 LLM 生成更详细的建议（✨ 传递简历类型）
+      this.generateLLMSuggestionsAsync(
+        analysis.id,
+        resume,
+        parsedData,
+        analysisResult,
+        analysisResult.resumeType || 'freshman'  // ✨ 使用识别的简历类型
+      ).catch(
         (error) => {
           this.logger.error(`Error generating LLM suggestions for analysis ${analysis.id}:`, error);
         }
@@ -158,27 +167,37 @@ export class ResumeAnalysisService {
   }
 
   /**
-   * 异步生成 LLM 建议
+   * 异步生成 LLM 建议（✨ 优化：根据简历类型生成针对性的建议）
    */
   private async generateLLMSuggestionsAsync(
     analysisId: string,
     resume: Resume,
     parsedData: any,
-    analysisResult: any
+    analysisResult: any,
+    resumeType: 'freshman' | 'experienced'
   ): Promise<void> {
     try {
       const analysis = await this.analysisRepository.findOne({ where: { id: analysisId } });
       if (!analysis) return;
 
-      // 生成各部分优化建议
+      // ✨ 根据简历类型生成针对性的建议
       const [personalInfoOpt, experienceOpt, skillsOpt, detailedReport] = await Promise.all([
         this.llmService.generatePersonalInfoOptimization(parsedData.personalInfo),
-        parsedData.workExperience && parsedData.workExperience.length > 0
-          ? this.llmService.generateExperienceOptimization(parsedData.workExperience)
-          : Promise.resolve(''),
+        
+        // 校招 vs 社招差异化处理
+        resumeType === 'freshman'
+          ? (parsedData.internshipExperience && parsedData.internshipExperience.length > 0
+              ? this.llmService.generateExperienceOptimization(parsedData.internshipExperience)
+              : Promise.resolve(''))
+          : (parsedData.workExperience && parsedData.workExperience.length > 0
+              ? this.llmService.generateExperienceOptimization(parsedData.workExperience)
+              : Promise.resolve('')),
+        
         parsedData.skills && parsedData.skills.length > 0
           ? this.llmService.generateSkillsOptimization(parsedData.skills)
           : Promise.resolve(''),
+        
+        // 生成针对性的详细报告
         this.llmService.generateDetailedAnalysisReport(resume.content, parsedData, analysisResult),
       ]);
 
@@ -199,6 +218,28 @@ export class ResumeAnalysisService {
       const suggestions = JSON.parse(analysis.suggestions || '{}');
       suggestions.detailedReport = detailedReport;
       
+      // ✨ 添加简历类型信息到建议中
+      suggestions.resumeType = resumeType;
+      
+      // ✨ 根据简历类型添加针对性的优化建议
+      if (resumeType === 'freshman') {
+        suggestions.freshmanSpecificTips = {
+          education: '教育背景是校招简历的核心，确保突出学校、学位和GPA（如果优秀）',
+          internship: '实习经历展示了职场适应能力，建议补充2-3段高质量实习',
+          projects: '项目经验和毕设是展示技能的关键，要突出技术深度和创新性',
+          campus: '校园活动展示领导力，建议补充学生会或社团等组织经验',
+          skills: '技能列表要与应聘岗位相关，突出核心技术栈'
+        };
+      } else {
+        suggestions.experiencedSpecificTips = {
+          professionalSummary: '职业总结要清晰表达职业定位和核心竞争力',
+          workExperience: '用数据和具体案例展示商业价值，突出成就而非职责',
+          management: '如有管理经验，要明确说明团队规模和管理成果',
+          skills: '技能要与职业等级匹配，标注掌握深度，优化关键词',
+          projects: '项目描述要体现商业影响力和你的核心贡献'
+        };
+      }
+      
       if (skillsOpt) {
         suggestions.skillsOptimization = skillsOpt;
       }
@@ -207,7 +248,7 @@ export class ResumeAnalysisService {
 
       await this.analysisRepository.save(analysis);
 
-      this.logger.log(`LLM suggestions generated for analysis: ${analysisId}`);
+      this.logger.log(`LLM suggestions generated for analysis: ${analysisId} (resumeType: ${resumeType})`);
     } catch (error) {
       this.logger.error(`Error in generateLLMSuggestionsAsync:`, error);
     }
