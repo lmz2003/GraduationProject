@@ -392,7 +392,7 @@ const ResumeUpload: React.FC = () => {
         <FormGroup>
           <Label>职位描述 <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>(可选)</span></Label>
           <Textarea
-            placeholder="粘贴职位描述，用于对标简历和职位的匹配度...（可选）"
+            placeholder="职位描述，用于对标简历和职位的匹配度..."
             value={jobDescription}
             onChange={(e) => setJobDescription(e.target.value)}
             disabled={loading}

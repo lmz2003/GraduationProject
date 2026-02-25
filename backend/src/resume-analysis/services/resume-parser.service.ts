@@ -32,6 +32,8 @@ interface WorkExperience {
   description: string;
   highlights?: string[];
   achievements?: string[];
+  department?: string; // 部门名称
+  departmentResponsibility?: string; // 部门职责/部门主要业务
   // 社招独有或增强信息
   companyType?: string; // 公司类型：初创/中型/大型/上市等
   companyIndustry?: string; // 公司行业
@@ -439,6 +441,8 @@ export class ResumeParserService {
       "description": "职位职责和工作描述",
       "highlights": ["主要工作亮点1", "主要工作亮点2"],
       "achievements": ["成就/贡献1", "成就/贡献2"],
+      "department": "部门/小组名称（如：技术部、产品部、研发团队、小组等）",
+      "departmentResponsibility": "部门职责/部门主要业务",
       "companyType": "公司类型（如：初创、中型、大型、上市等）",
       "companyIndustry": "公司行业（如：互联网、金融、制造等）",
       "companySize": "公司规模（如：100人以下、500-1000人等）",
@@ -459,7 +463,9 @@ export class ResumeParserService {
       "internshipType": "实习类型（如：远程、现场）",
       "description": "实习职责描述",
       "highlights": ["实习亮点"],
-      "achievements": ["实习成果"]
+      "achievements": ["实习成果"],
+      "department": "部门/小组名称（如：技术部、产品部等）",
+      "departmentResponsibility": "部门（小组）职责/主要业务"
     }
   ],
   
@@ -540,7 +546,10 @@ export class ResumeParserService {
 6. 确保 highlights 和 achievements 中的内容是具体、可量化的
 7. publications 应包含完整的论文信息，包括作者、卷期号等学术元数据
 8. campusExperience 用于记录学生时期的学生组织、班级、社团等活动
-9. 社招独有字段（社会招聘）：
+9. 部门信息字段 ✨：
+   - department：提取所在部门的名称（如：技术部、产品部、研发中心、后端团队等）
+   - departmentResponsibility：提取部门的主要职责和业务范围（如："负责用户端系统的开发和维护"）
+10. 社招独有字段（社会招聘）：
    - companyType：从公司性质信息推断（如"知名互联网上市公司"→"上市"）
    - companyIndustry：提取公司所在行业
    - companySize：提取公司规模信息（如果有）

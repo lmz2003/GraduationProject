@@ -28,6 +28,19 @@ export interface ParsedResumeData {
     startDate: string;
     endDate: string;
     description: string;
+    department?: string; // ✨ 部门名称
+    departmentResponsibility?: string; // ✨ 部门职责
+    [key: string]: any;
+  }>;
+  internshipExperience?: Array<{
+    company: string;
+    position: string;
+    startDate: string;
+    endDate: string;
+    description: string;
+    department?: string; // ✨ 部门名称
+    departmentResponsibility?: string; // ✨ 部门职责
+    [key: string]: any;
   }>;
   education?: Array<{
     school: string;

@@ -80,7 +80,7 @@ export class ResumeLLMService {
       const experienceText = experience
         .map(
           (exp: any) =>
-            `公司: ${exp.company}\n职位: ${exp.position}\n描述: ${exp.description}`
+            `公司: ${exp.company}\n职位: ${exp.position}${exp.department ? `\n部门: ${exp.department}` : ''}${exp.departmentResponsibility ? `\n部门职责: ${exp.departmentResponsibility}` : ''}\n描述: ${exp.description}`
         )
         .join('\n\n');
 
