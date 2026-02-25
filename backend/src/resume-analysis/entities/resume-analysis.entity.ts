@@ -58,6 +58,15 @@ export class ResumeAnalysis {
   @Column({ type: 'text', nullable: true })
   contentAnalysis?: string; // 内容分析（JSON 格式）
 
+  @Column({ type: 'text', nullable: true })
+  jobMatchAnalysis?: string; // 岗位匹配度分析（JSON 格式）
+
+  @Column({ type: 'text', nullable: true })
+  competencyAnalysis?: string; // 能力素质评估（JSON 格式）
+
+  @Column({ type: 'text', nullable: true })
+  detailedReport?: string; // 详细分析报告
+
   // 建议优化的各个部分
   @Column({ type: 'jsonb', nullable: true })
   personalInfoSuggestions?: {

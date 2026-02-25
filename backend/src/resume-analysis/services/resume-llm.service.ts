@@ -210,4 +210,91 @@ ${resumeContent.substring(0, 400)}
       return '';
     }
   }
+
+  /**
+   * 生成简历优势分析
+   */
+  async generateStrengthsAnalysis(resumeContent: string, resumeType: 'freshman' | 'experienced'): Promise<string> {
+    try {
+      if (!this.llm) {
+        this.logger.warn('LLM not initialized');
+        return '';
+      }
+
+      const prompt = `作为资深HR专家，请分析以下简历并提取3-5个最突出的优势（用中文回答）：
+
+简历类型：${resumeType === 'freshman' ? '校招生' : '社招'}
+
+简历内容（前500字）：
+${resumeContent.substring(0, 500)}
+
+请以列表形式返回优势，每个优势用简洁的中文描述，不要添加任何引言或结论。`;
+
+      const response = await this.llm.invoke([new HumanMessage(prompt)]);
+      return response.content as string;
+    } catch (error) {
+      this.logger.error('Error generating strengths analysis:', error);
+      return '';
+    }
+  }
+
+  /**
+   * 生成简历劣势分析
+   */
+  async generateWeaknessesAnalysis(resumeContent: string, resumeType: 'freshman' | 'experienced'): Promise<string> {
+    try {
+      if (!this.llm) {
+        this.logger.warn('LLM not initialized');
+        return '';
+      }
+
+      const prompt = `作为资深HR专家，请分析以下简历并提取3-5个需要改进的方面（用中文回答）：
+
+简历类型：${resumeType === 'freshman' ? '校招生' : '社招'}
+
+简历内容（前500字）：
+${resumeContent.substring(0, 500)}
+
+请以列表形式返回劣势，每个劣势用简洁的中文描述，不要添加任何引言或结论。`;
+
+      const response = await this.llm.invoke([new HumanMessage(prompt)]);
+      return response.content as string;
+    } catch (error) {
+      this.logger.error('Error generating weaknesses analysis:', error);
+      return '';
+    }
+  }
+
+  /**
+   * 生成简历改进建议
+   */
+  async generateSuggestionsAnalysis(resumeContent: string, resumeType: 'freshman' | 'experienced'): Promise<string> {
+    try {
+      if (!this.llm) {
+        this.logger.warn('LLM not initialized');
+        return '';
+      }
+
+      const prompt = `作为资深HR专家，请针对以下简历提供具体的改进建议（用中文回答）：
+
+简历类型：${resumeType === 'freshman' ? '校招生' : '社招'}
+
+简历内容（前500字）：
+${resumeContent.substring(0, 500)}
+
+请从以下方面提供建议：
+1. 内容结构
+2. 工作/实习经验描述
+3. 技能展示
+4. 格式排版
+
+每个方面提供1-2条具体建议，保持简洁明了。`;
+
+      const response = await this.llm.invoke([new HumanMessage(prompt)]);
+      return response.content as string;
+    } catch (error) {
+      this.logger.error('Error generating suggestions analysis:', error);
+      return '';
+    }
+  }
 }
