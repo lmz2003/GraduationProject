@@ -297,4 +297,35 @@ ${resumeContent.substring(0, 500)}
       return '';
     }
   }
+
+  /**
+   * 提取岗位特定关键词 ✨ 新增
+   */
+  async extractJobSpecificKeywords(jobDescription: string, jobTitle: string): Promise<string[]> {
+    try {
+      if (!this.llm) {
+        this.logger.warn('LLM not initialized');
+        return [];
+      }
+
+      const prompt = `请根据提供的求职岗位${jobTitle}和职位描述${jobDescription}，给出该岗位10-20个最关键的技能、经验和要求关键词（中英文配对给出，相同含义的中英文关键词算一个）：
+
+
+
+请以逗号分隔的形式返回关键词，不要包含任何解释或引言。`;
+
+      const response = await this.llm.invoke([new HumanMessage(prompt)]);
+      const content = response.content as string;
+
+      // 解析返回的关键词列表
+      return content
+        .split(',')
+        .map(keyword => keyword.trim())
+        .filter(keyword => keyword.length > 0)
+        .slice(0, 20); // 限制最多15个关键词
+    } catch (error) {
+      this.logger.error('Error extracting job specific keywords:', error);
+      return [];
+    }
+  }
 }

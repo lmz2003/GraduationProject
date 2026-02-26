@@ -148,7 +148,8 @@ export class ResumeAnalysisService {
       const analysisResult = await this.analyzerService.analyzeResume(
         resume.content,
         parsedData,
-        resume.jobDescription
+        resume.jobDescription,
+        resume.title
       );
 
       // 4. 保存分析结果
