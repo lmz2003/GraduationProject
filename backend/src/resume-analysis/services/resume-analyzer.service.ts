@@ -64,7 +64,7 @@ export class ResumeAnalyzerService {
       this.calculateKeywordScore(text, jobDescription, jobTitle),
       Promise.resolve(this.calculateCompletenessScore(text, parsedData, resumeType)),
       Promise.resolve(this.calculateExperienceScore(parsedData, resumeType)),
-      Promise.resolve(this.calculateSkillsScore(parsedData.skills))
+      this.calculateSkillsScore(parsedData.skills, jobTitle || '', jobDescription)
     ]);
 
     const scores = {
@@ -489,19 +489,19 @@ export class ResumeAnalyzerService {
   }
 
   /**
-   * 计算技能评分
+   * 计算技能评分（支持行业和职位特定的高价值技能）
    */
-  private calculateSkillsScore(skills: string[]): number {
+  private async calculateSkillsScore(skills: string[],  jobTitle: string,jobDescription?: string): Promise<number> {
     if (!skills || skills.length === 0) {
       return 0;
     }
 
     let score = 20; // 基础分
 
-    // 按技能数量加分
+    // 1. 按技能数量加分
     score += Math.min(50, skills.length * 3);
 
-    // 检查技能的多样性
+    // 2. 检查技能的多样性
     const uniqueSkills = new Set(skills.map(s => s.toLowerCase()));
     const diversity = uniqueSkills.size / Math.max(1, skills.length);
 
@@ -511,12 +511,18 @@ export class ResumeAnalyzerService {
       score += 10;
     }
 
-    // 检查是否包含常见的高价值技能
+    // 3. 检查是否包含高价值技能
+    let jobSpecificHighValueSkills: string[] = [];
+    if (jobDescription) {
+      jobSpecificHighValueSkills = await this.resumeLLMService.extractJobSpecificHighSkills(jobDescription, jobTitle);
+    }
+
+    // 3.4 检查技能匹配
     const hasHighValueSkills = skills.some(skill => {
       const skillLower = skill.toLowerCase();
-      return skillLower.includes('python') || skillLower.includes('javascript') || 
-             skillLower.includes('react') || skillLower.includes('docker') ||
-             skillLower.includes('kubernetes') || skillLower.includes('aws');
+      return jobSpecificHighValueSkills.some(highValueSkill => 
+        skillLower.includes(highValueSkill.toLowerCase())
+      );
     });
 
     if (hasHighValueSkills) {
@@ -848,16 +854,26 @@ export class ResumeAnalyzerService {
     try {
       const content = await this.resumeLLMService.generateStrengthsAnalysis(text, resumeType);
       
-      // 解析LLM返回的列表
-      return content
-        .split('\n')
-        .filter(line => line.trim() && !line.trim().match(/^(\d+\.|-|\*|•)\s*$/))
-        .map(line => line.trim().replace(/^(\d+\.|-|\*|•)\s*/, ''))
-        .filter(Boolean)
-        .slice(0, 5);
+      if (!content) {
+        return [];
+      }
+      
+      let analysisResult: any;
+      try {
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          analysisResult = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('No JSON found in response');
+        }
+      } catch (parseError) {
+        this.logger.error('Error parsing strengths JSON:', parseError);
+        return [];
+      }
+      
+      return Array.isArray(analysisResult.strengths) ? analysisResult.strengths : [];
     } catch (error) {
       this.logger.error('Error generating LLM strengths:', error);
-      // 回退到传统方法
       return this.generateStrengths(parsedData, {}, resumeType);
     }
   }
@@ -869,16 +885,26 @@ export class ResumeAnalyzerService {
     try {
       const content = await this.resumeLLMService.generateWeaknessesAnalysis(text, resumeType);
       
-      // 解析LLM返回的列表
-      return content
-        .split('\n')
-        .filter(line => line.trim() && !line.trim().match(/^(\d+\.|-|\*|•)\s*$/))
-        .map(line => line.trim().replace(/^(\d+\.|-|\*|•)\s*/, ''))
-        .filter(Boolean)
-        .slice(0, 5);
+      if (!content) {
+        return [];
+      }
+      
+      let analysisResult: any;
+      try {
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          analysisResult = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('No JSON found in response');
+        }
+      } catch (parseError) {
+        this.logger.error('Error parsing weaknesses JSON:', parseError);
+        return [];
+      }
+      
+      return Array.isArray(analysisResult.weaknesses) ? analysisResult.weaknesses : [];
     } catch (error) {
       this.logger.error('Error generating LLM weaknesses:', error);
-      // 回退到传统方法
       return this.generateWeaknesses(parsedData, {}, text, resumeType);
     }
   }
@@ -890,34 +916,42 @@ export class ResumeAnalyzerService {
     try {
       const content = await this.resumeLLMService.generateSuggestionsAnalysis(text, resumeType);
       
-      // 解析LLM返回的建议并转换为对象格式
-      const suggestions: { [key: string]: string } = {};
-      const lines = content.split('\n');
-      let currentSection = '';
+      if (!content) {
+        return {};
+      }
       
-      for (const line of lines) {
-        const trimmedLine = line.trim();
-        if (trimmedLine.includes('内容结构')) {
-          currentSection = 'structure';
-        } else if (trimmedLine.includes('工作/实习经验')) {
-          currentSection = 'experience';
-        } else if (trimmedLine.includes('技能展示')) {
-          currentSection = 'skills';
-        } else if (trimmedLine.includes('格式排版')) {
-          currentSection = 'format';
-        } else if (currentSection && trimmedLine && !trimmedLine.match(/^(\d+\.|-|\*|•)\s*$/)) {
-          if (suggestions[currentSection]) {
-            suggestions[currentSection] += ' ' + trimmedLine.replace(/^(\d+\.|-|\*|•)\s*/, '');
-          } else {
-            suggestions[currentSection] = trimmedLine.replace(/^(\d+\.|-|\*|•)\s*/, '');
-          }
+      let analysisResult: any;
+      try {
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          analysisResult = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('No JSON found in response');
         }
+      } catch (parseError) {
+        this.logger.error('Error parsing suggestions JSON:', parseError);
+        return {};
+      }
+      
+      const suggestions: { [key: string]: string } = {};
+      const suggestionList = Array.isArray(analysisResult.suggestions) ? analysisResult.suggestions : [];
+      
+      if (suggestionList.length > 0) {
+        suggestions.structure = suggestionList[0] || '';
+      }
+      if (suggestionList.length > 1) {
+        suggestions.experience = suggestionList[1] || '';
+      }
+      if (suggestionList.length > 2) {
+        suggestions.skills = suggestionList[2] || '';
+      }
+      if (suggestionList.length > 3) {
+        suggestions.format = suggestionList[3] || '';
       }
       
       return suggestions;
     } catch (error) {
       this.logger.error('Error generating LLM suggestions:', error);
-      // 回退到传统方法
       return this.generateSuggestions(parsedData, {}, resumeType);
     }
   }
@@ -934,44 +968,38 @@ export class ResumeAnalyzerService {
     try {
       const matchAnalysis = await this.resumeLLMService.generateJobMatchAnalysis(resumeContent, jobDescription);
       
-      // 解析匹配度分析结果
-      const lines = matchAnalysis.split('\n');
-      let matchScore = 5; // 默认分数
-      const matchingSkills: string[] = [];
-      const missingSkills: string[] = [];
-      const jobSpecificSuggestions: string[] = [];
+      if (!matchAnalysis) {
+        return {
+          matchScore: 5,
+          matchingSkills: [],
+          missingSkills: [],
+          jobSpecificSuggestions: [],
+        };
+      }
       
-      let currentSection = '';
-      for (const line of lines) {
-        const trimmedLine = line.trim();
-        if (trimmedLine.includes('整体匹配度评分')) {
-          const scoreMatch = trimmedLine.match(/\d+/);
-          if (scoreMatch) {
-            matchScore = parseInt(scoreMatch[0]);
-          }
-        } else if (trimmedLine.includes('符合的关键要求')) {
-          currentSection = 'matching';
-        } else if (trimmedLine.includes('缺失的关键能力')) {
-          currentSection = 'missing';
-        } else if (trimmedLine.includes('如何改进简历')) {
-          currentSection = 'suggestions';
-        } else if (currentSection && trimmedLine && !trimmedLine.match(/^(\d+\.|-|\*|•)\s*$/)) {
-          const cleanedLine = trimmedLine.replace(/^(\d+\.|-|\*|•)\s*/, '');
-          if (currentSection === 'matching') {
-            matchingSkills.push(cleanedLine);
-          } else if (currentSection === 'missing') {
-            missingSkills.push(cleanedLine);
-          } else if (currentSection === 'suggestions') {
-            jobSpecificSuggestions.push(cleanedLine);
-          }
+      let analysisResult: any;
+      try {
+        const jsonMatch = matchAnalysis.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          analysisResult = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('No JSON found in response');
         }
+      } catch (parseError) {
+        this.logger.error('Error parsing job match analysis JSON:', parseError);
+        return {
+          matchScore: 5,
+          matchingSkills: [],
+          missingSkills: [],
+          jobSpecificSuggestions: [],
+        };
       }
       
       return {
-        matchScore,
-        matchingSkills,
-        missingSkills,
-        jobSpecificSuggestions,
+        matchScore: analysisResult.matchScore || 5,
+        matchingSkills: Array.isArray(analysisResult.matchingSkills) ? analysisResult.matchingSkills : [],
+        missingSkills: Array.isArray(analysisResult.missingSkills) ? analysisResult.missingSkills : [],
+        jobSpecificSuggestions: Array.isArray(analysisResult.suggestions) ? analysisResult.suggestions : [],
       };
     } catch (error) {
       this.logger.error('Error generating job match analysis:', error);
@@ -994,60 +1022,40 @@ export class ResumeAnalyzerService {
     careerPotential: string;
   }> {
     try {
-      const prompt = `作为资深HR和技术专家，请对以下简历进行能力素质评估（用中文回答）：
-
-简历类型：${resumeType === 'freshman' ? '校招生' : '社招'}
-
-简历内容（前500字）：
-${text.substring(0, 500)}
-
-请从以下方面进行评估：
-1. 核心竞争力（列出3-5个最突出的能力）
-2. 技术技能水平（描述整体技术能力水平）
-3. 项目经验价值（评估项目经验的质量和相关性）
-4. 职业发展潜力（分析未来职业发展的可能性）
-
-每个方面用简洁的中文描述，不要添加任何引言或结论。`;
-
-      const response = await this.resumeLLMService.generateDetailedAnalysisReport(text, parsedData, {});
+      const response = await this.resumeLLMService.generateCompetencyAnalysis(text, parsedData, resumeType);
       
-      // 解析能力素质评估结果
-      const lines = response.split('\n');
-      const coreCompetencies: string[] = [];
-      let technicalSkillsLevel = '一般';
-      let projectExperienceValue = '一般';
-      let careerPotential = '一般';
+      if (!response) {
+        return {
+          coreCompetencies: [],
+          technicalSkillsLevel: '一般',
+          projectExperienceValue: '一般',
+          careerPotential: '一般',
+        };
+      }
       
-      let currentSection = '';
-      for (const line of lines) {
-        const trimmedLine = line.trim();
-        if (trimmedLine.includes('最突出的')) {
-          currentSection = 'competencies';
-        } else if (trimmedLine.includes('技术技能')) {
-          currentSection = 'technical';
-        } else if (trimmedLine.includes('项目经验')) {
-          currentSection = 'project';
-        } else if (trimmedLine.includes('职业发展')) {
-          currentSection = 'potential';
-        } else if (currentSection && trimmedLine && !trimmedLine.match(/^(\d+\.|-|\*|•)\s*$/)) {
-          const cleanedLine = trimmedLine.replace(/^(\d+\.|-|\*|•)\s*/, '');
-          if (currentSection === 'competencies') {
-            coreCompetencies.push(cleanedLine);
-          } else if (currentSection === 'technical') {
-            technicalSkillsLevel = cleanedLine;
-          } else if (currentSection === 'project') {
-            projectExperienceValue = cleanedLine;
-          } else if (currentSection === 'potential') {
-            careerPotential = cleanedLine;
-          }
+      let analysisResult: any;
+      try {
+        const jsonMatch = response.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          analysisResult = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('No JSON found in response');
         }
+      } catch (parseError) {
+        this.logger.error('Error parsing competency analysis JSON:', parseError);
+        return {
+          coreCompetencies: [],
+          technicalSkillsLevel: '一般',
+          projectExperienceValue: '一般',
+          careerPotential: '一般',
+        };
       }
       
       return {
-        coreCompetencies,
-        technicalSkillsLevel,
-        projectExperienceValue,
-        careerPotential,
+        coreCompetencies: Array.isArray(analysisResult.coreCompetencies) ? analysisResult.coreCompetencies : [],
+        technicalSkillsLevel: analysisResult.technicalSkillsLevel || '一般',
+        projectExperienceValue: analysisResult.projectExperienceValue || '一般',
+        careerPotential: analysisResult.careerPotential || '一般',
       };
     } catch (error) {
       this.logger.error('Error generating competency analysis:', error);
