@@ -94,24 +94,7 @@ interface Resume {
   createdAt: string;
 }
 
-interface Analysis {
-  id: string;
-  overallScore: number;
-  completenessScore: number;
-  keywordScore: number;
-  formatScore: number;
-  experienceScore: number;
-  skillsScore: number;
-  strengths: string[];
-  weaknesses: string[];
-  suggestions: Record<string, any>;
-  keywordAnalysis: Record<string, number>;
-  structureAnalysis: Record<string, any>;
-  contentAnalysis: Record<string, any>;
-  personalInfoSuggestions?: Record<string, any>;
-  experienceSuggestions?: Record<string, any>[];
-  skillsSuggestions?: Record<string, any>;
-}
+type Analysis = any;
 
 const ResumeDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -268,7 +251,7 @@ const ResumeDetail: React.FC = () => {
               <p>等待分析完成...</p>
             </LoadingContainer>
           ) : (
-            <AnalysisPanel analysis={analysis} parsedData={resume.parsedData} />
+            <AnalysisPanel analysis={analysis as Analysis} parsedData={resume.parsedData} />
           )}
         </RightPanel>
 

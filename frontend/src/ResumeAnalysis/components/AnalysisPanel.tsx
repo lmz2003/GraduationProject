@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import styled from 'styled-components';
 
 const Container = styled.div`
@@ -65,6 +65,7 @@ const TabContainer = styled.div`
   gap: 8px;
   margin-bottom: 20px;
   border-bottom: 2px solid #e2e8f0;
+  overflow-x: auto;
 `;
 
 const Tab = styled.button<{ $active?: boolean }>`
@@ -77,6 +78,7 @@ const Tab = styled.button<{ $active?: boolean }>`
   font-weight: ${props => (props.$active ? '600' : '500')};
   cursor: pointer;
   transition: all 0.2s;
+  white-space: nowrap;
 
   ${props => props.$active && `
     border-bottom-color: #4f46e5;
@@ -124,7 +126,7 @@ const KeywordContainer = styled.div`
   gap: 8px;
 `;
 
-const KeywordTag = styled.span<{ $count?: number }>`
+const KeywordTag = styled.span`
   background: #ede9fe;
   color: #4f46e5;
   padding: 6px 12px;
@@ -134,12 +136,6 @@ const KeywordTag = styled.span<{ $count?: number }>`
   display: inline-flex;
   align-items: center;
   gap: 6px;
-
-  ::after {
-    content: '${props => (props.$count && props.$count > 1 ? ` ×${props.$count}` : '')}';
-    font-size: 0.8rem;
-    color: #7c3aed;
-  }
 `;
 
 const SuggestionBox = styled.div`
@@ -151,6 +147,8 @@ const SuggestionBox = styled.div`
   font-size: 0.9rem;
   line-height: 1.5;
   margin-bottom: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
 
   &:last-child {
     margin-bottom: 0;
@@ -165,125 +163,106 @@ const TextContent = styled.div`
   word-break: break-word;
 `;
 
+const MatchScoreTag = styled.span<{ $score?: number }>`
+  display: inline-block;
+  background: ${props => {
+    const score = props.$score || 0;
+    if (score >= 80) return '#dcfce7';
+    if (score >= 60) return '#fef3c7';
+    return '#fee2e2';
+  }};
+  color: ${props => {
+    const score = props.$score || 0;
+    if (score >= 80) return '#166534';
+    if (score >= 60) return '#92400e';
+    return '#991b1b';
+  }};
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-weight: 500;
+  font-size: 0.85rem;
+  margin: 0 4px;
+`;
+
 interface Analysis {
+  id: string;
   overallScore: number;
   completenessScore: number;
   keywordScore: number;
-  formatScore: number;
   experienceScore: number;
   skillsScore: number;
-  strengths: string[];
-  weaknesses: string[];
-  suggestions: Record<string, any>;
-  keywordAnalysis: Record<string, number>;
-  structureAnalysis: Record<string, any>;
-  contentAnalysis: Record<string, any>;
-  personalInfoSuggestions?: Record<string, any>;
-  experienceSuggestions?: Record<string, any>[];
-  skillsSuggestions?: Record<string, any>;
+  keywordAnalysis: string;
+  contentAnalysis: string;
+  jobMatchAnalysis: string;
+  competencyAnalysis: string;
+  detailedReport: string;
+  createdAt: string;
 }
 
 interface AnalysisPanelProps {
-  analysis: Analysis;
+  analysis: Analysis | any;
   parsedData?: any;
 }
 
-const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, parsedData }) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'suggestions' | 'keywords' | 'details'>('overview');
+// 安全的 JSON 解析函数
+const safeJsonParse = (jsonStr: string | null | undefined, fallback: any = {}) => {
+  if (!jsonStr) return fallback;
+  try {
+    return JSON.parse(jsonStr);
+  } catch (e) {
+    console.error('Failed to parse JSON:', e, jsonStr);
+    return fallback;
+  }
+};
+
+const AnalysisPanel: React.FC<any> = ({ analysis, parsedData }) => {
+  const [activeTab, setActiveTab] = useState<'overview' | 'keywords' | 'content' | 'jobMatch' | 'competency' | 'report'>('overview');
+
+  // 解析 JSON 字段
+  const keywordData = useMemo(() => safeJsonParse(analysis.keywordAnalysis, { keywords: [] }), [analysis.keywordAnalysis]);
+  const contentData = useMemo(() => safeJsonParse(analysis.contentAnalysis, { totalWords: 0, sections: {} }), [analysis.contentAnalysis]);
+  const jobMatchData = useMemo(() => safeJsonParse(analysis.jobMatchAnalysis, { matchScore: 0, matchingSkills: [], missingSkills: [], jobSpecificSuggestions: [] }), [analysis.jobMatchAnalysis]);
+  const competencyData = useMemo(() => safeJsonParse(analysis.competencyAnalysis, { coreCompetencies: [], technicalSkillsLevel: '', projectExperienceValue: '', careerPotential: '' }), [analysis.competencyAnalysis]);
+  const reportData = useMemo(() => safeJsonParse(analysis.detailedReport, { overallEvaluation: '', strengths: [], improvements: [], suggestions: [] }), [analysis.detailedReport]);
 
   const renderOverview = () => (
     <>
       <Section>
-        <SectionTitle>💪 优势分析</SectionTitle>
+        <SectionTitle>📊 各维度评分</SectionTitle>
         <List>
-          {analysis.strengths && analysis.strengths.map((strength, idx) => (
-            <ListItem key={idx}>{strength}</ListItem>
-          ))}
+          <ListItem>完整性评分: {Math.round(analysis.completenessScore)}/100</ListItem>
+          <ListItem>关键词覆盖: {Math.round(analysis.keywordScore)}/100</ListItem>
+          <ListItem>工作经验: {Math.round(analysis.experienceScore)}/100</ListItem>
+          <ListItem>技能评分: {Math.round(analysis.skillsScore)}/100</ListItem>
         </List>
       </Section>
 
-      <Section>
-        <SectionTitle>⚠️ 改进空间</SectionTitle>
-        <List>
-          {analysis.weaknesses && analysis.weaknesses.map((weakness, idx) => (
-            <ListItem key={idx}>{weakness}</ListItem>
-          ))}
-        </List>
-      </Section>
-    </>
-  );
-
-  const renderSuggestions = () => (
-    <>
-      {analysis.suggestions?.detailedReport && (
+      {reportData.overallEvaluation && (
         <Section>
-          <SectionTitle>📋 详细评估</SectionTitle>
-          <TextContent>{analysis.suggestions.detailedReport}</TextContent>
+          <SectionTitle>🎯 总体评价</SectionTitle>
+          <TextContent>{reportData.overallEvaluation}</TextContent>
         </Section>
       )}
 
-      {analysis.suggestions?.personalInfo && (
+      {reportData.strengths && reportData.strengths.length > 0 && (
         <Section>
-          <SectionTitle>👤 个人信息优化</SectionTitle>
-          <SuggestionBox>{analysis.suggestions.personalInfo}</SuggestionBox>
+          <SectionTitle>💪 主要优势</SectionTitle>
+          <List>
+            {reportData.strengths.map((strength: string, idx: number) => (
+              <ListItem key={idx}>{strength}</ListItem>
+            ))}
+          </List>
         </Section>
       )}
 
-      {analysis.personalInfoSuggestions?.suggestion && (
+      {reportData.improvements && reportData.improvements.length > 0 && (
         <Section>
-          <TextContent>{analysis.personalInfoSuggestions.suggestion}</TextContent>
-        </Section>
-      )}
-
-      {analysis.suggestions?.summary && (
-        <Section>
-          <SectionTitle>📝 专业总结建议</SectionTitle>
-          <SuggestionBox>{analysis.suggestions.summary}</SuggestionBox>
-        </Section>
-      )}
-
-      {analysis.suggestions?.experience && (
-        <Section>
-          <SectionTitle>💼 工作经验优化</SectionTitle>
-          <SuggestionBox>{analysis.suggestions.experience}</SuggestionBox>
-          {analysis.experienceSuggestions && analysis.experienceSuggestions.length > 0 && (
-            <TextContent style={{ marginTop: '12px' }}>
-              {analysis.experienceSuggestions[0]?.suggestion}
-            </TextContent>
-          )}
-        </Section>
-      )}
-
-      {analysis.suggestions?.skills && (
-        <Section>
-          <SectionTitle>🎯 技能优化</SectionTitle>
-          <SuggestionBox>{analysis.suggestions.skills}</SuggestionBox>
-          {analysis.skillsSuggestions?.suggestion && (
-            <TextContent style={{ marginTop: '12px' }}>
-              {analysis.skillsSuggestions.suggestion}
-            </TextContent>
-          )}
-        </Section>
-      )}
-
-      {analysis.suggestions?.format && (
-        <Section>
-          <SectionTitle>📐 格式规范</SectionTitle>
-          <SuggestionBox>{analysis.suggestions.format}</SuggestionBox>
-        </Section>
-      )}
-
-      {analysis.suggestions?.education && (
-        <Section>
-          <SectionTitle>🎓 教育背景</SectionTitle>
-          <SuggestionBox>{analysis.suggestions.education}</SuggestionBox>
-        </Section>
-      )}
-
-      {analysis.suggestions?.projects && (
-        <Section>
-          <SectionTitle>🚀 项目经验</SectionTitle>
-          <SuggestionBox>{analysis.suggestions.projects}</SuggestionBox>
+          <SectionTitle>📈 改进空间</SectionTitle>
+          <List>
+            {reportData.improvements.map((improvement: string, idx: number) => (
+              <ListItem key={idx}>{improvement}</ListItem>
+            ))}
+          </List>
         </Section>
       )}
     </>
@@ -293,47 +272,53 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, parsedData }) =
     <>
       <Section>
         <SectionTitle>🔑 识别到的关键词</SectionTitle>
-        <KeywordContainer>
-          {Object.entries(analysis.keywordAnalysis || {}).map(([keyword, count]) => (
-            <KeywordTag key={keyword} $count={count as number}>
-              {keyword}
-            </KeywordTag>
-          ))}
-        </KeywordContainer>
+        {keywordData.keywords && keywordData.keywords.length > 0 ? (
+          <KeywordContainer>
+            {keywordData.keywords.map((keyword: string, idx: number) => (
+              <KeywordTag key={idx}>{keyword}</KeywordTag>
+            ))}
+          </KeywordContainer>
+        ) : (
+          <TextContent style={{ color: '#64748b' }}>未识别到关键词</TextContent>
+        )}
       </Section>
 
-      {Object.keys(analysis.keywordAnalysis || {}).length === 0 && (
+      {keywordData.categoryScores && (
         <Section>
-          <p style={{ color: '#64748b' }}>未识别到关键词</p>
+          <SectionTitle>📊 关键词分类评分</SectionTitle>
+          <List>
+            {Object.entries(keywordData.categoryScores).map(([category, score]: [string, any]) => (
+              <ListItem key={category}>
+                {category}: {score as string | number}
+              </ListItem>
+            ))}
+          </List>
         </Section>
       )}
     </>
   );
 
-  const renderDetails = () => (
+  const renderContent = () => (
     <>
       <Section>
-        <SectionTitle>📊 内容分析</SectionTitle>
-        {analysis.contentAnalysis && (
-          <>
-            <TextContent>
-              总字数: {analysis.contentAnalysis.totalWords || 0}
-            </TextContent>
-            {analysis.contentAnalysis.sections && (
-              <div style={{ marginTop: '12px' }}>
-                <strong>各部分内容数：</strong>
-                <ul style={{ margin: '8px 0', paddingLeft: '20px', fontSize: '0.9rem' }}>
-                  {Object.entries(analysis.contentAnalysis.sections).map(([section, count]) => (
-                    <li key={section}>
-                      {section}: {count as number | string}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </>
-        )}
+        <SectionTitle>📋 内容分析</SectionTitle>
+        <TextContent>
+          总字数: <strong>{contentData.totalWords || 0}</strong>
+        </TextContent>
       </Section>
+
+      {contentData.sections && Object.keys(contentData.sections).length > 0 && (
+        <Section>
+          <SectionTitle>📑 各部分内容</SectionTitle>
+          <List>
+            {Object.entries(contentData.sections).map(([section, count]: [string, any]) => (
+              <ListItem key={section}>
+                {section}: {count as string | number}
+              </ListItem>
+            ))}
+          </List>
+        </Section>
+      )}
 
       {parsedData && (
         <Section>
@@ -343,6 +328,104 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, parsedData }) =
           </TextContent>
         </Section>
       )}
+    </>
+  );
+
+  const renderJobMatch = () => (
+    <>
+      <Section>
+        <SectionTitle>🎯 岗位匹配度</SectionTitle>
+        <TextContent>
+          匹配评分: <MatchScoreTag $score={jobMatchData.matchScore}>{jobMatchData.matchScore}/10</MatchScoreTag>
+        </TextContent>
+      </Section>
+
+      {jobMatchData.matchingSkills && jobMatchData.matchingSkills.length > 0 && (
+        <Section>
+          <SectionTitle>✅ 匹配的技能与经验</SectionTitle>
+          <List>
+            {jobMatchData.matchingSkills.map((skill: string, idx: number) => (
+              <ListItem key={idx}>{skill}</ListItem>
+            ))}
+          </List>
+        </Section>
+      )}
+
+      {jobMatchData.missingSkills && jobMatchData.missingSkills.length > 0 && (
+        <Section>
+          <SectionTitle>❌ 缺失的技能</SectionTitle>
+          <List>
+            {jobMatchData.missingSkills.map((skill: string, idx: number) => (
+              <ListItem key={idx}>{skill}</ListItem>
+            ))}
+          </List>
+        </Section>
+      )}
+
+      {jobMatchData.jobSpecificSuggestions && jobMatchData.jobSpecificSuggestions.length > 0 && (
+        <Section>
+          <SectionTitle>💡 针对岗位的建议</SectionTitle>
+          {jobMatchData.jobSpecificSuggestions.map((suggestion: string, idx: number) => (
+            <SuggestionBox key={idx}>{suggestion}</SuggestionBox>
+          ))}
+        </Section>
+      )}
+    </>
+  );
+
+  const renderCompetency = () => (
+    <>
+      {competencyData.coreCompetencies && competencyData.coreCompetencies.length > 0 && (
+        <Section>
+          <SectionTitle>⭐ 核心竞争力</SectionTitle>
+          <List>
+            {competencyData.coreCompetencies.map((competency: string, idx: number) => (
+              <ListItem key={idx}>{competency}</ListItem>
+            ))}
+          </List>
+        </Section>
+      )}
+
+      {competencyData.technicalSkillsLevel && (
+        <Section>
+          <SectionTitle>🔧 技能水平评估</SectionTitle>
+          <TextContent>{competencyData.technicalSkillsLevel}</TextContent>
+        </Section>
+      )}
+
+      {competencyData.projectExperienceValue && (
+        <Section>
+          <SectionTitle>💼 项目经验价值</SectionTitle>
+          <TextContent>{competencyData.projectExperienceValue}</TextContent>
+        </Section>
+      )}
+
+      {competencyData.careerPotential && (
+        <Section>
+          <SectionTitle>🚀 职业发展潜力</SectionTitle>
+          <TextContent>{competencyData.careerPotential}</TextContent>
+        </Section>
+      )}
+    </>
+  );
+
+  const renderReport = () => (
+    <>
+      {reportData.suggestions && reportData.suggestions.length > 0 && (
+        <Section>
+          <SectionTitle>📝 详细建议</SectionTitle>
+          {reportData.suggestions.map((suggestion: string, idx: number) => (
+            <SuggestionBox key={idx}>{suggestion}</SuggestionBox>
+          ))}
+        </Section>
+      )}
+
+      <Section>
+        <SectionTitle>ℹ️ 分析元数据</SectionTitle>
+        <TextContent>
+          分析时间: {new Date(analysis.createdAt).toLocaleString('zh-CN')}
+        </TextContent>
+      </Section>
     </>
   );
 
@@ -370,12 +453,6 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, parsedData }) =
             <ScoreLabel>关键词覆盖</ScoreLabel>
           </ScoreCard>
           <ScoreCard>
-            <ScoreValue $score={analysis.formatScore}>
-              {Math.round(analysis.formatScore)}
-            </ScoreValue>
-            <ScoreLabel>格式规范</ScoreLabel>
-          </ScoreCard>
-          <ScoreCard>
             <ScoreValue $score={analysis.experienceScore}>
               {Math.round(analysis.experienceScore)}
             </ScoreValue>
@@ -393,23 +470,31 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, parsedData }) =
       <Content>
         <TabContainer>
           <Tab $active={activeTab === 'overview'} onClick={() => setActiveTab('overview')}>
-            概览
-          </Tab>
-          <Tab $active={activeTab === 'suggestions'} onClick={() => setActiveTab('suggestions')}>
-            建议
+            📊 概览
           </Tab>
           <Tab $active={activeTab === 'keywords'} onClick={() => setActiveTab('keywords')}>
-            关键词
+            🔑 关键词
           </Tab>
-          <Tab $active={activeTab === 'details'} onClick={() => setActiveTab('details')}>
-            详情
+          <Tab $active={activeTab === 'content'} onClick={() => setActiveTab('content')}>
+            📋 内容
+          </Tab>
+          <Tab $active={activeTab === 'jobMatch'} onClick={() => setActiveTab('jobMatch')}>
+            🎯 岗位匹配
+          </Tab>
+          <Tab $active={activeTab === 'competency'} onClick={() => setActiveTab('competency')}>
+            ⭐ 核心竞能
+          </Tab>
+          <Tab $active={activeTab === 'report'} onClick={() => setActiveTab('report')}>
+            📝 建议
           </Tab>
         </TabContainer>
 
         {activeTab === 'overview' && renderOverview()}
-        {activeTab === 'suggestions' && renderSuggestions()}
         {activeTab === 'keywords' && renderKeywords()}
-        {activeTab === 'details' && renderDetails()}
+        {activeTab === 'content' && renderContent()}
+        {activeTab === 'jobMatch' && renderJobMatch()}
+        {activeTab === 'competency' && renderCompetency()}
+        {activeTab === 'report' && renderReport()}
       </Content>
     </Container>
   );
