@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: 201966
       POSTGRES_DB: interviewer
     ports:
-      - "127.0.0.1:5432:5432"  # 安全：只允许本机访问
+      - "5432:5432"  # 允许外部访问
     volumes:
       - postgres_data:/var/lib/postgresql
     networks:
@@ -32,8 +32,8 @@ services:
       GRPC_MAX_SEND_MESSAGE_LENGTH: 268435456  # 256MB
       GRPC_MAX_RECEIVE_MESSAGE_LENGTH: 268435456  # 256MB
     ports:
-      - "127.0.0.1:19530:19530"  # 安全：只允许本机访问 (gRPC)
-      - "127.0.0.1:9091:9091"    # 安全：只允许本机访问 (HTTP)
+      - "19530:19530"  # 允许外部访问 (gRPC)
+      - "9091:9091"    # 允许外部访问 (HTTP)
     volumes:
       - milvus_data:/var/lib/milvus
     networks:
@@ -66,7 +66,7 @@ services:
       - ETCD_QUOTA_BACKEND_BYTES=4294967296
       - ETCD_SNAPSHOT_COUNT=50000
     ports:
-      - "127.0.0.1:2379:2379"  # 安全：只允许本机访问
+      - "2379:2379"  # 允许外部访问
     volumes:
       - etcd_data:/etcd
     networks:
@@ -87,8 +87,8 @@ services:
       MINIO_ROOT_USER: minioadmin  # 替换已弃用的MINIO_ACCESS_KEY
       MINIO_ROOT_PASSWORD: minioadmin  # 替换已弃用的MINIO_SECRET_KEY
     ports:
-      - "127.0.0.1:9000:9000"  # 安全：只允许本机访问 (API)
-      - "127.0.0.1:9001:9001"  # 安全：只允许本机访问 (Console)
+      - "9000:9000"  # 允许外部访问 (API)
+      - "9001:9001"  # 允许外部访问 (Console)
     volumes:
       - minio_data:/data  # 修复：改为/data目录
     networks:

@@ -94,7 +94,20 @@ interface Resume {
   createdAt: string;
 }
 
-type Analysis = any;
+interface Analysis {
+  id: string;
+  overallScore: number;
+  completenessScore: number;
+  keywordScore: number;
+  experienceScore: number;
+  skillsScore: number;
+  keywordAnalysis: string;
+  contentAnalysis: string;
+  jobMatchAnalysis: string;
+  competencyAnalysis: string;
+  detailedReport: string;
+  createdAt: string;
+}
 
 const ResumeDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
