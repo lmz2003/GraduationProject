@@ -325,7 +325,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, parsedData }) =
                 <ul style={{ margin: '8px 0', paddingLeft: '20px', fontSize: '0.9rem' }}>
                   {Object.entries(analysis.contentAnalysis.sections).map(([section, count]) => (
                     <li key={section}>
-                      {section}: {count}
+                      {section}: {count as number | string}
                     </li>
                   ))}
                 </ul>
