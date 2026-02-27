@@ -57,8 +57,6 @@ export class ResumeAnalysisService {
     userId: string
   ): Promise<Resume> {
     try {
-      this.logger.log(`[Stage: Upload Text] Starting text resume upload - Title: "${dto.title}", UserId: ${userId}`);
-      
       const resume = this.resumeRepository.create({
         title: dto.title,
         content: dto.content || '',
@@ -70,18 +68,16 @@ export class ResumeAnalysisService {
       });
 
       const savedResume = await this.resumeRepository.save(resume);
-      this.logger.log(`[Stage: Upload Text] Resume saved successfully - ResumeId: ${savedResume.id}, ContentLength: ${(dto.content || '').length} chars`);
+      this.logger.log(`[Upload] Resume created - ResumeId: ${savedResume.id}, Title: "${dto.title}"`);
 
-      // 异步处理解析和分析
-      this.logger.log(`[Stage: Upload Text] Triggering async processing for resume ${savedResume.id}`);
       this.processResumeAsync(savedResume.id, userId).catch((error) => {
-        this.logger.error(`[Stage: Upload Text] Error processing resume ${savedResume.id}:`, error);
+        this.logger.error(`[Upload] Async processing failed for resume ${savedResume.id}:`, error);
       });
 
       return savedResume;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`[Stage: Upload Text] Failed to upload resume - Error: ${errorMsg}`, error);
+      this.logger.error(`[Upload] Failed to upload resume - Error: ${errorMsg}`, error);
       throw new BadRequestException(`Failed to upload resume: ${errorMsg}`);
     }
   }
@@ -99,12 +95,7 @@ export class ResumeAnalysisService {
     jobDescription?: string
   ): Promise<Resume> {
     try {
-      this.logger.log(`[Stage: Upload File] Starting file resume upload - FileName: "${fileName}", FileType: ${fileType}, FileSize: ${fileSize} bytes, UserId: ${userId}`);
-      
-      // 解析文件内容
-      this.logger.log(`[Stage: Upload File] Parsing file buffer - FileName: "${fileName}", FileType: ${fileType}`);
       const content = await this.parserService.parseResumeBuffer(fileBuffer, fileType);
-      this.logger.log(`[Stage: Upload File] File parsing completed - ContentLength: ${content.length} chars`);
 
       const resume = this.resumeRepository.create({
         title,
@@ -120,18 +111,16 @@ export class ResumeAnalysisService {
       });
 
       const savedResume = await this.resumeRepository.save(resume);
-      this.logger.log(`[Stage: Upload File] Resume saved successfully - ResumeId: ${savedResume.id}, Title: "${title}"`);
+      this.logger.log(`[Upload] Resume uploaded - ResumeId: ${savedResume.id}, File: "${fileName}", ContentLength: ${content.length} chars`);
 
-      // 异步处理解析和分析
-      this.logger.log(`[Stage: Upload File] Triggering async processing for resume ${savedResume.id}`);
       this.processResumeAsync(savedResume.id, userId).catch((error) => {
-        this.logger.error(`[Stage: Upload File] Error processing resume ${savedResume.id}:`, error);
+        this.logger.error(`[Upload] Async processing failed for resume ${savedResume.id}:`, error);
       });
 
       return savedResume;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`[Stage: Upload File] Failed to upload resume file - FileName: "${fileName}", Error: ${errorMsg}`, error);
+      this.logger.error(`[Upload] Failed to upload file "${fileName}" - Error: ${errorMsg}`, error);
       throw new BadRequestException(`Failed to upload resume: ${errorMsg}`);
     }
   }
@@ -141,38 +130,24 @@ export class ResumeAnalysisService {
    */
   private async processResumeAsync(resumeId: string, userId: string): Promise<void> {
     try {
-      this.logger.log(`[Stage: Processing] Starting async resume processing - ResumeId: ${resumeId}, UserId: ${userId}`);
-      
       const resume = await this.resumeRepository.findOne({ where: { id: resumeId } });
       if (!resume) {
-        this.logger.warn(`[Stage: Processing] Resume not found: ${resumeId}`);
+        this.logger.warn(`[Process] Resume not found: ${resumeId}`);
         return;
       }
-      this.logger.log(`[Stage: Processing] Resume found - Title: "${resume.title}", ContentLength: ${resume.content.length} chars`);
 
-      // 1. 解析简历内容
-      this.logger.log(`[Stage: Parsing] Starting resume content parsing - ResumeId: ${resumeId}`);
       const parsedData = await this.parserService.parseResumeContent(resume.content);
-      this.logger.log(`[Stage: Parsing] Resume parsing completed - ResumeId: ${resumeId}`);
 
-      // 2. 更新解析数据
-      this.logger.log(`[Stage: Update Parsed Data] Saving parsed data to database - ResumeId: ${resumeId}`);
       resume.parsedData = parsedData;
       await this.resumeRepository.save(resume);
-      this.logger.log(`[Stage: Update Parsed Data] Parsed data saved successfully - ResumeId: ${resumeId}`);
 
-      // 3. 执行分析
-      this.logger.log(`[Stage: Analysis] Starting resume analysis - ResumeId: ${resumeId}, HasJobDescription: ${!!resume.jobDescription}`);
       const analysisResult = await this.analyzerService.analyzeResume(
         resume.content,
         parsedData,
         resume.jobDescription,
         resume.title
       );
-      this.logger.log(`[Stage: Analysis] Resume analysis completed - OverallScore: ${analysisResult.overallScore}, ResumeType: ${analysisResult.resumeType}`);
 
-      // 4. 保存分析结果
-      this.logger.log(`[Stage: Save Analysis] Saving analysis results to database - ResumeId: ${resumeId}`);
       const analysis = this.analysisRepository.create({
         resumeId,
         overallScore: analysisResult.overallScore,
@@ -180,7 +155,7 @@ export class ResumeAnalysisService {
         keywordScore: analysisResult.keywordScore,
         experienceScore: analysisResult.experienceScore,
         skillsScore: analysisResult.skillsScore,
-        keywordAnalysis: JSON.stringify(analysisResult.keywordAnalysis), // 包含keywords和categoryScores
+        keywordAnalysis: JSON.stringify(analysisResult.keywordAnalysis),
         contentAnalysis: JSON.stringify(analysisResult.contentAnalysis),
         jobMatchAnalysis: analysisResult.jobMatchAnalysis ? JSON.stringify(analysisResult.jobMatchAnalysis) : undefined,
         competencyAnalysis: analysisResult.competencyAnalysis ? JSON.stringify(analysisResult.competencyAnalysis) : undefined,
@@ -188,16 +163,13 @@ export class ResumeAnalysisService {
       });
 
       await this.analysisRepository.save(analysis);
-      this.logger.log(`[Stage: Save Analysis] Analysis results saved - ResumeId: ${resumeId}, Scores: [Completeness: ${analysisResult.completenessScore}, Keyword: ${analysisResult.keywordScore}, Experience: ${analysisResult.experienceScore}, Skills: ${analysisResult.skillsScore}]`);
 
-      // 更新简历状态
-      this.logger.log(`[Stage: Complete] Marking resume as processed - ResumeId: ${resumeId}`);
       resume.isProcessed = true;
       await this.resumeRepository.save(resume);
 
-      this.logger.log(`[Stage: Complete] Resume processed successfully - ResumeId: ${resumeId}, OverallScore: ${analysisResult.overallScore}`);
+      this.logger.log(`[Process] Resume analysis completed - ResumeId: ${resumeId}, OverallScore: ${analysisResult.overallScore}`);
     } catch (error) {
-      this.logger.error(`[Stage: Processing] Error processing resume ${resumeId} - Error: ${error instanceof Error ? error.message : 'Unknown'}`, error);
+      this.logger.error(`[Process] Failed to process resume ${resumeId} - Error: ${error instanceof Error ? error.message : 'Unknown'}`, error);
     }
   }
 
@@ -222,13 +194,8 @@ export class ResumeAnalysisService {
    * 获取简历分析结果
    */
   async getResumeAnalysis(resumeId: string, userId: string): Promise<ResumeAnalysis> {
-    this.logger.log(`[Stage: Get Analysis] Retrieving analysis results - ResumeId: ${resumeId}, UserId: ${userId}`);
-    
-    // 1. 验证简历所有权
     const resume = await this.getUserResume(resumeId, userId);
-    this.logger.log(`[Stage: Get Analysis] Resume verified - Title: "${resume.title}", IsProcessed: ${resume.isProcessed}`);
     
-    // 2. 获取分析结果
     const analysis = await this.analysisRepository.findOne({
       where: { resumeId },
     });
@@ -236,10 +203,8 @@ export class ResumeAnalysisService {
       const errorMsg = resume.isProcessed 
         ? 'Analysis result not found' 
         : 'Resume is still being processed. Please try again later.';
-      this.logger.warn(`[Stage: Get Analysis] Analysis not found - ResumeId: ${resumeId}, IsProcessed: ${resume.isProcessed}, Message: ${errorMsg}`);
       throw new NotFoundException(errorMsg);
     }
-    this.logger.log(`[Stage: Get Analysis] Analysis retrieved successfully - OverallScore: ${analysis.overallScore}, CreatedAt: ${analysis.createdAt}`);
     return analysis;
   }
 
@@ -255,9 +220,8 @@ export class ResumeAnalysisService {
 
     const updated = await this.resumeRepository.save(resume);
 
-    // 异步重新处理
     this.processResumeAsync(id, userId).catch((error) => {
-      this.logger.error(`Error reprocessing resume ${id}:`, error);
+      this.logger.error(`[Update] Failed to reprocess resume ${id}:`, error);
     });
 
     return updated;
@@ -273,20 +237,4 @@ export class ResumeAnalysisService {
     resume.status = 'deleted';
     await this.resumeRepository.save(resume);
   }
-
-//   /**
-//    * 对标职位描述
-//    */
-//   async compareWithJobDescription(
-//     resumeId: string,
-//     userId: string,
-//     jobDescription: string
-//   ): Promise<string> {
-//     const resume = await this.getUserResume(resumeId, userId);
-
-//     return this.llmService.generateJobMatchAnalysis(
-//       resume.content,
-//       jobDescription
-//     );
-//   }
 }

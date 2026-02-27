@@ -199,106 +199,75 @@ export class ResumeParserService {
         });
       }
 
-      this.logger.log(`[LLM] LLM initialized successfully with provider: ${provider}, model: ${modelName}`);
+      this.logger.log(`[LLM] Initialized - Provider: ${provider}, Model: ${modelName}`);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
-      this.logger.error(`[LLM] Failed to initialize LLM: ${errorMsg}`);
+      this.logger.error(`[LLM] Failed to initialize: ${errorMsg}`);
       throw new BadRequestException(`[LLM] Initialization failed: ${errorMsg}`);
     }
   }
 
-  /**
-   * 解析 PDF 文件
-   */
   async parsePDF(filePath: string): Promise<string> {
     try {
-      this.logger.log(`[PDF Parser] Starting to parse PDF file: ${filePath}`);
       const fileBuffer = fs.readFileSync(filePath);
-      this.logger.log(`[PDF Parser] File buffer size: ${fileBuffer.length} bytes`);
 
-      // 使用自定义页面渲染器处理乱码问题
       const pdfData = await PDFParser(fileBuffer, {
         pagerender: (pageData: any) => {
-          // 获取页面文本
           let text = pageData.getTextContent();
           let finalText = '';
           
           if (text && text.items) {
-            // 逐个处理每个文本项，确保正确的字符编码
             for (let item of text.items) {
-              // 处理特殊字符和乱码
               if (item.str) {
                 finalText += item.str;
               }
-              // 处理空格
               if (item.width) {
                 finalText += ' ';
               }
             }
-            // 添加换行符
             finalText += '\n';
           }
           
           return finalText;
         },
-        max: 0, // 0 表示解析所有页面，不限制
+        max: 0,
       });
 
       let text = pdfData.text || '';
-
-      // 清理提取的文本中的乱码字符
       text = this.cleanupTextContent(text);
 
-      this.logger.log(`[PDF Parser] PDF parsed successfully. Total characters: ${text.length}`);
-      this.logger.log(`[PDF Parser] Number of pages: ${pdfData.numpages}`);
-      this.logger.log(`[PDF Parser] Extracted text preview:\n${text}`);
-
+      this.logger.log(`[PDF] Parsed - Pages: ${pdfData.numpages}, Chars: ${text.length}`);
       return text;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`[PDF Parser] PDF parsing failed: ${errorMsg}`, error);
+      this.logger.error(`[PDF] Parsing failed: ${errorMsg}`);
       throw new BadRequestException(`PDF parsing failed: ${errorMsg}`);
     }
   }
 
-  /**
-   * 解析 DOCX 文件
-   */
   async parseDocx(filePath: string): Promise<string> {
     try {
-      this.logger.log(`[DOCX Parser] Starting to parse DOCX file: ${filePath}`);
       const fileBuffer = fs.readFileSync(filePath);
-      this.logger.log(`[DOCX Parser] File buffer size: ${fileBuffer.length} bytes`);
-
       const result = await mammoth.extractRawText({ buffer: fileBuffer });
       const text = result.value;
 
-      this.logger.log(`[DOCX Parser] DOCX parsed successfully. Total characters: ${text.length}`);
-      this.logger.log(`[DOCX Parser] Extracted text preview :\n${text}`);
-
+      this.logger.log(`[DOCX] Parsed - Chars: ${text.length}`);
       return text;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`[DOCX Parser] DOCX parsing failed: ${errorMsg}`, error);
+      this.logger.error(`[DOCX] Parsing failed: ${errorMsg}`);
       throw new BadRequestException(`DOCX parsing failed: ${errorMsg}`);
     }
   }
 
-  /**
-   * 解析文本文件
-   */
   async parseTextFile(filePath: string): Promise<string> {
     try {
-      this.logger.log(`[Text Parser] Starting to parse text file: ${filePath}`);
       const content = fs.readFileSync(filePath, 'utf-8');
-
-      this.logger.log(`[Text Parser] Text file parsed successfully. Total characters: ${content.length}`);
-      this.logger.log(`[Text Parser] Extracted text preview :\n${content}`);
-
+      this.logger.log(`[TXT] Parsed - Chars: ${content.length}`);
       return content;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`[Text Parser] Text file parsing failed: ${errorMsg}`, error);
+      this.logger.error(`[TXT] Parsing failed: ${errorMsg}`);
       throw new BadRequestException(`Text file parsing failed: ${errorMsg}`);
     }
   }
@@ -326,150 +295,92 @@ export class ResumeParserService {
     }
   }
 
-  /**
-   * 从 Buffer 解析 PDF
-   */
   private async parsePDFBuffer(fileBuffer: Buffer): Promise<string> {
     try {
-      this.logger.log(`[PDF Parser] Starting to parse PDF from buffer (${fileBuffer.length} bytes)`);
-
-      // 使用自定义页面渲染器处理乱码问题
       const pdfData = await PDFParser(fileBuffer, {
         pagerender: (pageData: any) => {
-          // 获取页面文本
           let text = pageData.getTextContent();
           let finalText = '';
           
           if (text && text.items) {
-            // 逐个处理每个文本项，确保正确的字符编码
             for (let item of text.items) {
-              // 处理特殊字符和乱码
               if (item.str) {
                 finalText += item.str;
               }
-              // 处理空格
               if (item.width) {
                 finalText += ' ';
               }
             }
-            // 添加换行符
             finalText += '\n';
           }
           
           return finalText;
         },
-        max: 0, // 0 表示解析所有页面，不限制
+        max: 0,
       });
 
       let text = pdfData.text || '';
-
-      // 清理提取的文本中的乱码字符
       text = this.cleanupTextContent(text);
 
-      this.logger.log(`[PDF Parser] PDF parsed successfully. Total characters: ${text.length}`);
-      this.logger.log(`[PDF Parser] Number of pages: ${pdfData.numpages}`);
-      this.logger.log(`[PDF Parser] Extracted text preview :\n${text}`);
-
+      this.logger.log(`[PDF] Parsed from buffer - Pages: ${pdfData.numpages}, Chars: ${text.length}`);
       return text;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`[PDF Parser] PDF parsing failed: ${errorMsg}`, error);
+      this.logger.error(`[PDF] Buffer parsing failed: ${errorMsg}`);
       throw new BadRequestException(`PDF parsing failed: ${errorMsg}`);
     }
   }
 
-  /**
-   * 清理文本中的乱码字符
-   */
   private cleanupTextContent(text: string): string {
     if (!text) return text;
 
-    // 1. 移除控制字符（除了换行和制表符）
     text = text.replace(/[\x00-\x08\x0B-\x0C\x0E-\x1F\x7F]/g, '');
 
-    // 2. 处理 PDF 特殊符号和 bullet points 导致的乱码
-    // 这些通常是 PDF 中的图标、符号或装饰字符
     text = text
-      .replace(/\ufffd/g, '') // 替换替换字符
-      // 移除常见的 PDF 符号乱码（如 •、◦、‣ 等及其错误编码版本）
-      .replace(/[\u0080-\u009F]/g, '') // 控制字符
-      .replace(/[\u2000-\u206F]/g, '') // 一般标点符号范围
-      .replace(/[ª­®¯°±²³´µ¶·¸¹º»¼½¾¿]/g, '') // Latin-1 补充中的符号
-      .replace(/[À-ß]/g, (match) => {
-        // 保留常见的 Latin 字符（如 Á, á 等），移除其他
-        // 这些通常是乱码
-        return '';
-      })
-      // 保留基本字符：ASCII、中文、日文、Cyrillic 等常见文字
-      // 移除其他异常单字符
-      .replace(/[^\x20-\x7E\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\u0400-\u04FF\s\n\r\-—–]/g, (match) => {
-        // 仅保留：
-        // \x20-\x7E: ASCII 可打印字符
-        // \u4E00-\u9FFF: 中文
-        // \u3040-\u309F: 日文平假名
-        // \u30A0-\u30FF: 日文片假名
-        // \u0400-\u04FF: Cyrillic (俄文等)
-        // \s: 空格
-        // \n\r: 换行
-        // \-—–: 各种破折号
-        return '';
-      });
+      .replace(/\ufffd/g, '')
+      .replace(/[\u0080-\u009F]/g, '')
+      .replace(/[\u2000-\u206F]/g, '')
+      .replace(/[ª­®¯°±²³´µ¶·¸¹º»¼½¾¿]/g, '')
+      .replace(/[À-ß]/g, () => '')
+      .replace(/[^\x20-\x7E\u4E00-\u9FFF\u3040-\u309F\u30A0-\u30FF\u0400-\u04FF\s\n\r\-—–]/g, () => '');
 
-    // 3. 清理 bullet points 和列表符号前的乱码
-    // 处理常见的 bullet point 模式：乱码字符后跟内容
     text = text
-      .replace(/^[•◦‣\-\*\+]+\s*/gm, '• ') // 规范化列表符号
-      .replace(/^\s*[•◦‣\-\*\+]\s*/gm, '• ') // 规范化行首列表符号
-      .replace(/^[\w]*[•◦‣\-\*\+]/gm, '• '); // 修复乱码+bullet 的情况
+      .replace(/^[•◦‣\-\*\+]+\s*/gm, '• ')
+      .replace(/^\s*[•◦‣\-\*\+]\s*/gm, '• ')
+      .replace(/^[\w]*[•◦‣\-\*\+]/gm, '• ');
 
-    // 4. 规范化空格和换行
     text = text
-      .replace(/\r\n/g, '\n') // 统一换行符
-      .replace(/\t/g, ' ')    // 制表符转空格
-      .replace(/\n\s+\n/g, '\n') // 移除多余空行
-      .replace(/[ ]{2,}/g, ' ') // 多个空格合并为一个
+      .replace(/\r\n/g, '\n')
+      .replace(/\t/g, ' ')
+      .replace(/\n\s+\n/g, '\n')
+      .replace(/[ ]{2,}/g, ' ')
       .trim();
 
-    this.logger.log(`[PDF Parser] Text cleanup completed - Removed garbled characters`);
     return text;
   }
 
-  /**
-   * 从 Buffer 解析 DOCX
-   */
   private async parseDocxBuffer(fileBuffer: Buffer): Promise<string> {
     try {
-      this.logger.log(`[DOCX Parser] Starting to parse DOCX from buffer (${fileBuffer.length} bytes)`);
-
       const result = await mammoth.extractRawText({ buffer: fileBuffer });
       const text = result.value;
 
-      this.logger.log(`[DOCX Parser] DOCX parsed successfully. Total characters: ${text.length}`);
-      this.logger.log(`[DOCX Parser] Extracted text preview :\n${text}`);
-
+      this.logger.log(`[DOCX] Parsed from buffer - Chars: ${text.length}`);
       return text;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`[DOCX Parser] DOCX parsing failed: ${errorMsg}`, error);
+      this.logger.error(`[DOCX] Buffer parsing failed: ${errorMsg}`);
       throw new BadRequestException(`DOCX parsing failed: ${errorMsg}`);
     }
   }
 
-  /**
-   * 从 Buffer 解析文本文件
-   */
   private parseTextBuffer(fileBuffer: Buffer): string {
     try {
-      this.logger.log(`[Text Parser] Starting to parse text from buffer (${fileBuffer.length} bytes)`);
       const content = fileBuffer.toString('utf-8');
-
-      this.logger.log(`[Text Parser] Text parsed successfully. Total characters: ${content.length}`);
-      this.logger.log(`[Text Parser] Extracted text preview :\n${content}`);
-
+      this.logger.log(`[TXT] Parsed from buffer - Chars: ${content.length}`);
       return content;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`[Text Parser] Text parsing failed: ${errorMsg}`, error);
+      this.logger.error(`[TXT] Buffer parsing failed: ${errorMsg}`);
       throw new BadRequestException(`Text parsing failed: ${errorMsg}`);
     }
   }
@@ -499,15 +410,12 @@ export class ResumeParserService {
     }
   }
 
-  /**
-   * 使用 LLM 解析简历内容
-   */
   async parseResumeContent(text: string): Promise<ParsedResume> {
     if (!text || text.trim().length === 0) {
       throw new BadRequestException('Resume content is empty');
     }
 
-    this.logger.log(`[Stage: LLM Parsing] Starting to parse resume content with LLM - TextLength: ${text.length} characters`);
+    this.logger.log(`[LLM] Parsing resume - Length: ${text.length} chars`);
 
     try {
       const systemPrompt = `你是一个专业的简历解析助手。你的任务是从简历文本中提取结构化信息。
@@ -677,64 +585,39 @@ export class ResumeParserService {
 简历内容：
 ${text}`;
 
-      this.logger.log(`[Stage: LLM Parsing] Sending request to LLM for resume parsing`);
       const response = await this.llm.invoke([
         new SystemMessage(systemPrompt),
         new HumanMessage(userPrompt),
       ]);
 
       const responseContent = response.content as string;
-      this.logger.log(`[Stage: LLM Parsing] Response received from LLM - ContentLength: ${responseContent.length} chars`);
 
-      // 尝试解析 JSON 响应
       let parsedData: ParsedResume;
-      this.logger.log(`[Stage: LLM Parsing] LLM Response: ${responseContent}`);
       try {
-        // 尝试直接解析
-        this.logger.log(`[Stage: JSON Extraction] Attempting direct JSON parsing`);
         parsedData = JSON.parse(responseContent);
-        this.logger.log(`[Stage: JSON Extraction] Direct parsing succeeded`);
       } catch {
-        this.logger.log(`[Stage: JSON Extraction] Direct parsing failed, trying markdown extraction`);
-        // 尝试从 markdown 代码块中提取 JSON
         const jsonMatch = responseContent.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
         if (jsonMatch) {
-          this.logger.log(`[Stage: JSON Extraction] Markdown code block found, parsing`);
           parsedData = JSON.parse(jsonMatch[1]);
-          this.logger.log(`[Stage: JSON Extraction] Markdown extraction succeeded`);
         } else {
-          this.logger.log(`[Stage: JSON Extraction] No markdown found, trying object matching`);
-          // 尝试找到 JSON 对象
           const objectMatch = responseContent.match(/\{[\s\S]*\}/);
           if (objectMatch) {
-            this.logger.log(`[Stage: JSON Extraction] JSON object found, parsing`);
             parsedData = JSON.parse(objectMatch[0]);
-            this.logger.log(`[Stage: JSON Extraction] Object extraction succeeded`);
           } else {
-            this.logger.error(`[Stage: JSON Extraction] Could not extract JSON from LLM response`);
+            this.logger.error(`[LLM] Could not extract JSON from response`);
             throw new Error('Could not extract JSON from LLM response');
           }
         }
       }
 
-      // 验证和标准化数据
-      this.logger.log(`[Stage: Data Normalization] Starting data normalization and validation`);
       const normalizedData = this.normalizeParseResult(parsedData);
-      this.logger.log(`[Stage: Data Normalization] Data normalization completed`);
 
-      // 详细日志输出
-      this.logger.log(`[Stage: Parsing Summary] ========== PARSING RESULT ==========`);
-      this.logger.log(`[Stage: Parsing Summary] Personal Info: ${JSON.stringify(normalizedData.personalInfo)}`);
-      this.logger.log(`[Stage: Parsing Summary] Skills Found: ${normalizedData.skills?.length || 0}, Skill Categories: ${normalizedData.skillCategories?.length || 0}`);
-      this.logger.log(`[Stage: Parsing Summary] Education Entries: ${normalizedData.education?.length || 0}, Work Experience: ${normalizedData.workExperience?.length || 0}, Internships: ${normalizedData.internshipExperience?.length || 0}`);
-      this.logger.log(`[Stage: Parsing Summary] Projects: ${normalizedData.projects?.length || 0}, Certifications: ${normalizedData.certifications?.length || 0}, Languages: ${normalizedData.languages?.length || 0}`);
-      this.logger.log(`[Stage: Parsing Summary] Awards: ${normalizedData.awards?.length || 0}, Publications: ${normalizedData.publications?.length || 0}, Campus Experience: ${normalizedData.campusExperience?.length || 0}`);
-      this.logger.log(`[Stage: Parsing Summary] ====================================`);
+      this.logger.log(`[LLM] Parsed - Skills: ${normalizedData.skills?.length || 0}, Education: ${normalizedData.education?.length || 0}, Work: ${normalizedData.workExperience?.length || 0}, Projects: ${normalizedData.projects?.length || 0}`);
 
       return normalizedData;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`[Stage: LLM Parsing] Error during LLM-based parsing - Error: ${errorMsg}`, error);
+      this.logger.error(`[LLM] Parsing failed: ${errorMsg}`);
       throw new BadRequestException(`Resume parsing failed: ${errorMsg}`);
     }
   }

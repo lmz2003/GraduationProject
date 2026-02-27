@@ -47,15 +47,8 @@ export class ResumeAnalyzerService {
    * 主分析方法（优化：根据简历类型差异化评分）
    */
   async analyzeResume(text: string, parsedData: any, jobDescription?: string, jobTitle?: string): Promise<AnalysisResult> {
-    this.logger.log(`[Stage: Analyzer] Starting resume analysis - TextLength: ${text.length}, HasJobDescription: ${!!jobDescription}`);
-    
-    // ✨ 第一步：识别简历类型
-    this.logger.log(`[Stage: Analyzer] Step 1: Detecting resume type`);
     const resumeType = this.detectResumeType(parsedData);
-    this.logger.log(`[Stage: Analyzer] Resume type detected: ${resumeType}`);
 
-    // ✨ 第二步：根据简历类型进行差异化评分
-    this.logger.log(`[Stage: Analyzer] Step 2: Calculating scores based on resume type`);
     const [keywordScoreData, completenessScore, experienceScore, skillsScore] = await Promise.all([
       this.calculateKeywordScore(text, jobDescription, jobTitle),
       Promise.resolve(this.calculateCompletenessScore(text, parsedData, resumeType)),
@@ -63,73 +56,44 @@ export class ResumeAnalyzerService {
       this.calculateSkillsScore(parsedData.skills, jobTitle || '', jobDescription)
     ]);
 
-    const scores = {
+    const overallScore = Math.round(
+      completenessScore * 0.25 +
+      keywordScoreData.score * 0.2 +
+      experienceScore * 0.25 +
+      skillsScore * 0.3
+    );
+
+    const basicScores = {
+      overallScore,
       completenessScore,
-      keywordScoreData,
+      keywordScore: keywordScoreData.score,
       experienceScore,
       skillsScore,
     };
-    this.logger.log(`[Stage: Analyzer] Scores calculated - Completeness: ${completenessScore}, Keyword: ${keywordScoreData.score}, Experience: ${experienceScore}, Skills: ${skillsScore}`);
-
-    // ✨ 第三步：计算总体评分（加权平均）
-    // 注：权重已经在各个评分方法内进行了差异化处理
-    // ✨ formatScore 已合并到 completenessScore，调整权重
-    this.logger.log(`[Stage: Analyzer] Step 3: Calculating weighted overall score`);
-    const overallScore = Math.round(
-      scores.completenessScore * 0.25 +
-      scores.keywordScoreData.score * 0.2 +
-      scores.experienceScore * 0.25 +
-      scores.skillsScore * 0.3
-    );
-    this.logger.log(`[Stage: Analyzer] Overall score calculated: ${overallScore}`);
-
-    // ✨ 第四步：使用LLM生成详细分析报告（包含优势、劣势、建议）
-    this.logger.log(`[Stage: Analyzer] Step 4: Generating detailed analysis report via LLM`);
-    const basicScores = {
-      overallScore,
-      completenessScore: scores.completenessScore,
-      keywordScore: scores.keywordScoreData.score,
-      experienceScore: scores.experienceScore,
-      skillsScore: scores.skillsScore,
-    };
     
     const detailedReport = await this.resumeLLMService.generateDetailedAnalysisReport(text, parsedData, basicScores, resumeType);
-    this.logger.log(`[Stage: Analyzer] Detailed report generated - ReportLength: ${detailedReport.length} chars`);
-    
-    // // ✨ 从详细报告中提取优势、劣势、建议（避免重复调用LLM）
-    // const { strengths, weaknesses, suggestions } = this.extractAnalysisFromDetailedReport(detailedReport);
 
-    // ✨ 第五步：生成岗位匹配度分析
-    this.logger.log(`[Stage: Analyzer] Step 5: Generating job match analysis`);
     let jobMatchAnalysis = undefined;
     if (jobDescription) {
       jobMatchAnalysis = await this.generateJobMatchAnalysis(text, jobDescription);
-      this.logger.log(`[Stage: Analyzer] Job match analysis completed`);
-    } else {
-      this.logger.log(`[Stage: Analyzer] Skipping job match analysis - no job description provided`);
     }
 
-    // ✨ 第六步：生成能力素质评估
-    this.logger.log(`[Stage: Analyzer] Step 6: Generating competency analysis`);
     const competencyAnalysis = await this.generateCompetencyAnalysis(text, parsedData, resumeType);
-    this.logger.log(`[Stage: Analyzer] Competency analysis completed`);
 
-    this.logger.log(`[Stage: Analyzer] Step 7: Analyzing content structure`);
     const contentAnalysis = this.analyzeContent(text, parsedData);
-    this.logger.log(`[Stage: Analyzer] Content analysis completed`);
 
-    this.logger.log(`[Stage: Analyzer] All analysis steps completed successfully`);
+    this.logger.log(`[Analysis] Completed - Type: ${resumeType}, Score: ${overallScore}, Completeness: ${completenessScore}, Keyword: ${keywordScoreData.score}, Experience: ${experienceScore}, Skills: ${skillsScore}`);
     return {
       overallScore,
-      completenessScore: scores.completenessScore,
-      keywordScore: scores.keywordScoreData.score,
-      experienceScore: scores.experienceScore,
-      skillsScore: scores.skillsScore,
+      completenessScore,
+      keywordScore: keywordScoreData.score,
+      experienceScore,
+      skillsScore,
       detailedReport,
-      resumeType,  // ✨ 返回简历类型
+      resumeType,
       keywordAnalysis: {
-        keywords: scores.keywordScoreData.keywords,
-        categoryScores: scores.keywordScoreData.categoryScores
+        keywords: keywordScoreData.keywords,
+        categoryScores: keywordScoreData.categoryScores
       },
       contentAnalysis,
       jobMatchAnalysis,
@@ -142,51 +106,31 @@ export class ResumeAnalyzerService {
    * experienced: 社招（有工作经验的专业人士）
    */
   private detectResumeType(parsedData: any): 'freshman' | 'experienced' {
-    this.logger.log(`[Stage: Type Detection] Starting resume type detection`);
-    
-    // 指标1：工作经验数量
     const workExperienceCount = parsedData.workExperience?.length || 0;
-    
-    // 指标2：实习经验数量
     const internshipCount = parsedData.internshipExperience?.length || 0;
-    
-    // 指标3：校园活动
     const campusExperienceCount = parsedData.campusExperience?.length || 0;
     
-    // 指标4：社招特有字段（公司信息、管理经验、离职原因等）
     const hasSocialRecruitmentInfo = parsedData.workExperience?.some((exp: any) => 
       exp.companyType || exp.companyIndustry || exp.teamSize || exp.managementLevel
     );
     
-    // 指标5：工作经验时长总和
     let totalWorkMonths = 0;
     if (parsedData.workExperience) {
       for (const exp of parsedData.workExperience) {
-        // 简单估算：如果有日期信息就认为有一定时长
         if (exp.startDate && exp.endDate) {
-          totalWorkMonths += 12; // 保守估算每个经验12个月
+          totalWorkMonths += 12;
         }
       }
     }
     
-    this.logger.log(`[Stage: Type Detection] Detection indicators - WorkExp: ${workExperienceCount}, Internships: ${internshipCount}, Campus: ${campusExperienceCount}, HasSocialInfo: ${hasSocialRecruitmentInfo}, TotalWorkMonths: ${totalWorkMonths}`);
-    
-    // 判断逻辑
-    // 如果有社招特有字段或工作经验 > 2个，则为社招
-    // 如果主要是校园活动和实习，则为校招
-    let resumeType: 'freshman' | 'experienced';
     if (workExperienceCount > 2 || hasSocialRecruitmentInfo || totalWorkMonths > 24) {
-      resumeType = 'experienced';
+      return 'experienced';
     } else if (campusExperienceCount > 2 || internshipCount >= 2) {
-      resumeType = 'freshman';
+      return 'freshman';
     } else if (workExperienceCount > 0) {
-      resumeType = 'experienced';
-    } else {
-      resumeType = 'freshman';
+      return 'experienced';
     }
-    
-    this.logger.log(`[Stage: Type Detection] Resume type determined: ${resumeType}`);
-    return resumeType;
+    return 'freshman';
   }
 
   /**
@@ -195,20 +139,17 @@ export class ResumeAnalyzerService {
    * 综合评价：内容是否完整 + 格式是否规范
    */
   private calculateCompletenessScore(text: string, parsedData: any, resumeType: 'freshman' | 'experienced'): number {
-    this.logger.log(`[Stage: Scoring - Completeness] Starting completeness score calculation - ResumeType: ${resumeType}`);
     let score = 0;
     let maxScore = 0;
 
-    // ========== 第一部分：内容完整性（根据简历类型差异化）==========
     if (resumeType === 'freshman') {
-      // 校招生重点：教育背景、项目/实习、校园活动、技能
       const freshmanSections = [
         { name: 'personalInfo', weight: 10 },
-        { name: 'education', weight: 25 },              // ⭐ 权重提升（校招重点）
-        { name: 'internshipExperience', weight: 20 },   // ⭐ 实习重要
+        { name: 'education', weight: 25 },
+        { name: 'internshipExperience', weight: 20 },
         { name: 'skills', weight: 15 },
-        { name: 'projects', weight: 15 },               // ⭐ 项目重要
-        { name: 'campusExperience', weight: 10 },       // ⭐ 校园活动
+        { name: 'projects', weight: 15 },
+        { name: 'campusExperience', weight: 10 },
       ];
 
       for (const section of freshmanSections) {
@@ -218,22 +159,20 @@ export class ResumeAnalyzerService {
         }
       }
 
-      // 加分项：获奖和论文
       if (parsedData.awards && parsedData.awards.length > 0) {
         score += 5;
       }
       if (parsedData.publications && parsedData.publications.length > 0) {
         score += 5;
       }
-      maxScore += 10;  // 加分项总上限10分
+      maxScore += 10;
     } else {
-      // 社招重点：工作经验、技能、项目成果、职业总结
       const experiencedSections = [
         { name: 'personalInfo', weight: 10 },
-        { name: 'professionalSummary', weight: 10 },    // ⭐ 职业总结重要
-        { name: 'workExperience', weight: 35 },         // ⭐ 权重最高
+        { name: 'professionalSummary', weight: 10 },
+        { name: 'workExperience', weight: 35 },
         { name: 'skills', weight: 20 },
-        { name: 'projects', weight: 15 },               // ⭐ 项目成果
+        { name: 'projects', weight: 15 },
       ];
 
       for (const section of experiencedSections) {
@@ -243,48 +182,41 @@ export class ResumeAnalyzerService {
         }
       }
 
-      // 加分项：教育、认证
       if (parsedData.education && parsedData.education.length > 0) {
         score += 5;
       }
       if (parsedData.certifications && parsedData.certifications.length > 0) {
         score += 5;
       }
-      maxScore += 10;  // 加分项总上限10分
+      maxScore += 10;
     }
 
-    // ========== 第二部分：格式规范性检查 ==========
     const wordCount = text.split(/\s+/).length;
     
-    // 1. 长度规范性（0-10分）
     if (wordCount >= 200 && wordCount <= 1500) {
-      score += 10;  // 优秀
+      score += 10;
     } else if (wordCount >= 100 && wordCount <= 2000) {
-      score += 6;   // 良好
+      score += 6;
     } else if (wordCount > 0) {
-      score += 2;   // 一般
+      score += 2;
     }
     maxScore += 10;
 
-    // 2. 内容重复度检查（0-10分）
     const lines = text.split('\n').filter(line => line.trim().length > 0);
     if (lines.length > 0) {
       const uniqueRatio = new Set(lines).size / lines.length;
       
       if (uniqueRatio > 0.9) {
-        score += 10;  // 极少重复
+        score += 10;
       } else if (uniqueRatio > 0.75) {
-        score += 7;   // 小量重复
+        score += 7;
       } else if (uniqueRatio > 0.6) {
-        score += 4;   // 中量重复
+        score += 4;
       }
     }
     maxScore += 10;
 
-    // ========== 最终评分 ==========
-    const finalScore = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-    this.logger.log(`[Stage: Scoring - Completeness] Completeness score calculated - Score: ${finalScore}/100, Points: ${score}/${maxScore}`);
-    return finalScore;
+    return maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
   }
 
   /**
@@ -296,47 +228,38 @@ export class ResumeAnalyzerService {
     jobDescription?: string,
     jobTitle?: string
   ): Promise<{ score: number; keywords: string[]; categoryScores: { [key: string]: number } }> {
-    this.logger.log(`[Stage: Scoring - Keywords] Starting keyword score calculation - TextLength: ${text.length}, HasJobDesc: ${!!jobDescription}, JobTitle: ${jobTitle || 'N/A'}`);
-    
-    // 1. 准备文本（支持中英文）
     const textLower = text.toLowerCase();
     const foundKeywords: { [key: string]: number } = {};
     const categoryScores: { [key: string]: number } = {};
-    const categoryMatchCounts: { [key: string]: number } = {};  // ✨ 记录每个类别的匹配数量
+    const categoryMatchCounts: { [key: string]: number } = {};
     let totalScore = 0;
 
-    // 2. 定义关键词类别权重
     const categoryWeights = {
-      skills: 3,          // 技能关键词权重最高
-      experience: 2.5,    // 经验关键词权重次之
-      education: 1.5,     // 教育关键词权重较低
-      jobSpecific: 3.5,   // 岗位特定关键词权重最高
+      skills: 3,
+      experience: 2.5,
+      education: 1.5,
+      jobSpecific: 3.5,
     };
 
-    // ✨ 每个类别的合理上限（避免基数过大）
     const MAX_KEYWORDS_PER_CATEGORY = 20;
 
-    // 3. 基础关键词匹配
     for (const category in this.commonKeywords) {
       const weight = categoryWeights[category as keyof typeof categoryWeights] || 1;
       let categoryScore = 0;
       let matchCount = 0;
 
       for (const keyword of (this.commonKeywords as any)[category]) {
-        // ✨ 改进：中英文分别处理
         const isChineseKeyword = /[\u4e00-\u9fff]/.test(keyword);
         const isMatched = isChineseKeyword 
-          ? text.includes(keyword)  // 中文关键词直接匹配（不转小写）
-          : textLower.includes(keyword.toLowerCase());  // 英文关键词转小写后匹配
+          ? text.includes(keyword)
+          : textLower.includes(keyword.toLowerCase());
 
         if (isMatched && !foundKeywords[keyword]) {
-          // ✨ 改进：关键词只计算一次（去重），避免重复累加
           foundKeywords[keyword] = 1;
           matchCount++;
 
-          // ✨ 只在未达到上限时累加分数
           if (matchCount <= MAX_KEYWORDS_PER_CATEGORY) {
-            categoryScore += weight;  // 每个关键词贡献其权重分
+            categoryScore += weight;
             totalScore += weight;
           }
         }
@@ -348,13 +271,12 @@ export class ResumeAnalyzerService {
       }
     }
 
-    // 4. 如果提供了职位描述，使用LLM提取岗位特定关键词并评分
     let jobSpecificMatchCount = 0;
     if (jobDescription) {
       const jobSpecificKeywords = await this.extractJobSpecificKeywords(jobDescription, jobTitle || '');
       
       for (const keyword of jobSpecificKeywords) {
-        if (!foundKeywords[keyword]) {  // ✨ 避免与基础关键词重复
+        if (!foundKeywords[keyword]) {
           const isChineseKeyword = /[\u4e00-\u9fff]/.test(keyword);
           const isMatched = isChineseKeyword 
             ? text.includes(keyword)
@@ -364,7 +286,6 @@ export class ResumeAnalyzerService {
             foundKeywords[keyword] = 1;
             jobSpecificMatchCount++;
 
-            // ✨ 岗位特定关键词也有上限
             if (jobSpecificMatchCount <= MAX_KEYWORDS_PER_CATEGORY) {
               const keywordScore = categoryWeights.jobSpecific;
               categoryScores.jobSpecific = (categoryScores.jobSpecific || 0) + keywordScore;
@@ -379,12 +300,9 @@ export class ResumeAnalyzerService {
       }
     }
 
-    // 5. 计算最大可能分数（综合评分制）
-    // ✨ 只计算实际有匹配的类别的最大分数
     let maxScore = 0;
     for (const category in categoryMatchCounts) {
       const weight = categoryWeights[category as keyof typeof categoryWeights] || 1;
-      // 最多取 MAX_KEYWORDS_PER_CATEGORY 个关键词的权重
       const categoryMaxScore = Math.min(
         categoryMatchCounts[category],
         MAX_KEYWORDS_PER_CATEGORY
@@ -392,12 +310,9 @@ export class ResumeAnalyzerService {
       maxScore += categoryMaxScore;
     }
 
-    // ✨ 安全保护：确保分母不为0
     const normalizedScore = maxScore > 0
       ? Math.min(100, Math.round((totalScore / maxScore) * 100))
       : 0;
-
-    this.logger.log(`[Stage: Scoring - Keywords] Keyword score calculated - Score: ${normalizedScore}/100, KeywordsFound: ${Object.keys(foundKeywords).length}, CategoryMatches: ${JSON.stringify(categoryMatchCounts)}`);
 
     return { 
       score: normalizedScore, 
@@ -418,37 +333,29 @@ export class ResumeAnalyzerService {
    * ✨ 改进：标准化为0-100分制
    */
   private calculateExperienceScore(parsedData: any, resumeType: 'freshman' | 'experienced'): number {
-    this.logger.log(`[Stage: Scoring - Experience] Starting experience score calculation - ResumeType: ${resumeType}`);
     let score = 0;
     let maxScore = 0;
 
     if (resumeType === 'freshman') {
-      // ========== 校招生：看实习和项目经验 ==========
-      // 总最高分：100分
-      
       const internshipCount = parsedData.internshipExperience?.length || 0;
       const projectCount = parsedData.projects?.length || 0;
       const campusCount = parsedData.campusExperience?.length || 0;
       
-      // 1. 实习经验（0-35分）
       maxScore += 35;
       if (internshipCount > 0) {
         score += internshipCount >= 2 ? 35 : 20;
       }
       
-      // 2. 项目经验（0-30分）
       maxScore += 30;
       if (projectCount > 0) {
         score += projectCount >= 2 ? 30 : 15;
       }
       
-      // 3. 校园活动（0-15分）
       maxScore += 15;
       if (campusCount > 0) {
         score += campusCount >= 2 ? 15 : 8;
       }
       
-      // 4. 描述详细程度（0-20分）
       const allExperiences = [
         ...(parsedData.internshipExperience || []),
         ...(parsedData.projects || []),
@@ -463,21 +370,16 @@ export class ResumeAnalyzerService {
         score += (detailedCount / allExperiences.length) * 20;
       }
     } else {
-      // ========== 社招：看工作经验深度和职级 ==========
-      // 总最高分：100分
-      
       const workExperience = parsedData.workExperience || [];
       const workCount = workExperience.length;
       
       if (workCount === 0) return 0;
       
-      // 1. 工作经验数量基础分（0-40分）
       maxScore += 40;
       if (workCount === 1) score += 20;
       else if (workCount === 2) score += 30;
       else if (workCount >= 3) score += 40;
       
-      // 2. 管理经验（0-20分）
       maxScore += 20;
       const hasManagementExp = workExperience.some((exp: any) =>
         exp.managementLevel || exp.teamSize || exp.reportsTo
@@ -486,14 +388,12 @@ export class ResumeAnalyzerService {
         score += 20;
       }
       
-      // 3. 工作描述详细程度（0-25分）
       maxScore += 25;
       const detailedCount = workExperience.filter(
         (exp: any) => exp.description && exp.description.trim().length > 100
       ).length;
       score += (detailedCount / Math.max(workCount, 1)) * 25;
       
-      // 4. 业绩成就（0-15分）
       maxScore += 15;
       const hasAchievements = workExperience.some((exp: any) =>
         exp.achievements && exp.achievements.length > 0
@@ -503,10 +403,7 @@ export class ResumeAnalyzerService {
       }
     }
 
-    // 归一化到0-100分
-    const finalScore = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-    this.logger.log(`[Stage: Scoring - Experience] Experience score calculated - Score: ${finalScore}/100, Points: ${score}/${maxScore}`);
-    return finalScore;
+    return maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
   }
 
   /**
@@ -514,66 +411,53 @@ export class ResumeAnalyzerService {
    * ✨ 改进：使用结构化的高价值技能，精确匹配英文关键字
    */
   private async calculateSkillsScore(skills: string[], jobTitle: string, jobDescription?: string): Promise<number> {
-    this.logger.log(`[Stage: Scoring - Skills] Starting skills score calculation - SkillsCount: ${skills?.length || 0}, JobTitle: ${jobTitle || 'N/A'}, HasJobDesc: ${!!jobDescription}`);
-    
     if (!skills || skills.length === 0) {
-      this.logger.log(`[Stage: Scoring - Skills] No skills found, returning 0`);
       return 0;
     }
 
     let score = 0;
     let maxScore = 0;
 
-    // 1. 基础分：有技能列表（0-20分）
     maxScore += 20;
     score += 20;
 
-    // 2. 按技能数量加分（0-30分）
-    // 数量越多越好，但有上限
     maxScore += 30;
     const quantityScore = Math.min(30, skills.length * 3);
     score += quantityScore;
 
-    // 3. 检查技能多样性（0-20分）
     maxScore += 20;
     const uniqueSkills = new Set(skills.map(s => s.toLowerCase()));
     const diversity = uniqueSkills.size / Math.max(1, skills.length);
 
     if (diversity > 0.8) {
-      score += 20;  // 极少重复，很多样
+      score += 20;
     } else if (diversity > 0.6) {
-      score += 12;  // 中等多样化
+      score += 12;
     } else if (diversity > 0.4) {
-      score += 6;   // 一些重复
+      score += 6;
     }
 
-    // 4. 检查是否包含高价值技能（0-30分）
     maxScore += 30;
     if (jobDescription) {
       const jobSpecificHighValueSkills = await this.resumeLLMService.extractJobSpecificHighSkills(jobDescription, jobTitle);
       
-      // ✨ 改进：遍历高价值技能，检查关键字匹配
       const matchedHighValueSkills = new Set<string>();
       
       for (const highValueSkill of jobSpecificHighValueSkills) {
         const skillLower = highValueSkill.name.toLowerCase();
         const keywords = highValueSkill.keywords;
         
-        // 检查简历中是否有匹配的技能
         const hasMatch = skills.some(resumeSkill => {
           const resumeSkillLower = resumeSkill.toLowerCase();
           
-          // 1. 直接名称匹配
           if (resumeSkillLower === skillLower) {
             return true;
           }
           
-          // 2. 包含匹配
           if (resumeSkillLower.includes(skillLower)) {
             return true;
           }
           
-          // 3. 关键字匹配：检查任何关键字是否出现在简历技能中
           return keywords.some(keyword => 
             resumeSkillLower.includes(keyword.toLowerCase())
           );
@@ -584,24 +468,17 @@ export class ResumeAnalyzerService {
         }
       }
       
-      // 按匹配数量计分
       const matchCount = matchedHighValueSkills.size;
       if (matchCount >= jobSpecificHighValueSkills.length) {
-        // 全部匹配
         score += 30;
       } else if (matchCount >= Math.ceil(jobSpecificHighValueSkills.length * 0.5)) {
-        // 至少50%匹配
         score += 20;
       } else if (matchCount > 0) {
-        // 部分匹配
         score += 10;
       }
     }
 
-    // ✨ 归一化到0-100分
-    const finalScore = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
-    this.logger.log(`[Stage: Scoring - Skills] Skills score calculated - Score: ${finalScore}/100, Points: ${score}/${maxScore}`);
-    return finalScore;
+    return maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
   }
 
 
