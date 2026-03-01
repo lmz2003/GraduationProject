@@ -78,7 +78,7 @@ export class InterviewSessionService {
   async getInterviewById(interviewId: string, userId: string): Promise<Interview> {
     const interview = await this.interviewRepository.findOne({
       where: { id: interviewId, userId },
-      relations: ['sessions', 'report'],
+      relations: ['report'],
     });
 
     if (!interview) {
@@ -115,27 +115,52 @@ export class InterviewSessionService {
     await queryRunner.startTransaction();
 
     try {
-      const sessionData = {
-        interviewId,
-        startedAt: new Date(),
-        status: 'active',
-        questionCount: 0,
-        messageCount: 0,
-      };
-      this.logger.log(`创建会话数据: ${JSON.stringify(sessionData)}`);
+      // 直接使用 queryBuilder 插入，完全绕过 TypeORM 的实体映射
+      await queryRunner.manager
+        .createQueryBuilder()
+        .insert()
+        .into(InterviewSession)
+        .values({
+          interviewId: interviewId,
+          startedAt: new Date(),
+          status: 'active',
+          questionCount: 0,
+          messageCount: 0,
+        })
+        .execute();
       
-      const session = queryRunner.manager.create(InterviewSession, sessionData);
-      this.logger.log(`会话对象创建后: interviewId=${session.interviewId}, id=${session.id}`);
+      // 重新查询获取保存后的实体（包含生成的 ID）
+      const savedSession = await queryRunner.manager.findOne(InterviewSession, {
+        where: { interviewId },
+        order: { startedAt: 'DESC' },
+      });
       
-      const savedSession = await queryRunner.manager.save(session);
+      if (!savedSession) {
+        throw new Error('Failed to retrieve saved session');
+      }
+      
+      this.logger.log(`会话保存后：interviewId=${savedSession.interviewId}, id=${savedSession.id}`);
 
       interview.status = 'in_progress';
       await queryRunner.manager.save(interview);
 
-      await queryRunner.commitTransaction();
-
       const openingMessage = await this.llmService.generateOpening(interview, resumeContent);
-      await this.saveMessage(savedSession.id, 'assistant', openingMessage, 'opening');
+      
+      // 在事务中直接保存消息
+      const message = queryRunner.manager.create(InterviewMessage, {
+        sessionId: savedSession.id,
+        role: 'assistant',
+        content: openingMessage,
+        questionType: 'opening',
+        timestamp: new Date(),
+      });
+      await queryRunner.manager.save(message);
+      
+      // 更新会话的消息计数
+      savedSession.messageCount = 1;
+      await queryRunner.manager.save(savedSession);
+
+      await queryRunner.commitTransaction();
 
       this.logger.log(`面试会话开始成功 - 会话ID: ${savedSession.id}`);
 
@@ -279,12 +304,12 @@ export class InterviewSessionService {
     const savedMessage = await this.messageRepository.save(message);
 
     await this.sessionRepository.update(sessionId, {
-      messageCount: () => 'message_count + 1',
+      messageCount: () => '"messageCount" + 1',
     });
 
     if (role === 'assistant' && questionType && questionType !== 'follow_up') {
       await this.sessionRepository.update(sessionId, {
-        questionCount: () => 'question_count + 1',
+        questionCount: () => '"questionCount" + 1',
       });
     }
 

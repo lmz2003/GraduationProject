@@ -10,6 +10,18 @@ import * as bodyParser from 'body-parser';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import * as path from 'path';
 
+// 抑制 LangChain 的警告信息
+process.env.LANGCHAIN_VERBOSE = 'false';
+// 抑制所有调试级别的日志
+const originalWarn = console.warn;
+console.warn = (...args: unknown[]) => {
+  const message = args[0];
+  if (typeof message === 'string' && message.includes('already exists in this message chunk')) {
+    return;
+  }
+  originalWarn.apply(console, args);
+};
+
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
   const configService = app.get(ConfigService);

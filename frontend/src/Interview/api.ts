@@ -8,6 +8,7 @@ import type {
   InterviewReport,
   CreateInterviewDto,
   SSEEvent,
+  Resume,
 } from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
@@ -27,6 +28,15 @@ export const interviewApi = {
     });
     const data = await response.json();
     if (!data.success) throw new Error(data.message || '获取场景列表失败');
+    return data.data;
+  },
+
+  async getResumes(): Promise<Resume[]> {
+    const response = await fetch(`${API_BASE}/resume-analysis`, {
+      headers: getAuthHeaders(),
+    });
+    const data = await response.json();
+    if (!data.success) throw new Error(data.message || '获取简历列表失败');
     return data.data;
   },
 

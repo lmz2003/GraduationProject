@@ -39,6 +39,7 @@ export class InterviewLLMService {
         },
         temperature: 0.7,
         maxTokens: 2000,
+        disableStreaming: false,
       });
     } else {
       this.logger.log(`使用 OpenAI LLM: ${this.modelName}`);
@@ -48,6 +49,7 @@ export class InterviewLLMService {
         configuration: baseUrl ? { baseURL: baseUrl } : undefined,
         temperature: 0.7,
         maxTokens: 2000,
+        disableStreaming: false,
       });
     }
   }

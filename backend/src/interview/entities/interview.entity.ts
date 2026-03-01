@@ -5,7 +5,6 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
-  OneToMany,
   OneToOne,
   JoinColumn,
 } from 'typeorm';
@@ -60,9 +59,6 @@ export class Interview {
   @JoinColumn({ name: 'resumeId' })
   resume?: Resume;
 
-  @OneToMany(() => InterviewSession, (session) => session.interview, {
-    cascade: true,
-  })
   sessions?: InterviewSession[];
 
   @OneToOne(() => InterviewReport, (report) => report.interview, {

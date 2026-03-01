@@ -123,3 +123,13 @@ export interface SSEEvent {
   type: 'request-id' | 'session' | 'chunk' | 'evaluation' | 'done' | 'error';
   data: any;
 }
+
+export interface Resume {
+  id: string;
+  userId: string;
+  fileName: string;
+  fileSize: number;
+  uploadDate: Date;
+  status: string;
+  analysisStatus: string;
+}

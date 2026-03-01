@@ -2,11 +2,8 @@ import {
   Entity,
   Column,
   PrimaryGeneratedColumn,
-  ManyToOne,
   OneToMany,
-  JoinColumn,
 } from 'typeorm';
-import { Interview } from './interview.entity';
 import { InterviewMessage } from './interview-message.entity';
 
 @Entity('interview_sessions')
@@ -31,12 +28,6 @@ export class InterviewSession {
 
   @Column({ type: 'integer', default: 0, name: 'messageCount' })
   messageCount!: number;
-
-  @ManyToOne(() => Interview, (interview) => interview.sessions, {
-    onDelete: 'CASCADE',
-  })
-  @JoinColumn({ name: 'interviewId' })
-  interview?: Interview;
 
   @OneToMany(() => InterviewMessage, (message) => message.session, {
     cascade: true,

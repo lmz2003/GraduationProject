@@ -6,6 +6,7 @@ import type {
   DifficultyLevel,
   Interview,
   CreateInterviewDto,
+  Resume,
 } from './types';
 import InterviewChat from './InterviewChat';
 import InterviewReport from './InterviewReport';
@@ -19,12 +20,15 @@ const InterviewModule: React.FC = () => {
   const [jobTypes, setJobTypes] = useState<JobType[]>([]);
   const [difficultyLevels, setDifficultyLevels] = useState<DifficultyLevel[]>([]);
   const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [resumes, setResumes] = useState<Resume[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [selectedScene, setSelectedScene] = useState<string>('');
   const [selectedJobType, setSelectedJobType] = useState<string>('general');
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('medium');
+  const [selectedResumeId, setSelectedResumeId] = useState<string>('');
+  const [useResume, setUseResume] = useState(false);
   const [currentInterview, setCurrentInterview] = useState<Interview | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
@@ -32,16 +36,18 @@ const InterviewModule: React.FC = () => {
   const loadInitialData = useCallback(async () => {
     try {
       setLoading(true);
-      const [scenesData, jobTypesData, difficultyData, interviewsData] = await Promise.all([
+      const [scenesData, jobTypesData, difficultyData, interviewsData, resumesData] = await Promise.all([
         interviewApi.getScenes(),
         interviewApi.getJobTypes(),
         interviewApi.getDifficultyLevels(),
         interviewApi.getInterviewList(),
+        interviewApi.getResumes(),
       ]);
       setScenes(scenesData);
       setJobTypes(jobTypesData);
       setDifficultyLevels(difficultyData);
       setInterviews(interviewsData);
+      setResumes(resumesData);
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载数据失败');
     } finally {
@@ -58,6 +64,8 @@ const InterviewModule: React.FC = () => {
     setSelectedScene('');
     setSelectedJobType('general');
     setSelectedDifficulty('medium');
+    setSelectedResumeId('');
+    setUseResume(false);
   };
 
   const handleSceneSelect = (sceneCode: string) => {
@@ -78,6 +86,7 @@ const InterviewModule: React.FC = () => {
         sceneType: selectedScene,
         jobType: selectedJobType,
         difficulty: selectedDifficulty,
+        resumeId: useResume && selectedResumeId ? selectedResumeId : undefined,
       };
 
       const interview = await interviewApi.createInterview(dto);
@@ -264,6 +273,48 @@ const InterviewModule: React.FC = () => {
                   <span className="difficulty-desc">{level.description}</span>
                 </div>
               ))}
+            </div>
+          </div>
+
+          <div className="select-section">
+            <h3>关联简历（可选）</h3>
+            <div className="resume-options">
+              <label className="resume-toggle">
+                <input
+                  type="checkbox"
+                  checked={useResume}
+                  onChange={(e) => {
+                    setUseResume(e.target.checked);
+                    if (!e.target.checked) {
+                      setSelectedResumeId('');
+                    }
+                  }}
+                />
+                <span>使用我的简历生成个性化问题</span>
+              </label>
+              {useResume && (
+                <div className="resume-select-wrapper">
+                  {resumes.length === 0 ? (
+                    <p className="no-resume-hint">
+                      暂无已上传的简历，请先在"简历分析"模块上传简历
+                    </p>
+                  ) : (
+                    <select
+                      className="resume-select"
+                      value={selectedResumeId}
+                      onChange={(e) => setSelectedResumeId(e.target.value)}
+                      aria-label="选择简历"
+                    >
+                      <option value="">请选择简历</option>
+                      {resumes.map((resume) => (
+                        <option key={resume.id} value={resume.id}>
+                          {resume.fileName}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
