@@ -52,7 +52,9 @@ export class InterviewMessage {
   @Column({ type: 'jsonb', nullable: true })
   sources?: MessageSource[];
 
-  @ManyToOne(() => InterviewSession, (session) => session.messages)
+  @ManyToOne(() => InterviewSession, (session) => session.messages, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'sessionId' })
   session?: InterviewSession;
 }

@@ -32,10 +32,14 @@ export class InterviewSession {
   @Column({ type: 'integer', default: 0, name: 'messageCount' })
   messageCount!: number;
 
-  @ManyToOne(() => Interview, (interview) => interview.sessions)
+  @ManyToOne(() => Interview, (interview) => interview.sessions, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'interviewId' })
   interview?: Interview;
 
-  @OneToMany(() => InterviewMessage, (message) => message.session)
+  @OneToMany(() => InterviewMessage, (message) => message.session, {
+    cascade: true,
+  })
   messages?: InterviewMessage[];
 }

@@ -3,6 +3,7 @@ import { AppModule } from './app.module';
 import { ConfigService } from '@nestjs/config';
 import cors from 'cors';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
+import { DatabaseExceptionFilter } from './common/filters/database-exception.filter';
 import { LoggerInterceptor } from './common/interceptors/logger.interceptor';
 import { ValidationPipe } from '@nestjs/common';
 import * as bodyParser from 'body-parser';
@@ -30,7 +31,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   
   // 应用全局过滤器、拦截器和管道
-  app.useGlobalFilters(new HttpExceptionFilter());
+  app.useGlobalFilters(new DatabaseExceptionFilter(), new HttpExceptionFilter());
   app.useGlobalInterceptors(new LoggerInterceptor());
   app.useGlobalPipes(new ValidationPipe({
     transform: true,

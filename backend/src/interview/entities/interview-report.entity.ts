@@ -62,7 +62,9 @@ export class InterviewReport {
   @CreateDateColumn()
   createdAt!: Date;
 
-  @OneToOne(() => Interview, (interview) => interview.report)
+  @OneToOne(() => Interview, (interview) => interview.report, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'interviewId' })
   interview?: Interview;
 }

@@ -1,6 +1,6 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Interview } from '../entities/interview.entity';
 import { InterviewSession } from '../entities/interview-session.entity';
 import { InterviewMessage } from '../entities/interview-message.entity';
@@ -33,7 +33,9 @@ export class InterviewSessionService {
     private messageRepository: Repository<InterviewMessage>,
     private sceneService: SceneService,
     private llmService: InterviewLLMService,
+    @Inject(forwardRef(() => InterviewReportService))
     private reportService: InterviewReportService,
+    private dataSource: DataSource,
   ) {}
 
   async createInterview(userId: string, dto: CreateInterviewDto): Promise<Interview> {
@@ -108,33 +110,47 @@ export class InterviewSessionService {
       }
     }
 
-    const sessionData = {
-      interviewId,
-      startedAt: new Date(),
-      status: 'active',
-      questionCount: 0,
-      messageCount: 0,
-    };
-    this.logger.log(`创建会话数据: ${JSON.stringify(sessionData)}`);
-    
-    const session = this.sessionRepository.create(sessionData);
-    this.logger.log(`会话对象创建后: interviewId=${session.interviewId}, id=${session.id}`);
-    
-    await this.sessionRepository.save(session);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    interview.status = 'in_progress';
-    await this.interviewRepository.save(interview);
+    try {
+      const sessionData = {
+        interviewId,
+        startedAt: new Date(),
+        status: 'active',
+        questionCount: 0,
+        messageCount: 0,
+      };
+      this.logger.log(`创建会话数据: ${JSON.stringify(sessionData)}`);
+      
+      const session = queryRunner.manager.create(InterviewSession, sessionData);
+      this.logger.log(`会话对象创建后: interviewId=${session.interviewId}, id=${session.id}`);
+      
+      const savedSession = await queryRunner.manager.save(session);
 
-    const openingMessage = await this.llmService.generateOpening(interview, resumeContent);
-    await this.saveMessage(session.id, 'assistant', openingMessage, 'opening');
+      interview.status = 'in_progress';
+      await queryRunner.manager.save(interview);
 
-    this.logger.log(`面试会话开始成功 - 会话ID: ${session.id}`);
+      await queryRunner.commitTransaction();
 
-    return {
-      sessionId: session.id,
-      interview,
-      firstMessage: openingMessage,
-    };
+      const openingMessage = await this.llmService.generateOpening(interview, resumeContent);
+      await this.saveMessage(savedSession.id, 'assistant', openingMessage, 'opening');
+
+      this.logger.log(`面试会话开始成功 - 会话ID: ${savedSession.id}`);
+
+      return {
+        sessionId: savedSession.id,
+        interview,
+        firstMessage: openingMessage,
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error(`开始面试失败: ${error}`);
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async endInterview(
@@ -153,36 +169,50 @@ export class InterviewSessionService {
       throw new NotFoundException('会话不存在');
     }
 
-    session.status = 'ended';
-    session.endedAt = new Date();
-    await this.sessionRepository.save(session);
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const messages = await this.getSessionMessages(sessionId);
+    try {
+      session.status = 'ended';
+      session.endedAt = new Date();
+      await queryRunner.manager.save(session);
 
-    interview.status = 'completed';
-    interview.duration = Math.floor(
-      (session.endedAt.getTime() - session.startedAt.getTime()) / 1000,
-    );
+      const messages = await this.getSessionMessages(sessionId);
 
-    const userMessages = messages.filter((msg) => msg.role === 'user' && msg.evaluation);
-    if (userMessages.length > 0) {
-      const totalScore = userMessages.reduce(
-        (sum, msg) => sum + (msg.evaluation?.overall || 0),
-        0,
+      interview.status = 'completed';
+      interview.duration = Math.floor(
+        (session.endedAt.getTime() - session.startedAt.getTime()) / 1000,
       );
-      interview.totalScore = totalScore / userMessages.length;
+
+      const userMessages = messages.filter((msg) => msg.role === 'user' && msg.evaluation);
+      if (userMessages.length > 0) {
+        const totalScore = userMessages.reduce(
+          (sum, msg) => sum + (msg.evaluation?.overall || 0),
+          0,
+        );
+        interview.totalScore = totalScore / userMessages.length;
+      }
+
+      await queryRunner.manager.save(interview);
+
+      const report = await this.reportService.generateReport(interview, session, messages);
+
+      await queryRunner.commitTransaction();
+
+      this.logger.log(`面试结束成功 - 报告ID: ${report.id}`);
+
+      return {
+        interview,
+        reportId: report.id,
+      };
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      this.logger.error(`结束面试失败: ${error}`);
+      throw error;
+    } finally {
+      await queryRunner.release();
     }
-
-    await this.interviewRepository.save(interview);
-
-    const report = await this.reportService.generateReport(interview, session, messages);
-
-    this.logger.log(`面试结束成功 - 报告ID: ${report.id}`);
-
-    return {
-      interview,
-      reportId: report.id,
-    };
   }
 
   async abandonInterview(interviewId: string, userId: string): Promise<void> {

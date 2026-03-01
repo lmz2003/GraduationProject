@@ -60,9 +60,13 @@ export class Interview {
   @JoinColumn({ name: 'resumeId' })
   resume?: Resume;
 
-  @OneToMany(() => InterviewSession, (session) => session.interview)
+  @OneToMany(() => InterviewSession, (session) => session.interview, {
+    cascade: true,
+  })
   sessions?: InterviewSession[];
 
-  @OneToOne(() => InterviewReport, (report) => report.interview)
+  @OneToOne(() => InterviewReport, (report) => report.interview, {
+    cascade: true,
+  })
   report?: InterviewReport;
 }
