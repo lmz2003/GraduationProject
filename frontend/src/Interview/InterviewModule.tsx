@@ -7,12 +7,124 @@ import type {
   Interview,
   CreateInterviewDto,
   Resume,
+  InterviewMode,
 } from './types';
 import InterviewChat from './InterviewChat';
 import InterviewReport from './InterviewReport';
+import InterviewModeSelector from './InterviewModeSelector';
+import VoiceInterview from './VoiceInterview';
 import './Interview.scss';
 
-type ViewMode = 'list' | 'select' | 'chat' | 'report';
+type ViewMode = 'list' | 'select' | 'chat' | 'voice' | 'report';
+
+/**
+ * 语音面试加载器：负责启动会话，然后渲染 VoiceInterview 组件
+ */
+interface VoiceInterviewLoaderProps {
+  interview: Interview;
+  initialSessionId: string | null;
+  onEnd: (reportId: string) => void;
+  onBack: () => void;
+  onSessionReady: (sessionId: string) => void;
+}
+
+const VoiceInterviewLoader: React.FC<VoiceInterviewLoaderProps> = ({
+  interview,
+  initialSessionId,
+  onEnd,
+  onBack,
+  onSessionReady,
+}) => {
+  const [sessionId, setSessionId] = useState<string | null>(initialSessionId);
+  const [isStarting, setIsStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+  const [openingText, setOpeningText] = useState('');
+
+  useEffect(() => {
+    if (sessionId) return; // 已有会话，直接使用
+
+    // 启动面试会话（通过 SSE 获取 sessionId 和开场白）
+    setIsStarting(true);
+    let tempSessionId: string | null = null;
+    let tempText = '';
+
+    const control = interviewApi.startInterviewStream(
+      interview.id,
+      (event) => {
+        if (event.type === 'session') {
+          tempSessionId = event.data.sessionId as string;
+        } else if (event.type === 'chunk') {
+          tempText += event.data as string;
+          setOpeningText(tempText);
+        } else if (event.type === 'done') {
+          if (tempSessionId) {
+            setSessionId(tempSessionId);
+            onSessionReady(tempSessionId);
+          }
+          setIsStarting(false);
+        } else if (event.type === 'error') {
+          setStartError((event.data?.message as string) || '启动面试失败');
+          setIsStarting(false);
+        }
+      },
+      (err) => {
+        setStartError(err.message);
+        setIsStarting(false);
+      },
+    );
+
+    return () => {
+      control.abort();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (startError) {
+    return (
+      <div className="voice-interview-page">
+        <div className="voice-header">
+          <button className="back-btn" onClick={onBack}>← 返回</button>
+          <h2>语音面试</h2>
+        </div>
+        <div className="voice-start-error">
+          <div className="error-icon">❌</div>
+          <p>启动面试失败：{startError}</p>
+          <button className="start-btn" onClick={onBack}>返回重试</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isStarting || !sessionId) {
+    return (
+      <div className="voice-interview-page">
+        <div className="voice-header">
+          <button className="back-btn" onClick={onBack}>← 返回</button>
+          <div className="voice-header-info">
+            <div className="voice-title">{interview.title || interview.sceneName}</div>
+          </div>
+        </div>
+        <div className="voice-starting">
+          <div className="starting-avatar">🤖</div>
+          <div className="starting-spinner" />
+          <p>正在连接面试官...</p>
+          {openingText && (
+            <div className="opening-preview">{openingText}</div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <VoiceInterview
+      interview={interview}
+      sessionId={sessionId}
+      onEnd={onEnd}
+      onBack={onBack}
+    />
+  );
+};
 
 const InterviewModule: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -29,6 +141,7 @@ const InterviewModule: React.FC = () => {
   const [selectedDifficulty, setSelectedDifficulty] = useState<string>('medium');
   const [selectedResumeId, setSelectedResumeId] = useState<string>('');
   const [useResume, setUseResume] = useState(false);
+  const [selectedMode, setSelectedMode] = useState<InterviewMode>('text');
   const [currentInterview, setCurrentInterview] = useState<Interview | null>(null);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
@@ -73,6 +186,7 @@ const InterviewModule: React.FC = () => {
     setSelectedDifficulty('medium');
     setSelectedResumeId('');
     setUseResume(false);
+    setSelectedMode('text');
   };
 
   const handleSceneSelect = (sceneCode: string) => {
@@ -98,7 +212,12 @@ const InterviewModule: React.FC = () => {
 
       const interview = await interviewApi.createInterview(dto);
       setCurrentInterview(interview);
-      setViewMode('chat');
+      // 根据面试形式跳转不同页面
+      if (selectedMode === 'voice') {
+        setViewMode('voice');
+      } else {
+        setViewMode('chat');
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : '创建面试失败');
     } finally {
@@ -150,6 +269,13 @@ const InterviewModule: React.FC = () => {
     setCurrentInterview(null);
     setCurrentSessionId(null);
     setCurrentReportId(null);
+    setSelectedMode('text');
+    loadInitialData();
+  };
+
+  const handleVoiceChatEnd = (reportId: string) => {
+    setCurrentReportId(reportId);
+    setViewMode('report');
     loadInitialData();
   };
 
@@ -200,6 +326,20 @@ const InterviewModule: React.FC = () => {
         sessionId={currentSessionId}
         onEnd={handleChatEnd}
         onBack={handleBackToList}
+      />
+    );
+  }
+
+  if (viewMode === 'voice' && currentInterview) {
+    // 语音面试需要先通过 SSE 启动会话获取 sessionId
+    // 使用 VoiceInterviewLoader 来处理启动流程
+    return (
+      <VoiceInterviewLoader
+        interview={currentInterview}
+        initialSessionId={currentSessionId}
+        onEnd={handleVoiceChatEnd}
+        onBack={handleBackToList}
+        onSessionReady={setCurrentSessionId}
       />
     );
   }
@@ -281,6 +421,14 @@ const InterviewModule: React.FC = () => {
                 </div>
               ))}
             </div>
+          </div>
+
+          <div className="select-section">
+            <h3>面试形式</h3>
+            <InterviewModeSelector
+              value={selectedMode}
+              onChange={setSelectedMode}
+            />
           </div>
 
           <div className="select-section">

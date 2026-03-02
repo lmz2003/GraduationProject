@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { interviewApi } from './api';
 import type { Interview, InterviewMessage, SSEEvent } from './types';
+import VoiceInput from './VoiceInput';
 import './Interview.scss';
 
 interface InterviewChatProps {
@@ -265,17 +266,26 @@ const InterviewChat: React.FC<InterviewChatProps> = ({
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyPress={handleKeyPress}
-          placeholder="输入你的回答..."
+          placeholder="输入你的回答，或点击🎙️语音输入..."
           disabled={isTyping}
           rows={3}
         />
-        <button
-          className="send-btn"
-          onClick={handleSend}
-          disabled={!input.trim() || isTyping}
-        >
-          发送
-        </button>
+        <div className="input-actions">
+          <VoiceInput
+            onTranscription={(text) => {
+              setInput((prev) => prev ? `${prev} ${text}` : text);
+            }}
+            disabled={isTyping}
+            language="zh"
+          />
+          <button
+            className="send-btn"
+            onClick={handleSend}
+            disabled={!input.trim() || isTyping}
+          >
+            发送
+          </button>
+        </div>
       </div>
     </div>
   );

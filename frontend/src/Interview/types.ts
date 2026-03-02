@@ -133,3 +133,52 @@ export interface Resume {
   isProcessed: boolean;
   overallScore?: number;
 }
+
+// 面试形式
+export type InterviewMode = 'text' | 'voice';
+
+export interface InterviewModeOption {
+  code: InterviewMode;
+  name: string;
+  description: string;
+  icon: string;
+  requirements: string[];
+  available: boolean;
+}
+
+// 语音识别结果
+export interface TranscriptionResult {
+  text: string;
+  confidence?: number;
+  duration?: number;
+  language?: string;
+}
+
+// TTS 音色
+export interface TTSVoice {
+  id: string;
+  name: string;
+  description: string;
+  gender: string;
+}
+
+// 语音通话消息结果
+export interface VoiceMessageResult {
+  userText: string;
+  aiText: string;
+  audioBase64: string;
+  audioFormat: string;
+  shouldEnd: boolean;
+}
+
+// 语音通话状态
+export type VoiceCallStatus = 'idle' | 'connecting' | 'recording' | 'processing' | 'playing' | 'ended' | 'error';
+
+// 语音通话会话信息
+export interface VoiceSessionInfo {
+  sessionId: string;
+  status: VoiceCallStatus;
+  transcript: string; // 最新的用户文本
+  aiResponse: string;  // 最新的AI回复文本
+  isMuted: boolean;
+}

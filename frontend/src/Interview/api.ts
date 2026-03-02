@@ -9,6 +9,9 @@ import type {
   CreateInterviewDto,
   SSEEvent,
   Resume,
+  TranscriptionResult,
+  TTSVoice,
+  VoiceMessageResult,
 } from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
@@ -270,5 +273,93 @@ export const interviewApi = {
     return {
       abort: () => abortController.abort(),
     };
+  },
+
+  // =================== 语音相关 API ===================
+
+  /**
+   * 语音转文字（上传音频 Blob 文件）
+   */
+  async speechToText(
+    audioBlob: Blob,
+    language: string = 'zh',
+  ): Promise<TranscriptionResult> {
+    const token = localStorage.getItem('token');
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'audio.webm');
+    formData.append('language', language);
+
+    const response = await fetch(`${API_BASE}/interview/speech-to-text`, {
+      method: 'POST',
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+      body: formData,
+    });
+
+    const data = await response.json();
+    if (!data.success) throw new Error(data.message || '语音识别失败');
+    return data.data;
+  },
+
+  /**
+   * 获取 TTS 可用音色列表
+   */
+  async getTTSVoices(): Promise<TTSVoice[]> {
+    const response = await fetch(`${API_BASE}/interview/tts-voices`, {
+      headers: getAuthHeaders(),
+    });
+    const data = await response.json();
+    if (!data.success) throw new Error(data.message || '获取音色列表失败');
+    return data.data;
+  },
+
+  /**
+   * 文字转语音，返回音频 Blob
+   */
+  async textToSpeech(
+    text: string,
+    voice: string = 'nova',
+    speed: number = 1.0,
+  ): Promise<Blob> {
+    const response = await fetch(`${API_BASE}/interview/text-to-speech`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ text, voice, speed }),
+    });
+
+    if (!response.ok) {
+      throw new Error('语音合成失败');
+    }
+
+    return response.blob();
+  },
+
+  /**
+   * 语音通话：发送语音消息，返回AI语音回复
+   */
+  async sendVoiceMessage(
+    sessionId: string,
+    audioBase64: string,
+    options: {
+      mimeType?: string;
+      language?: string;
+      voice?: string;
+    } = {},
+  ): Promise<VoiceMessageResult> {
+    const { mimeType = 'audio/webm', language = 'zh', voice = 'nova' } = options;
+
+    const response = await fetch(`${API_BASE}/interview/voice-session/${sessionId}/message`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        audio: audioBase64,
+        mimeType,
+        language,
+        voice,
+      }),
+    });
+
+    const data = await response.json();
+    if (!data.success) throw new Error(data.message || '语音通话处理失败');
+    return data.data;
   },
 };

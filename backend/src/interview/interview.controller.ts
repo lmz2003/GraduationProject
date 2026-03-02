@@ -10,13 +10,18 @@ import {
   Request,
   Logger,
   Res,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { Response } from 'express';
 import { SceneService } from './services/scene.service';
 import { InterviewSessionService } from './services/interview-session.service';
 import { InterviewMessageService } from './services/interview-message.service';
 import { InterviewReportService } from './services/interview-report.service';
+import { SpeechRecognitionService } from './services/speech-recognition.service';
+import { SpeechSynthesisService } from './services/speech-synthesis.service';
 import { CreateInterviewDto } from './dto/create-interview.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { Interview } from './entities/interview.entity';
@@ -31,6 +36,8 @@ export class InterviewController {
     private sessionService: InterviewSessionService,
     private messageService: InterviewMessageService,
     private reportService: InterviewReportService,
+    private speechRecognitionService: SpeechRecognitionService,
+    private speechSynthesisService: SpeechSynthesisService,
     private resumeAnalysisService: ResumeAnalysisService,
   ) {}
 
@@ -558,6 +565,265 @@ export class InterviewController {
         success: false,
         message: error.message || '中止消息失败',
       };
+    }
+  }
+
+  // =================== 语音相关接口 ===================
+
+  /**
+   * 语音转文字（上传音频文件）
+   * POST /interview/speech-to-text
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Post('speech-to-text')
+  @UseInterceptors(FileInterceptor('audio'))
+  async speechToText(
+    @Request() req: any,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('language') language?: string,
+  ) {
+    try {
+      if (!file) {
+        return {
+          success: false,
+          message: '请上传音频文件',
+        };
+      }
+
+      const result = await this.speechRecognitionService.transcribeAudio(
+        file.buffer,
+        {
+          language: language || 'zh',
+          fileName: file.originalname || 'audio.webm',
+          mimeType: file.mimetype || 'audio/webm',
+        },
+      );
+
+      return {
+        success: true,
+        data: {
+          text: result.text,
+          confidence: result.confidence,
+          duration: result.duration,
+          language: result.language,
+        },
+      };
+    } catch (error: any) {
+      this.logger.error('语音识别失败:', error);
+      return {
+        success: false,
+        message: error.message || '语音识别失败',
+      };
+    }
+  }
+
+  /**
+   * 语音转文字（Base64 编码，用于语音通话）
+   * POST /interview/speech-to-text/base64
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Post('speech-to-text/base64')
+  async speechToTextBase64(
+    @Request() req: any,
+    @Body() body: { audio: string; language?: string; mimeType?: string },
+  ) {
+    try {
+      const { audio, language = 'zh', mimeType = 'audio/webm' } = body;
+
+      if (!audio) {
+        return {
+          success: false,
+          message: '请提供音频数据',
+        };
+      }
+
+      const result = await this.speechRecognitionService.transcribeBase64Audio(audio, {
+        language,
+        mimeType,
+      });
+
+      return {
+        success: true,
+        data: {
+          text: result.text,
+          confidence: result.confidence,
+          duration: result.duration,
+          language: result.language,
+        },
+      };
+    } catch (error: any) {
+      this.logger.error('语音识别(base64)失败:', error);
+      return {
+        success: false,
+        message: error.message || '语音识别失败',
+      };
+    }
+  }
+
+  /**
+   * 文字转语音
+   * POST /interview/text-to-speech
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Post('text-to-speech')
+  async textToSpeech(
+    @Request() req: any,
+    @Body() body: { text: string; voice?: string; speed?: number },
+    @Res() res: Response,
+  ) {
+    try {
+      const { text, voice, speed } = body;
+
+      if (!text || text.trim().length === 0) {
+        res.status(400).json({
+          success: false,
+          message: '请提供要合成的文本',
+        });
+        return;
+      }
+
+      const result = await this.speechSynthesisService.synthesizeSpeech(text, {
+        voice: voice as any,
+        speed,
+      });
+
+      res.setHeader('Content-Type', 'audio/mpeg');
+      res.setHeader('Content-Length', result.audioBuffer.length);
+      res.setHeader('Cache-Control', 'public, max-age=3600');
+      res.send(result.audioBuffer);
+    } catch (error: any) {
+      this.logger.error('语音合成失败:', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          message: error.message || '语音合成失败',
+        });
+      }
+    }
+  }
+
+  /**
+   * 获取可用TTS音色列表
+   * GET /interview/tts-voices
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Get('tts-voices')
+  getTTSVoices() {
+    return {
+      success: true,
+      data: this.speechSynthesisService.getAvailableVoices(),
+    };
+  }
+
+  /**
+   * 语音通话会话 - 处理用户语音并返回AI回复（包含TTS音频）
+   * POST /interview/voice-session/:sessionId/message
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Post('voice-session/:sessionId/message')
+  async sendVoiceMessage(
+    @Request() req: any,
+    @Param('sessionId') sessionId: string,
+    @Body() body: { audio: string; mimeType?: string; language?: string; voice?: string },
+    @Res() res: Response,
+  ) {
+    try {
+      const userId = req.user.id;
+      const { audio, mimeType = 'audio/webm', language = 'zh', voice = 'nova' } = body;
+
+      if (!audio) {
+        res.status(400).json({ success: false, message: '请提供音频数据' });
+        return;
+      }
+
+      // 1. 语音识别 - 将用户语音转为文字
+      this.logger.log(`[语音通话] 开始处理语音消息，会话: ${sessionId}`);
+      const transcriptionResult = await this.speechRecognitionService.transcribeBase64Audio(
+        audio,
+        { language, mimeType },
+      );
+
+      const userText = transcriptionResult.text;
+      if (!userText || userText.trim().length === 0) {
+        res.status(400).json({ success: false, message: '未能识别到语音内容' });
+        return;
+      }
+
+      this.logger.log(`[语音通话] 识别文本: "${userText.substring(0, 50)}"`);
+
+      // 2. 获取会话和面试信息
+      const session = await this.sessionService.getSessionById(sessionId);
+      if (!session) {
+        res.status(404).json({ success: false, message: '会话不存在' });
+        return;
+      }
+
+      const interview = await this.sessionService.getInterviewById(session.interviewId, userId);
+
+      let resumeContent: string | undefined;
+      if (interview.resumeId) {
+        try {
+          const resume = await this.resumeAnalysisService.getResumeById(interview.resumeId, userId);
+          resumeContent = this.extractResumeContent(resume);
+        } catch (error) {
+          this.logger.warn('获取简历内容失败:', error);
+        }
+      }
+
+      // 3. 发送给 LLM 处理，收集完整 AI 回复
+      const requestId = `voice-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      this.messageService.registerAbortController(userId, requestId);
+
+      let aiText = '';
+      let shouldEnd = false;
+
+      res.setHeader('Content-Type', 'application/json');
+
+      const generator = this.messageService.processMessageStream(
+        sessionId,
+        userText,
+        interview,
+        resumeContent,
+        requestId,
+        userId,
+      );
+
+      for await (const event of generator) {
+        if (event.type === 'chunk') {
+          aiText += event.data as string;
+        } else if (event.type === 'done') {
+          shouldEnd = (event.data as any)?.shouldEnd || false;
+        }
+      }
+
+      this.messageService.cleanupAbortController(userId, requestId);
+
+      // 4. 将 AI 回复合成语音
+      this.logger.log(`[语音通话] AI 回复: "${aiText.substring(0, 50)}", 合成语音...`);
+      const ttsResult = await this.speechSynthesisService.synthesizeSpeech(aiText, {
+        voice: voice as any,
+        speed: 1.0,
+      });
+
+      // 5. 返回结果（用户文本 + AI文本 + AI音频的base64）
+      res.json({
+        success: true,
+        data: {
+          userText,
+          aiText,
+          audioBase64: ttsResult.audioBuffer.toString('base64'),
+          audioFormat: ttsResult.format,
+          shouldEnd,
+        },
+      });
+    } catch (error: any) {
+      this.logger.error('语音通话处理失败:', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          message: error.message || '语音通话处理失败',
+        });
+      }
     }
   }
 

@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { MulterModule } from '@nestjs/platform-express';
 import { Interview } from './entities/interview.entity';
 import { InterviewSession } from './entities/interview-session.entity';
 import { InterviewMessage } from './entities/interview-message.entity';
@@ -11,6 +12,8 @@ import { InterviewMessageService } from './services/interview-message.service';
 import { InterviewLLMService } from './services/interview-llm.service';
 import { InterviewEvaluatorService } from './services/interview-evaluator.service';
 import { InterviewReportService } from './services/interview-report.service';
+import { SpeechRecognitionService } from './services/speech-recognition.service';
+import { SpeechSynthesisService } from './services/speech-synthesis.service';
 import { ResumeAnalysisModule } from '../resume-analysis/resume-analysis.module';
 
 @Module({
@@ -21,6 +24,12 @@ import { ResumeAnalysisModule } from '../resume-analysis/resume-analysis.module'
       InterviewMessage,
       InterviewReport,
     ]),
+    MulterModule.register({
+      // 使用内存存储，音频文件直接处理，不保存到磁盘
+      limits: {
+        fileSize: 10 * 1024 * 1024, // 最大 10MB
+      },
+    }),
     ResumeAnalysisModule,
   ],
   controllers: [InterviewController],
@@ -31,6 +40,8 @@ import { ResumeAnalysisModule } from '../resume-analysis/resume-analysis.module'
     InterviewLLMService,
     InterviewEvaluatorService,
     InterviewReportService,
+    SpeechRecognitionService,
+    SpeechSynthesisService,
   ],
   exports: [
     SceneService,
@@ -39,6 +50,8 @@ import { ResumeAnalysisModule } from '../resume-analysis/resume-analysis.module'
     InterviewLLMService,
     InterviewEvaluatorService,
     InterviewReportService,
+    SpeechRecognitionService,
+    SpeechSynthesisService,
   ],
 })
 export class InterviewModule {}

@@ -1180,3 +1180,727 @@
   color: #6b7280;
   font-size: 14px;
 }
+
+// ==========================================
+// M-FE-11: 面试形式选择器
+// ==========================================
+
+.interview-mode-selector {
+  .mode-options {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .mode-card {
+    flex: 1;
+    min-width: 200px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    padding: 20px;
+    background: white;
+    border: 2px solid #e5e7eb;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+
+    &:hover:not(.disabled) {
+      border-color: #667eea;
+      box-shadow: 0 4px 12px rgba(102, 126, 234, 0.15);
+    }
+
+    &.selected {
+      border-color: #667eea;
+      background: linear-gradient(
+        135deg,
+        rgba(102, 126, 234, 0.05) 0%,
+        rgba(118, 75, 162, 0.05) 100%
+      );
+    }
+
+    &.disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+
+      .mode-icon {
+        filter: grayscale(1);
+      }
+    }
+
+    .mode-icon {
+      font-size: 32px;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+
+    .mode-info {
+      flex: 1;
+
+      .mode-name {
+        margin: 0 0 4px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #1f2937;
+      }
+
+      .mode-desc {
+        margin: 0 0 8px;
+        font-size: 13px;
+        color: #6b7280;
+        line-height: 1.5;
+      }
+
+      .mode-requirements {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+
+        .requirement-tag {
+          padding: 2px 8px;
+          border-radius: 12px;
+          font-size: 12px;
+          font-weight: 500;
+
+          &.available {
+            background: #d1fae5;
+            color: #059669;
+          }
+
+          &.unavailable {
+            background: #fee2e2;
+            color: #dc2626;
+          }
+        }
+      }
+    }
+
+    .mode-selected-indicator {
+      width: 24px;
+      height: 24px;
+      background: #667eea;
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+  }
+}
+
+// ==========================================
+// M-FE-08: 语音输入组件
+// ==========================================
+
+.voice-input-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+
+  .voice-input-error {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #dc2626;
+    max-width: 280px;
+
+    .error-icon {
+      font-size: 14px;
+      flex-shrink: 0;
+    }
+
+    .error-dismiss {
+      margin-left: auto;
+      background: none;
+      border: none;
+      color: #dc2626;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      padding: 0 2px;
+
+      &:hover {
+        color: #b91c1c;
+      }
+    }
+  }
+
+  .voice-input-recording {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    min-width: 200px;
+
+    .waveform-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      height: 32px;
+
+      .waveform-bar {
+        width: 3px;
+        min-height: 4px;
+        background: #ef4444;
+        border-radius: 2px;
+        transition: height 0.05s ease;
+      }
+    }
+
+    .recording-info {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #dc2626;
+
+      .recording-dot {
+        width: 8px;
+        height: 8px;
+        background: #ef4444;
+        border-radius: 50%;
+        animation: blink 1s ease-in-out infinite;
+      }
+
+      .recording-time {
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .recording-hint {
+        color: #9ca3af;
+      }
+    }
+  }
+
+  .voice-input-processing {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 12px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    font-size: 12px;
+    color: #2563eb;
+
+    .processing-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid #bfdbfe;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+  }
+
+  .voice-input-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+    background: #f3f4f6;
+    color: #374151;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+
+    &:hover:not(:disabled) {
+      background: #e5e7eb;
+      transform: scale(1.05);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+
+    &.recording {
+      background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+      color: white;
+      animation: pulse-red 1.5s ease-in-out infinite;
+      box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+    }
+
+    &.processing {
+      background: #dbeafe;
+      color: #2563eb;
+      cursor: not-allowed;
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(37, 99, 235, 0.3);
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .btn-icon {
+      line-height: 1;
+    }
+  }
+}
+
+// ==========================================
+// M-FE-09: 语音通话面试页面
+// ==========================================
+
+.voice-interview-page {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  color: white;
+  overflow: hidden;
+
+  // 顶部信息栏
+  .voice-header {
+    display: flex;
+    align-items: center;
+    padding: 16px 24px;
+    background: rgba(255, 255, 255, 0.05);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    gap: 16px;
+
+    .back-btn {
+      padding: 8px 14px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: 14px;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.15);
+        color: white;
+      }
+    }
+
+    .voice-header-info {
+      flex: 1;
+
+      .voice-title {
+        font-size: 16px;
+        font-weight: 600;
+        color: white;
+        margin-bottom: 2px;
+      }
+
+      .voice-meta {
+        font-size: 12px;
+        color: rgba(255, 255, 255, 0.5);
+      }
+    }
+
+    .voice-duration {
+      font-size: 18px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      color: rgba(255, 255, 255, 0.9);
+      background: rgba(255, 255, 255, 0.1);
+      padding: 6px 14px;
+      border-radius: 20px;
+      letter-spacing: 1px;
+    }
+  }
+
+  // 错误提示（覆盖全局样式）
+  .error-message {
+    margin: 12px 24px 0;
+    cursor: pointer;
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.4);
+    color: #fca5a5;
+  }
+
+  // 主内容区
+  .voice-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    padding: 32px 24px 24px;
+    overflow: hidden;
+  }
+
+  // AI 面试官头像区域
+  .ai-avatar-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+
+    .ai-avatar {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      .ai-avatar-icon {
+        font-size: 56px;
+        z-index: 1;
+        position: relative;
+      }
+
+      .ai-speaking-ring {
+        position: absolute;
+        inset: -8px;
+        border-radius: 50%;
+        border: 3px solid rgba(102, 126, 234, 0.6);
+        animation: ring-pulse 1.5s ease-out infinite;
+      }
+    }
+
+    .ai-label {
+      font-size: 14px;
+      font-weight: 500;
+      color: rgba(255, 255, 255, 0.7);
+      letter-spacing: 0.5px;
+    }
+
+    &.speaking .ai-avatar::before {
+      content: '';
+      position: absolute;
+      inset: -16px;
+      border-radius: 50%;
+      border: 2px solid rgba(102, 126, 234, 0.3);
+      animation: ring-pulse 2s ease-out infinite 0.5s;
+    }
+
+    .ai-waveform {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      height: 24px;
+
+      .ai-wave-bar {
+        width: 4px;
+        background: linear-gradient(to top, #667eea, #764ba2);
+        border-radius: 2px;
+        animation: wave-dance 0.8s ease-in-out infinite alternate;
+
+        @for $i from 1 through 8 {
+          &:nth-child(#{$i}) {
+            animation-duration: #{0.6 + $i * 0.05}s;
+            height: #{8 + ($i % 4) * 6}px;
+          }
+        }
+      }
+    }
+  }
+
+  // 字幕/对话记录区
+  .subtitles-area {
+    flex: 1;
+    width: 100%;
+    max-width: 640px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    overflow: hidden;
+    padding: 8px 0;
+
+    .no-subtitles {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+
+      p {
+        color: rgba(255, 255, 255, 0.3);
+        font-size: 14px;
+        text-align: center;
+      }
+    }
+
+    .subtitles-list {
+      overflow-y: auto;
+      max-height: 200px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      padding-right: 4px;
+
+      // 自定义滚动条
+      &::-webkit-scrollbar {
+        width: 4px;
+      }
+      &::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      &::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 2px;
+      }
+
+      .subtitle-item {
+        font-size: 14px;
+        line-height: 1.6;
+        padding: 8px 14px;
+        border-radius: 10px;
+        animation: fade-in 0.3s ease;
+
+        &.user {
+          background: rgba(102, 126, 234, 0.2);
+          align-self: flex-end;
+          max-width: 85%;
+          text-align: right;
+
+          .subtitle-role {
+            color: rgba(167, 181, 251, 0.8);
+          }
+
+          .subtitle-text {
+            color: rgba(255, 255, 255, 0.9);
+          }
+        }
+
+        &.assistant {
+          background: rgba(255, 255, 255, 0.08);
+          align-self: flex-start;
+          max-width: 85%;
+
+          .subtitle-role {
+            color: rgba(255, 255, 255, 0.5);
+          }
+
+          .subtitle-text {
+            color: rgba(255, 255, 255, 0.9);
+          }
+        }
+
+        .subtitle-role {
+          font-size: 12px;
+          margin-right: 4px;
+        }
+      }
+    }
+
+    .current-subtitle {
+      margin-top: 8px;
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.06);
+      border-left: 3px solid #667eea;
+      border-radius: 0 8px 8px 0;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.7);
+      font-style: italic;
+      animation: fade-in 0.3s ease;
+    }
+  }
+
+  // 用户录音波形
+  .user-waveform {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    height: 48px;
+    padding: 4px 0;
+
+    .user-wave-bar {
+      width: 4px;
+      min-height: 4px;
+      background: linear-gradient(to top, #ef4444, #f97316);
+      border-radius: 2px;
+      transition: height 0.05s ease;
+    }
+  }
+
+  // 状态标签
+  .voice-status-label {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+    margin-top: 4px;
+    min-height: 20px;
+  }
+
+  // 底部控制区
+  .voice-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 32px;
+    padding: 24px 0 8px;
+    flex-shrink: 0;
+
+    // 辅助控制按钮（静音、结束）
+    .control-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
+      padding: 14px 20px;
+      color: rgba(255, 255, 255, 0.8);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 24px;
+      min-width: 80px;
+
+      &:hover:not(:disabled) {
+        background: rgba(255, 255, 255, 0.15);
+        color: white;
+      }
+
+      &:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+      }
+
+      span:not(:first-child) {
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.3px;
+      }
+
+      &.muted {
+        background: rgba(234, 179, 8, 0.15);
+        border-color: rgba(234, 179, 8, 0.3);
+        color: #fbbf24;
+      }
+
+      &.end-call-btn {
+        background: rgba(239, 68, 68, 0.15);
+        border-color: rgba(239, 68, 68, 0.3);
+        color: #fca5a5;
+
+        &:hover:not(:disabled) {
+          background: rgba(239, 68, 68, 0.25);
+          color: #f87171;
+        }
+      }
+    }
+
+    // 主录音按钮
+    .main-mic-btn {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      font-size: 32px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+
+      &:hover:not(:disabled) {
+        transform: scale(1.06);
+        box-shadow: 0 6px 24px rgba(102, 126, 234, 0.6);
+      }
+
+      &:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        transform: none;
+      }
+
+      &.recording {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        border-color: rgba(239, 68, 68, 0.4);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+        animation: pulse-red 1.5s ease-in-out infinite;
+      }
+
+      &.processing {
+        background: rgba(255, 255, 255, 0.1);
+        border-color: rgba(255, 255, 255, 0.2);
+        cursor: wait;
+        animation: none;
+      }
+
+      .btn-spinner {
+        width: 28px;
+        height: 28px;
+        border: 3px solid rgba(255, 255, 255, 0.3);
+        border-top-color: white;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+    }
+  }
+}
+
+// ==========================================
+// 公共动画
+// ==========================================
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes pulse-red {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.5); }
+  70% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+@keyframes ring-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes wave-dance {
+  from { transform: scaleY(0.5); }
+  to { transform: scaleY(1.5); }
+}
