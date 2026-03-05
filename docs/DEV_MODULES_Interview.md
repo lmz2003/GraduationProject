@@ -6,8 +6,8 @@
 |------|------|
 | 关联PRD | PRD_Interview_Module.md V1.1.0 |
 | 创建日期 | 2026-02-28 |
-| 文档版本 | V1.1.0 |
-| 更新日期 | 2026-03-01 |
+| 文档版本 | V1.2.0 |
+| 更新日期 | 2026-03-04 |
 | 开发状态 | 🚧 开发中 |
 
 ### 版本历史
@@ -16,6 +16,7 @@
 |------|------|---------|------|
 | V1.0.0 | 2026-02-28 | 初始版本 | - |
 | V1.1.0 | 2026-03-01 | 新增语音输入、语音通话、视频面试模块 | - |
+| V1.2.0 | 2026-03-04 | 完成 M-BE-09/10/M-FE-08/09/11 语音模块；新增 M-FE-12 面试进度恢复修复 | - |
 
 ---
 
@@ -46,11 +47,11 @@
 │  │ 场景选择    │  │ 面试对话    │  │ 面试报告    │  │ 历史记录    │        │
 │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘        │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
-│  │ M-FE-05 ✅  │  │ M-FE-06 ✅  │  │ M-FE-07 ✅  │  │ M-FE-08 🆕  │        │
+│  │ M-FE-05 ✅  │  │ M-FE-06 ✅  │  │ M-FE-07 ✅  │  │ M-FE-08 ✅  │        │
 │  │ 公共组件    │  │ 状态管理    │  │ 工具函数    │  │ 语音输入    │        │
 │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘        │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐                         │
-│  │ M-FE-09 🆕  │  │ M-FE-10 🆕  │  │ M-FE-11 🆕  │                         │
+│  │ M-FE-09 ✅  │  │ M-FE-10 🆕  │  │ M-FE-11 ✅  │                         │
 │  │ 语音通话    │  │ 视频面试    │  │ 面试形式    │                         │
 │  │    页面     │  │    页面     │  │    选择     │                         │
 │  └─────────────┘  └─────────────┘  └─────────────┘                         │
@@ -69,7 +70,7 @@
 │  │ LLM服务     │  │ 评估服务    │  │ 报告服务    │  │ 控制器层    │        │
 │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘        │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
-│  │ M-BE-09 🆕  │  │ M-BE-10 🆕  │  │ M-BE-11 🆕  │  │ M-BE-12 🆕  │        │
+│  │ M-BE-09 ✅  │  │ M-BE-10 ✅  │  │ M-BE-11 🆕  │  │ M-BE-12 🆕  │        │
 │  │ 语音识别    │  │ 语音合成    │  │ 视频处理    │  │ 数字人      │        │
 │  │  (ASR)      │  │  (TTS)      │  │    服务     │  │    服务     │        │
 │  └─────────────┘  └─────────────┘  └─────────────┘  └─────────────┘        │
@@ -88,8 +89,8 @@
 | M-BE-06 | 评估服务模块 | 后端 | P0 | 12h | ✅ 已完成 |
 | M-BE-07 | 报告服务模块 | 后端 | P0 | 8h | ✅ 已完成 |
 | M-BE-08 | 控制器层模块 | 后端 | P0 | 8h | ✅ 已完成 |
-| M-BE-09 | 语音识别服务(ASR) | 后端 | P1 | 12h | 🆕 待开发 |
-| M-BE-10 | 语音合成服务(TTS) | 后端 | P1 | 8h | 🆕 待开发 |
+| M-BE-09 | 语音识别服务(ASR) | 后端 | P1 | 12h | ✅ 已完成 |
+| M-BE-10 | 语音合成服务(TTS) | 后端 | P1 | 8h | ✅ 已完成 |
 | M-BE-11 | 视频处理服务 | 后端 | P2 | 16h | 🆕 待开发 |
 | M-BE-12 | 数字人服务 | 后端 | P2 | 24h | 🆕 待开发 |
 | M-FE-01 | 场景选择页面 | 前端 | P0 | 12h | ✅ 已完成 |
@@ -99,10 +100,11 @@
 | M-FE-05 | 公共组件模块 | 前端 | P0 | 8h | ✅ 已完成 |
 | M-FE-06 | 状态管理模块 | 前端 | P0 | 8h | ✅ 已完成 |
 | M-FE-07 | 工具函数模块 | 前端 | P1 | 4h | ✅ 已完成 |
-| M-FE-08 | 语音输入组件 | 前端 | P1 | 8h | 🆕 待开发 |
-| M-FE-09 | 语音通话页面 | 前端 | P1 | 16h | 🆕 待开发 |
+| M-FE-08 | 语音输入组件 | 前端 | P1 | 8h | ✅ 已完成 |
+| M-FE-09 | 语音通话页面 | 前端 | P1 | 16h | ✅ 已完成 |
 | M-FE-10 | 视频面试页面 | 前端 | P2 | 24h | 🆕 待开发 |
-| M-FE-11 | 面试形式选择 | 前端 | P1 | 4h | 🆕 待开发 |
+| M-FE-11 | 面试形式选择 | 前端 | P1 | 4h | ✅ 已完成 |
+| M-FE-12 | 面试进度保存与恢复优化 | 前端 | P0 | 3h | ✅ 已完成 |
 
 ---
 
@@ -877,9 +879,9 @@ export class InterviewController {
 
 ---
 
-### 2.9 M-BE-09: 语音识别服务(ASR) 🆕 待开发
+### 2.9 M-BE-09: 语音识别服务(ASR) ✅ 已完成
 
-**模块描述：** 提供语音转文字能力，支持实时流式识别和文件上传识别
+**模块描述：** 提供语音转文字能力，支持音频文件上传识别（Whisper API via Axios）
 
 **文件结构：**
 ```
@@ -892,12 +894,12 @@ backend/src/interview/
 
 | 任务ID | 任务描述 | 交付物 | 工时 | 状态 |
 |--------|---------|--------|------|------|
-| T-BE-09-01 | 集成OpenAI Whisper API | speech-recognition.service.ts | 2h | 🆕 |
-| T-BE-09-02 | 实现音频文件上传识别 | POST /speech-to-text | 2h | 🆕 |
-| T-BE-09-03 | 实现实时流式语音识别 | WebSocket流式处理 | 4h | 🆕 |
-| T-BE-09-04 | 实现VAD语音活动检测 | 静音检测、说话结束判断 | 2h | 🆕 |
-| T-BE-09-05 | 添加音频格式转换 | 支持多种音频格式 | 1h | 🆕 |
-| T-BE-09-06 | 编写单元测试 | speech-recognition.service.spec.ts | 1h | 🆕 |
+| T-BE-09-01 | 集成 Whisper API (Axios) | speech-recognition.service.ts | 2h | ✅ |
+| T-BE-09-02 | 实现音频文件上传识别 | POST /interview/speech-to-text | 2h | ✅ |
+| T-BE-09-03 | 实现实时流式语音识别 | WebSocket流式处理 | 4h | 🔄 降级/暂缓 |
+| T-BE-09-04 | 实现VAD语音活动检测 | 静音检测、说话结束判断 | 2h | ⏸️ 暂缓 |
+| T-BE-09-05 | 添加音频格式转换 | 支持多种音频格式 | 1h | ✅ |
+| T-BE-09-06 | 编写单元测试 | speech-recognition.service.spec.ts | 1h | ⏸️ 暂缓 |
 
 **核心代码：**
 
@@ -942,9 +944,9 @@ export class SpeechRecognitionService {
 
 ---
 
-### 2.10 M-BE-10: 语音合成服务(TTS) 🆕 待开发
+### 2.10 M-BE-10: 语音合成服务(TTS) ✅ 已完成
 
-**模块描述：** 提供文字转语音能力，支持多种音色和语速调节
+**模块描述：** 提供文字转语音能力，支持多种音色和语速调节（OpenAI TTS API via Axios）
 
 **文件结构：**
 ```
@@ -957,11 +959,11 @@ backend/src/interview/
 
 | 任务ID | 任务描述 | 交付物 | 工时 | 状态 |
 |--------|---------|--------|------|------|
-| T-BE-10-01 | 集成OpenAI TTS API | speech-synthesis.service.ts | 2h | 🆕 |
-| T-BE-10-02 | 实现文本转语音接口 | POST /text-to-speech | 2h | 🆕 |
-| T-BE-10-03 | 实现流式语音合成 | SSE流式输出 | 2h | 🆕 |
-| T-BE-10-04 | 支持多音色选择 | 音色配置管理 | 1h | 🆕 |
-| T-BE-10-05 | 实现语音缓存机制 | 减少重复合成请求 | 1h | 🆕 |
+| T-BE-10-01 | 集成 TTS API (Axios) | speech-synthesis.service.ts | 2h | ✅ |
+| T-BE-10-02 | 实现文本转语音接口 | POST /interview/text-to-speech | 2h | ✅ |
+| T-BE-10-03 | 实现流式语音合成 | SSE流式输出 | 2h | ⏸️ 暂缓 |
+| T-BE-10-04 | 支持多音色选择 | 音色配置管理 | 1h | ✅ |
+| T-BE-10-05 | 实现语音缓存机制 | 减少重复合成请求 | 1h | ⏸️ 暂缓 |
 
 **核心代码：**
 
@@ -1399,30 +1401,28 @@ frontend/src/Interview/
 
 ---
 
-### 3.8 M-FE-08: 语音输入组件 🆕 待开发
+### 3.8 M-FE-08: 语音输入组件 ✅ 已完成
 
-**模块描述：** 在文字对话面试中提供语音输入功能
+**模块描述：** 在文字对话面试中提供语音输入功能，支持录音、波形动画与 ASR 识别
 
-**文件结构：**
+**实际文件结构：**
 ```
 frontend/src/Interview/
-└── components/
-    └── VoiceInput/
-        ├── VoiceInput.tsx           # 🆕 语音输入组件
-        ├── VoiceInput.scss          # 🆕 样式文件
-        ├── AudioRecorder.ts         # 🆕 音频录制工具
-        └── WaveformVisualizer.tsx   # 🆕 波形可视化组件
+└── VoiceInput.tsx           # ✅ 语音输入组件（含录音/波形/ASR集成）
+    # 样式集成到 Interview.scss
 ```
+
+> 注：实际合并为单文件实现，未单独拆分 AudioRecorder / WaveformVisualizer。
 
 **详细任务：**
 
 | 任务ID | 任务描述 | 交付物 | 工时 | 状态 |
 |--------|---------|--------|------|------|
-| T-FE-08-01 | 实现音频录制功能 | AudioRecorder.ts | 2h | 🆕 |
-| T-FE-08-02 | 实现波形可视化 | WaveformVisualizer.tsx | 2h | 🆕 |
-| T-FE-08-03 | 实现语音输入UI | VoiceInput.tsx | 2h | 🆕 |
-| T-FE-08-04 | 集成语音识别API | 调用后端ASR接口 | 1h | 🆕 |
-| T-FE-08-05 | 添加权限处理 | 麦克风权限申请 | 1h | 🆕 |
+| T-FE-08-01 | 实现音频录制功能 | VoiceInput.tsx (MediaRecorder) | 2h | ✅ |
+| T-FE-08-02 | 实现波形可视化 | VoiceInput.tsx (Web Audio API) | 2h | ✅ |
+| T-FE-08-03 | 实现语音输入UI | VoiceInput.tsx | 2h | ✅ |
+| T-FE-08-04 | 集成语音识别API | 调用后端 /speech-to-text | 1h | ✅ |
+| T-FE-08-05 | 添加权限处理 | 麦克风权限申请 | 1h | ✅ |
 
 **核心代码：**
 
@@ -1460,35 +1460,30 @@ export class AudioRecorder {
 
 ---
 
-### 3.9 M-FE-09: 语音通话页面 🆕 待开发
+### 3.9 M-FE-09: 语音通话页面 ✅ 已完成
 
-**模块描述：** AI语音通话面试页面，实现纯语音交互
+**模块描述：** AI语音通话面试页面，实现纯语音交互（ASR → LLM → TTS 全链路）
 
-**文件结构：**
+**实际文件结构：**
 ```
 frontend/src/Interview/
-└── pages/
-    └── VoiceInterview/
-        ├── VoiceInterview.tsx       # 🆕 语音通话页面
-        ├── VoiceInterview.scss      # 🆕 样式文件
-        ├── useVoiceSession.ts       # 🆕 语音会话Hook
-        └── components/
-            ├── CallStatus.tsx       # 🆕 通话状态组件
-            ├── AudioWaveform.tsx    # 🆕 音频波形组件
-            └── SubtitleDisplay.tsx  # 🆕 字幕显示组件
+├── VoiceInterview.tsx       # ✅ 语音通话主页面（含通话状态/波形动画/字幕）
+└── InterviewModule.tsx      # ✅ VoiceInterviewLoader 封装启动流程
 ```
+
+> 注：通过 SSE 启动会话而非 WebSocket；开场白TTS播放后进入正式通话流程。
 
 **详细任务：**
 
 | 任务ID | 任务描述 | 交付物 | 工时 | 状态 |
 |--------|---------|--------|------|------|
-| T-FE-09-01 | 实现WebSocket连接 | useVoiceSession.ts | 3h | 🆕 |
-| T-FE-09-02 | 实现音频流传输 | 实时音频收发 | 4h | 🆕 |
-| T-FE-09-03 | 实现通话状态管理 | CallStatus.tsx | 2h | 🆕 |
-| T-FE-09-04 | 实现音频播放 | TTS音频播放 | 2h | 🆕 |
-| T-FE-09-05 | 实现字幕显示 | SubtitleDisplay.tsx | 2h | 🆕 |
-| T-FE-09-06 | 实现静音控制 | 麦克风开关 | 1h | 🆕 |
-| T-FE-09-07 | 编写样式文件 | VoiceInterview.scss | 2h | 🆕 |
+| T-FE-09-01 | 实现会话启动（SSE替代WebSocket） | VoiceInterviewLoader | 3h | ✅ |
+| T-FE-09-02 | 实现录音+ASR转写 | VoiceInterview.tsx | 4h | ✅ |
+| T-FE-09-03 | 实现通话状态管理 | 通话/录音/AI说话状态机 | 2h | ✅ |
+| T-FE-09-04 | 实现TTS音频播放 | Base64 → AudioContext | 2h | ✅ |
+| T-FE-09-05 | 实现字幕显示 | 字幕渐入动画 | 2h | ✅ |
+| T-FE-09-06 | 实现静音控制 | 麦克风开关 | 1h | ✅ |
+| T-FE-09-07 | 编写样式文件 | Interview.scss（语音模块段） | 2h | ✅ |
 
 **核心代码：**
 
@@ -1616,26 +1611,24 @@ export const AvatarRenderer: React.FC<{ avatarId: string; isSpeaking: boolean }>
 
 ---
 
-### 3.11 M-FE-11: 面试形式选择 🆕 待开发
+### 3.11 M-FE-11: 面试形式选择 ✅ 已完成
 
-**模块描述：** 面试形式选择组件，集成到场景选择页面
+**模块描述：** 面试形式选择组件，集成到场景选择页面（文字/语音/视频三种模式）
 
-**文件结构：**
+**实际文件结构：**
 ```
 frontend/src/Interview/
-└── components/
-    └── InterviewModeSelector/
-        ├── InterviewModeSelector.tsx  # 🆕 形式选择组件
-        └── InterviewModeSelector.scss # 🆕 样式文件
+└── InterviewModeSelector.tsx  # ✅ 形式选择组件（含设备检测）
+    # 样式集成到 Interview.scss
 ```
 
 **详细任务：**
 
 | 任务ID | 任务描述 | 交付物 | 工时 | 状态 |
 |--------|---------|--------|------|------|
-| T-FE-11-01 | 实现形式选择UI | InterviewModeSelector.tsx | 2h | 🆕 |
-| T-FE-11-02 | 添加设备检测 | 检测摄像头/麦克风可用性 | 1h | 🆕 |
-| T-FE-11-03 | 编写样式文件 | InterviewModeSelector.scss | 1h | 🆕 |
+| T-FE-11-01 | 实现形式选择UI | InterviewModeSelector.tsx | 2h | ✅ |
+| T-FE-11-02 | 添加设备检测 | 检测摄像头/麦克风可用性 | 1h | ✅ |
+| T-FE-11-03 | 编写样式文件 | Interview.scss（ModeSelector段） | 1h | ✅ |
 
 **核心代码：**
 
@@ -1722,6 +1715,29 @@ export const InterviewModeSelector: React.FC<{
   );
 };
 ```
+
+---
+
+### 3.12 M-FE-12: 面试进度保存与恢复优化 ✅ 已完成（Bug修复）
+
+**模块描述：** 修复面试期间频繁调用进度保存接口、退出后计时暂停、返回后对话列表为空等问题
+
+**涉及文件：**
+```
+frontend/src/Interview/
+├── InterviewChat.tsx        # ✅ 计时器与进度保存逻辑重构
+├── InterviewModule.tsx      # ✅ 面试状态管理与恢复逻辑修复
+└── Interview.scss           # ✅ 新增 .header-right / .elapsed-time 样式
+```
+
+**问题与修复：**
+
+| 问题 | 根因 | 修复方案 |
+|------|------|----------|
+| 每秒调用 `save-progress` 接口 | `useEffect` 依赖 `saveProgress`，导致每次渲染重新挂载 | 改为依赖空数组 `[]`，进度保存仅在组件卸载/每30s/`beforeunload` 触发 |
+| 退出面试后计时暂停 | `elapsedTime` 仅存在组件内，退出时销毁；父组件未同步最新值 | 新增 `onElapsedTimeChange` prop，计时器每秒通过 ref 实时通知父组件 |
+| 返回面试后对话列表为空 | `handleBackToList` 清空了 `currentSessionId`，重进时走 `startInterview` 而非 `loadMessages` | `handleBackToList` 不再清空 `currentInterview` / `currentSessionId`；`handleResumeInterview` 同一面试直接复用状态 |
+| 新建面试残留旧 sessionId | `handleStartNewInterview` 未清空状态 | 开始新面试时显式清空所有面试状态 |
 
 ---
 
@@ -1991,17 +2007,17 @@ Day 13-14: 集成测试和Bug修复
 | T-BE-08-04 | M-BE-08 | 实现消息发送接口 | P0 | ✅ 已完成 |
 | T-BE-08-05 | M-BE-08 | 实现流式响应接口 | P0 | ✅ 已完成 |
 | T-BE-08-06 | M-BE-08 | 实现报告查询接口 | P0 | ✅ 已完成 |
-| T-BE-09-01 | M-BE-09 | 集成OpenAI Whisper API | P1 | 🆕 待开发 |
-| T-BE-09-02 | M-BE-09 | 实现音频文件上传识别 | P1 | 🆕 待开发 |
-| T-BE-09-03 | M-BE-09 | 实现实时流式语音识别 | P1 | 🆕 待开发 |
-| T-BE-09-04 | M-BE-09 | 实现VAD语音活动检测 | P1 | 🆕 待开发 |
-| T-BE-09-05 | M-BE-09 | 添加音频格式转换 | P1 | 🆕 待开发 |
-| T-BE-09-06 | M-BE-09 | 编写单元测试 | P1 | 🆕 待开发 |
-| T-BE-10-01 | M-BE-10 | 集成OpenAI TTS API | P1 | 🆕 待开发 |
-| T-BE-10-02 | M-BE-10 | 实现文本转语音接口 | P1 | 🆕 待开发 |
-| T-BE-10-03 | M-BE-10 | 实现流式语音合成 | P1 | 🆕 待开发 |
-| T-BE-10-04 | M-BE-10 | 支持多音色选择 | P1 | 🆕 待开发 |
-| T-BE-10-05 | M-BE-10 | 实现语音缓存机制 | P2 | 🆕 待开发 |
+| T-BE-09-01 | M-BE-09 | 集成 Whisper API (Axios) | P1 | ✅ 已完成 |
+| T-BE-09-02 | M-BE-09 | 实现音频文件上传识别 | P1 | ✅ 已完成 |
+| T-BE-09-03 | M-BE-09 | 实现实时流式语音识别 | P1 | 🔄 降级/暂缓 |
+| T-BE-09-04 | M-BE-09 | 实现VAD语音活动检测 | P1 | ⏸️ 暂缓 |
+| T-BE-09-05 | M-BE-09 | 添加音频格式转换 | P1 | ✅ 已完成 |
+| T-BE-09-06 | M-BE-09 | 编写单元测试 | P1 | ⏸️ 暂缓 |
+| T-BE-10-01 | M-BE-10 | 集成 TTS API (Axios) | P1 | ✅ 已完成 |
+| T-BE-10-02 | M-BE-10 | 实现文本转语音接口 | P1 | ✅ 已完成 |
+| T-BE-10-03 | M-BE-10 | 实现流式语音合成 | P1 | ⏸️ 暂缓 |
+| T-BE-10-04 | M-BE-10 | 支持多音色选择 | P1 | ✅ 已完成 |
+| T-BE-10-05 | M-BE-10 | 实现语音缓存机制 | P2 | ⏸️ 暂缓 |
 | T-BE-11-01 | M-BE-11 | 实现WebRTC信令服务 | P2 | 🆕 待开发 |
 | T-BE-11-02 | M-BE-11 | 实现视频流接收 | P2 | 🆕 待开发 |
 | T-BE-11-03 | M-BE-11 | 实现视频帧提取 | P2 | 🆕 待开发 |
@@ -2057,18 +2073,18 @@ Day 13-14: 集成测试和Bug修复
 | T-FE-06-03 | M-FE-06 | 实现面试操作Hook | P0 | ✅ 已完成 |
 | T-FE-07-01 | M-FE-07 | 封装API请求函数 | P0 | ✅ 已完成 |
 | T-FE-07-02 | M-FE-07 | 实现格式化函数 | P1 | ✅ 已完成 |
-| T-FE-08-01 | M-FE-08 | 实现音频录制功能 | P1 | 🆕 待开发 |
-| T-FE-08-02 | M-FE-08 | 实现波形可视化 | P1 | 🆕 待开发 |
-| T-FE-08-03 | M-FE-08 | 实现语音输入UI | P1 | 🆕 待开发 |
-| T-FE-08-04 | M-FE-08 | 集成语音识别API | P1 | 🆕 待开发 |
-| T-FE-08-05 | M-FE-08 | 添加权限处理 | P1 | 🆕 待开发 |
-| T-FE-09-01 | M-FE-09 | 实现WebSocket连接 | P1 | 🆕 待开发 |
-| T-FE-09-02 | M-FE-09 | 实现音频流传输 | P1 | 🆕 待开发 |
-| T-FE-09-03 | M-FE-09 | 实现通话状态管理 | P1 | 🆕 待开发 |
-| T-FE-09-04 | M-FE-09 | 实现音频播放 | P1 | 🆕 待开发 |
-| T-FE-09-05 | M-FE-09 | 实现字幕显示 | P1 | 🆕 待开发 |
-| T-FE-09-06 | M-FE-09 | 实现静音控制 | P1 | 🆕 待开发 |
-| T-FE-09-07 | M-FE-09 | 编写样式文件 | P1 | 🆕 待开发 |
+| T-FE-08-01 | M-FE-08 | 实现音频录制功能 | P1 | ✅ 已完成 |
+| T-FE-08-02 | M-FE-08 | 实现波形可视化 | P1 | ✅ 已完成 |
+| T-FE-08-03 | M-FE-08 | 实现语音输入UI | P1 | ✅ 已完成 |
+| T-FE-08-04 | M-FE-08 | 集成语音识别API | P1 | ✅ 已完成 |
+| T-FE-08-05 | M-FE-08 | 添加权限处理 | P1 | ✅ 已完成 |
+| T-FE-09-01 | M-FE-09 | 实现会话启动（SSE） | P1 | ✅ 已完成 |
+| T-FE-09-02 | M-FE-09 | 实现录音+ASR转写 | P1 | ✅ 已完成 |
+| T-FE-09-03 | M-FE-09 | 实现通话状态管理 | P1 | ✅ 已完成 |
+| T-FE-09-04 | M-FE-09 | 实现TTS音频播放 | P1 | ✅ 已完成 |
+| T-FE-09-05 | M-FE-09 | 实现字幕显示 | P1 | ✅ 已完成 |
+| T-FE-09-06 | M-FE-09 | 实现静音控制 | P1 | ✅ 已完成 |
+| T-FE-09-07 | M-FE-09 | 编写样式文件 | P1 | ✅ 已完成 |
 | T-FE-10-01 | M-FE-10 | 实现WebRTC连接 | P2 | 🆕 待开发 |
 | T-FE-10-02 | M-FE-10 | 实现用户视频采集 | P2 | 🆕 待开发 |
 | T-FE-10-03 | M-FE-10 | 实现数字人渲染 | P2 | 🆕 待开发 |
@@ -2076,9 +2092,13 @@ Day 13-14: 集成测试和Bug修复
 | T-FE-10-05 | M-FE-10 | 实现面试官选择 | P2 | 🆕 待开发 |
 | T-FE-10-06 | M-FE-10 | 实现设备设置 | P2 | 🆕 待开发 |
 | T-FE-10-07 | M-FE-10 | 编写样式文件 | P2 | 🆕 待开发 |
-| T-FE-11-01 | M-FE-11 | 实现形式选择UI | P1 | 🆕 待开发 |
-| T-FE-11-02 | M-FE-11 | 添加设备检测 | P1 | 🆕 待开发 |
-| T-FE-11-03 | M-FE-11 | 编写样式文件 | P1 | 🆕 待开发 |
+| T-FE-11-01 | M-FE-11 | 实现形式选择UI | P1 | ✅ 已完成 |
+| T-FE-11-02 | M-FE-11 | 添加设备检测 | P1 | ✅ 已完成 |
+| T-FE-11-03 | M-FE-11 | 编写样式文件 | P1 | ✅ 已完成 |
+| T-FE-12-01 | M-FE-12 | 修复进度保存频率（每秒→每30s/退出） | P0 | ✅ 已完成 |
+| T-FE-12-02 | M-FE-12 | 修复退出后计时暂停（onElapsedTimeChange同步） | P0 | ✅ 已完成 |
+| T-FE-12-03 | M-FE-12 | 修复返回面试后对话为空（保留sessionId） | P0 | ✅ 已完成 |
+| T-FE-12-04 | M-FE-12 | 修复新建面试残留旧sessionId | P1 | ✅ 已完成 |
 
 ---
 
@@ -2124,88 +2144,15 @@ backend/src/interview/
 └── interview.module.ts
 
 frontend/src/Interview/
-├── components/
-│   ├── SceneSelector/
-│   │   ├── index.tsx
-│   │   ├── SceneCard.tsx
-│   │   ├── JobTypeSelect.tsx
-│   │   ├── DifficultySelect.tsx
-│   │   ├── ResumeToggle.tsx
-│   │   └── styles.ts
-│   ├── ChatInterface/
-│   │   ├── index.tsx
-│   │   ├── MessageList.tsx
-│   │   ├── MessageItem.tsx
-│   │   ├── InputArea.tsx
-│   │   ├── EvaluationCard.tsx
-│   │   ├── ProgressBar.tsx
-│   │   ├── Timer.tsx
-│   │   └── styles.ts
-│   ├── ReportView/
-│   │   ├── index.tsx
-│   │   ├── ScoreOverview.tsx
-│   │   ├── RadarChart.tsx
-│   │   ├── DimensionAnalysis.tsx
-│   │   ├── StrengthsCard.tsx
-│   │   ├── WeaknessesCard.tsx
-│   │   ├── SuggestionsCard.tsx
-│   │   ├── QuestionReview.tsx
-│   │   └── styles.ts
-│   ├── HistoryList/
-│   │   ├── index.tsx
-│   │   ├── HistoryItem.tsx
-│   │   ├── FilterBar.tsx
-│   │   └── styles.ts
-│   └── common/
-│       ├── Button.tsx
-│       ├── Card.tsx
-│       ├── Modal.tsx
-│       ├── Loading.tsx
-│       ├── Empty.tsx
-│       └── Toast.tsx
-│   ├── VoiceInput/                    # 🆕 语音输入组件
-│   │   ├── VoiceInput.tsx
-│   │   ├── AudioRecorder.ts
-│   │   ├── WaveformVisualizer.tsx
-│   │   └── styles.ts
-│   └── InterviewModeSelector/         # 🆕 面试形式选择
-│       ├── InterviewModeSelector.tsx
-│       └── styles.ts
-├── pages/                             # 🆕 新增页面
-│   ├── VoiceInterview/                # 🆕 语音通话页面
-│   │   ├── VoiceInterview.tsx
-│   │   ├── useVoiceSession.ts
-│   │   ├── components/
-│   │   │   ├── CallStatus.tsx
-│   │   │   ├── AudioWaveform.tsx
-│   │   │   └── SubtitleDisplay.tsx
-│   │   └── styles.ts
-│   └── VideoInterview/                # 🆕 视频面试页面
-│       ├── VideoInterview.tsx
-│       ├── useVideoSession.ts
-│       ├── components/
-│       │   ├── AvatarRenderer.tsx
-│       │   ├── UserVideo.tsx
-│       │   ├── AvatarSelector.tsx
-│       │   └── DeviceSettings.tsx
-│       └── styles.ts
-├── context/
-│   └── InterviewContext.tsx
-├── hooks/
-│   ├── useScenes.ts
-│   ├── useInterview.ts
-│   ├── useInterviewSession.ts
-│   ├── useInterviewStream.ts
-│   ├── useInterviewReport.ts
-│   └── useInterviewHistory.ts
-├── utils/
-│   ├── api.ts
-│   ├── format.ts
-│   ├── storage.ts
-│   └── constants.ts
-├── types/
-│   └── index.ts
-└── index.tsx
+├── InterviewModule.tsx              # ✅ 模块主入口（含 VoiceInterviewLoader）
+├── InterviewChat.tsx                # ✅ 文字对话页面
+├── InterviewReport.tsx              # ✅ 面试报告页面
+├── VoiceInterview.tsx               # ✅ 语音通话页面（含波形/字幕/状态机）
+├── VoiceInput.tsx                   # ✅ 语音输入组件（录音/波形/ASR）
+├── InterviewModeSelector.tsx        # ✅ 面试形式选择组件（含设备检测）
+├── Interview.scss                   # ✅ 所有模块样式（统一管理）
+├── api.ts                           # ✅ 面试 API 封装
+└── types.ts                         # ✅ TypeScript 类型定义
 ```
 
 ### B. 工时汇总
@@ -2237,3 +2184,4 @@ frontend/src/Interview/
 |------|------|---------|------|
 | V1.0.0 | 2026-02-28 | 初始版本 | - |
 | V1.1.0 | 2026-03-01 | 新增语音输入、语音通话、视频面试功能模块 | - |
+| V1.2.0 | 2026-03-04 | 完成 M-BE-09/10/M-FE-08/09/11 语音模块；新增 M-FE-12 面试进度恢复修复 | - |
