@@ -334,18 +334,6 @@ $dark-warning-light: #3F2F0F;
           }
         }
 
-        &.restart {
-          background: #F3F4F6;
-          color: $text-secondary;
-          border: 1px solid $border;
-
-          &:hover {
-            background: $primary-light;
-            color: $primary;
-            border-color: $primary;
-          }
-        }
-
         &.delete {
           background: transparent;
           color: $error;
@@ -2266,18 +2254,6 @@ $dark-warning-light: #3F2F0F;
 
           .card-actions {
             .action-btn {
-              &.restart {
-                background: $dark-bg;
-                color: $dark-text-secondary;
-                border-color: $dark-border;
-
-                &:hover {
-                  background: rgba($dark-primary, 0.1);
-                  color: $dark-primary;
-                  border-color: $dark-primary;
-                }
-              }
-
               &.delete {
                 color: $dark-error;
 

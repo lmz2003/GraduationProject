@@ -459,6 +459,7 @@ $font:           'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe 
     justify-content: flex-start;
     margin-left: auto;
     width: auto;
+    align-items: flex-start; // 用户消息头像顶对齐更自然
   }
 }
 
@@ -474,14 +475,15 @@ $font:           'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe 
   transition: background-color 200ms ease-in-out, color 200ms ease-in-out;
 
   &.user-avatar {
-    background: $primary-soft;
-    color: $primary;
-    svg { width: 17px; height: 17px; }
+    background: $primary;
+    color: white;
+    border-radius: 50%; // 圆形头像
+    svg { width: 16px; height: 16px; }
 
     // Dark mode support
     .dark & {
-      background: $dark-primary-soft;
-      color: $dark-primary;
+      background: $dark-primary;
+      color: white;
     }
   }
 
@@ -530,17 +532,19 @@ $font:           'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe 
   }
 
   &.user-message {
-    border-radius: $radius 4px 4px $radius;
-    background: $primary;
+    background: linear-gradient(135deg, #6366F1 0%, #818CF8 100%);
     color: white;
     border: none;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.25);
+    font-weight: 450;
 
     // Dark mode support
     .dark & {
-      background: $dark-primary;
+      background: linear-gradient(135deg, #4F46E5 0%, #6366F1 100%);
+      box-shadow: 0 2px 12px rgba(99, 102, 241, 0.35);
     }
 
-    p { color: white; }
+    p { color: white; margin: 0; }
 
     a {
       color: rgba(255,255,255,0.85);
@@ -725,10 +729,8 @@ $font:           'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe 
 .typing-indicator {
   display: flex;
   gap: 5px;
-  padding: 12px 16px;
+  padding: 12px 16px 12px 0px;
   background: $surface;
-  border: 1px solid $border;
-  border-radius: $radius;
   width: fit-content;
   transition: background-color 200ms ease-in-out, border-color 200ms ease-in-out;
 

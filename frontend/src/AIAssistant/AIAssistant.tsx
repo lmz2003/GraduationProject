@@ -113,8 +113,9 @@ const AIAssistant: React.FC = () => {
     const lineHeight = 22;
     const paddingTop = 10;
     const paddingBottom = 10;
+    const minHeight = lineHeight + paddingTop + paddingBottom; // 42px，至少一行高
     const maxHeight = lineHeight * 4 + paddingTop + paddingBottom;
-    const scrollHeight = textarea.scrollHeight;
+    const scrollHeight = Math.max(textarea.scrollHeight, minHeight);
     if (scrollHeight > maxHeight) {
       textarea.style.height = maxHeight + 'px';
       textarea.style.overflowY = 'auto';
@@ -212,14 +213,6 @@ const AIAssistant: React.FC = () => {
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
 
-      setMessages(prev => [...prev, {
-        id: aiMessageId,
-        role: 'assistant',
-        content: '',
-        timestamp: new Date(),
-        sources: [],
-      }]);
-
       let currentContent = '';
       let currentSources: Array<{ title: string; score: number }> = [];
 
@@ -277,9 +270,23 @@ const AIAssistant: React.FC = () => {
                   chunkContent = String(data.data);
                 }
                 currentContent += chunkContent;
-                setMessages(prev => prev.map(msg =>
-                  msg.id === aiMessageId ? { ...msg, content: currentContent } : msg
-                ));
+                setMessages(prev => {
+                  const exists = prev.some(msg => msg.id === aiMessageId);
+                  if (exists) {
+                    return prev.map(msg =>
+                      msg.id === aiMessageId ? { ...msg, content: currentContent } : msg
+                    );
+                  } else {
+                    // 第一个 chunk 到来时才创建消息气泡
+                    return [...prev, {
+                      id: aiMessageId,
+                      role: 'assistant' as const,
+                      content: currentContent,
+                      timestamp: new Date(),
+                      sources: [],
+                    }];
+                  }
+                });
               } else if (data.type === 'done') {
                 currentSources = data.data?.sources || [];
                 const newSessionId = data.data?.sessionId;
@@ -455,7 +462,7 @@ const AIAssistant: React.FC = () => {
           </div>
         ))}
 
-        {isTyping && (
+        {isTyping && !messages.some(m => m.id === streamingMessageId && m.content) && (
           <div className="message-wrapper">
             <div className="avatar assistant-avatar"><BotIcon /></div>
             <div className="message-content-wrapper">

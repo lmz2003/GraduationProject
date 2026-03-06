@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { interviewApi } from './api';
+import { useToastModal } from '../components/ui/toast-modal';
 import type {
   Scene,
   JobType,
@@ -546,14 +547,20 @@ const InterviewModule: React.FC = () => {
     loadInitialData();
   };
 
+  const toastModal = useToastModal();
+
   const handleDeleteInterview = async (interviewId: string) => {
-    if (!confirm('确定要删除这场面试吗？')) return;
+    const confirmed = await toastModal.confirm(
+      '删除后无法恢复，确定要删除这场面试吗？',
+      '删除面试'
+    );
+    if (!confirmed) return;
 
     try {
       await interviewApi.deleteInterview(interviewId);
       setInterviews(interviews.filter((i) => i.id !== interviewId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : '删除面试失败');
+      toastModal.error(err instanceof Error ? err.message : '删除面试失败', '删除失败');
     }
   };
 
@@ -884,14 +891,6 @@ const InterviewModule: React.FC = () => {
                       onClick={() => handleViewReport(interview)}
                     >
                       查看报告
-                    </button>
-                  )}
-                  {(interview.status === 'pending' || interview.status === 'completed') && (
-                    <button
-                      className="action-btn restart"
-                      onClick={() => handleResumeInterview(interview)}
-                    >
-                      重新开始
                     </button>
                   )}
                   <button
