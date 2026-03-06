@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './AIAssistant.scss';
 import MarkdownRenderer from './MarkdownRenderer';
+import VoiceInput from './VoiceInput';
 import type { Message, Session } from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL;
@@ -511,6 +512,10 @@ const AIAssistant: React.FC = () => {
             disabled={isTyping || !token}
             className="textarea-input"
             rows={1}
+          />
+          <VoiceInput
+            onTranscription={(text) => setInput((prev) => prev + text)}
+            disabled={isTyping || !token}
           />
           {isTyping ? (
             <button aria-label="停止生成" className="stop-button" onClick={handleStopGeneration} title="停止生成">

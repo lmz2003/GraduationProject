@@ -248,7 +248,12 @@ const VoiceInterviewLoader: React.FC<VoiceInterviewLoaderProps> = ({
             <VolumeIcon />
             <span>静音</span>
           </button>
-          <button className="main-mic-btn" disabled={true}>
+          <button
+            className="main-mic-btn"
+            disabled={true}
+            title="麦克风"
+            aria-label="麦克风"
+          >
             <MicBtnIcon />
           </button>
           <button className="control-btn end-call-btn" onClick={onBack}>
@@ -297,7 +302,12 @@ const VoiceInterviewLoader: React.FC<VoiceInterviewLoaderProps> = ({
             <VolumeIcon />
             <span>静音</span>
           </button>
-          <button className="main-mic-btn processing" disabled={true}>
+          <button
+            className="main-mic-btn processing"
+            disabled={true}
+            title="麦克风"
+            aria-label="麦克风"
+          >
             <span className="btn-spinner" />
           </button>
           <button className="control-btn end-call-btn" disabled={true}>
@@ -349,7 +359,12 @@ const VoiceInterviewLoader: React.FC<VoiceInterviewLoaderProps> = ({
             <VolumeIcon />
             <span>静音</span>
           </button>
-          <button className="main-mic-btn" disabled={true}>
+          <button
+            className="main-mic-btn"
+            disabled={true}
+            title="麦克风"
+            aria-label="麦克风"
+          >
             <MicBtnIcon />
           </button>
           <button className="control-btn end-call-btn" disabled={true}>

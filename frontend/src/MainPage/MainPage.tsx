@@ -39,16 +39,6 @@ const KnowledgeIcon = () => (
   </svg>
 );
 
-const AIIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 2a10 10 0 1 0 10 10"/>
-    <path d="M12 6v6l4 2"/>
-    <circle cx="18" cy="6" r="3"/>
-    <path d="M15 6h6"/>
-    <path d="M18 3v6"/>
-  </svg>
-);
-
 const CollapseLeftIcon = () => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="15 18 9 12 15 6"/>

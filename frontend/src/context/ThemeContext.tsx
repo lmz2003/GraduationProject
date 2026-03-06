@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
 export type Theme = 'light' | 'dark';
 
@@ -11,7 +11,7 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 interface ThemeProviderProps {
-  children: React.ReactNode;
+  children: ReactNode;
   defaultTheme?: Theme;
 }
 
@@ -19,7 +19,6 @@ export function ThemeProvider({ children, defaultTheme = 'light' }: ThemeProvide
   const [theme, setThemeState] = useState<Theme>(() => {
     if (typeof window === 'undefined') return defaultTheme;
     const saved = localStorage.getItem('theme-mode');
-    // Only allow 'light' or 'dark', no system mode
     if (saved === 'light' || saved === 'dark') return saved;
     return defaultTheme;
   });

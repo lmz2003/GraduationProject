@@ -343,7 +343,7 @@ const VoiceInterview: React.FC<VoiceInterviewProps> = ({
             try {
               const endResult = await interviewApi.endInterview(sessionId);
               onEnd(endResult.reportId);
-            } catch (endErr) {
+            } catch {
               setError('结束面试失败，请手动点击结束按钮');
               setCallStatus('idle');
             }

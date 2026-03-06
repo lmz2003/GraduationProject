@@ -3,6 +3,8 @@ import { io, Socket } from 'socket.io-client';
 
 const WS_URL = import.meta.env.VITE_WS_URL || 'http://localhost:3001';
 
+type SocketCallback = (...args: unknown[]) => void;
+
 export const useWebSocket = (noteId: string | undefined, userId: string | undefined) => {
   const socketRef = useRef<Socket | null>(null);
 
@@ -38,19 +40,19 @@ export const useWebSocket = (noteId: string | undefined, userId: string | undefi
     };
   }, [noteId, userId]);
 
-  const on = (event: string, callback: (...args: any[]) => void) => {
+  const on = (event: string, callback: SocketCallback) => {
     if (socketRef.current) {
       socketRef.current.on(event, callback);
     }
   };
 
-  const off = (event: string, callback: (...args: any[]) => void) => {
+  const off = (event: string, callback: SocketCallback) => {
     if (socketRef.current) {
       socketRef.current.off(event, callback);
     }
   };
 
-  const emit = (event: string, data: any) => {
+  const emit = (event: string, data: unknown) => {
     if (socketRef.current) {
       socketRef.current.emit(event, data);
     }

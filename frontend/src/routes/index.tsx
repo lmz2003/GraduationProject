@@ -1,4 +1,3 @@
-import React from 'react';
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import HomePage from '../LoginPage/HomePage';
 import MainPageLayout from '../MainPage/MainPage';
@@ -6,22 +5,7 @@ import LoginCallback from '../LoginPage/LoginCallback';
 import NoteDetailPage from '../Note/NoteDetailPage';
 import ResumeDetail from '../ResumeAnalysis/ResumeDetail';
 import ResumeUpload from '../ResumeAnalysis/ResumeUpload';
-
-// Protected Route Component
-interface ProtectedRouteProps {
-  element: React.ReactElement;
-}
-
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ element }) => {
-  const token = localStorage.getItem('token');
-  return token ? element : <Navigate to="/login" replace />;
-};
-
-// Login Redirect Component (redirect to main if already logged in)
-const LoginRedirect: React.FC<{ element: React.ReactElement }> = ({ element }) => {
-  const token = localStorage.getItem('token');
-  return token ? <Navigate to="/dashboard" replace /> : element;
-};
+import { ProtectedRoute, LoginRedirect } from './RouteComponents';
 
 export const router = createBrowserRouter([
   {
