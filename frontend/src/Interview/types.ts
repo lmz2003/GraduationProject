@@ -140,7 +140,7 @@ export interface Resume {
 }
 
 // 面试形式
-export type InterviewMode = 'text' | 'voice';
+export type InterviewMode = 'text' | 'voice' | 'video';
 
 export interface InterviewModeOption {
   code: InterviewMode;
@@ -183,7 +183,58 @@ export type VoiceCallStatus = 'idle' | 'connecting' | 'recording' | 'processing'
 export interface VoiceSessionInfo {
   sessionId: string;
   status: VoiceCallStatus;
-  transcript: string; // 最新的用户文本
-  aiResponse: string;  // 最新的AI回复文本
+  transcript: string;
   isMuted: boolean;
+}
+
+// 视频帧分析结果
+export interface VideoFrameAnalysis {
+  timestamp: number;
+  emotions: {
+    neutral: number;
+    happy: number;
+    sad: number;
+    angry: number;
+    fearful: number;
+    disgusted: number;
+    surprised: number;
+  };
+  gazeDirection: 'center' | 'left' | 'right' | 'up' | 'down';
+  eyeContact: boolean;
+  faceDetected: boolean;
+  confidence: number;
+}
+
+// 视频分析总结
+export interface VideoAnalysisSummary {
+  totalFrames: number;
+  averageEmotions: Record<string, number>;
+  dominantEmotion: string;
+  eyeContactRatio: number;
+  gazeDistribution: Record<string, number>;
+  faceDetectionRatio: number;
+  overallScore: number;
+  feedback: string[];
+}
+
+// 视频通话消息结果
+export interface VideoMessageResult {
+  userText: string;
+  aiText: string;
+  audioBase64: string;
+  audioFormat: string;
+  shouldEnd: boolean;
+  videoAnalysis?: VideoFrameAnalysis;
+}
+
+// 视频通话状态
+export type VideoCallStatus = 'idle' | 'connecting' | 'recording' | 'processing' | 'playing' | 'ended' | 'error';
+
+// 视频通话会话信息
+export interface VideoSessionInfo {
+  sessionId: string;
+  status: VideoCallStatus;
+  transcript: string;
+  isMuted: boolean;
+  isCameraOff: boolean;
 }

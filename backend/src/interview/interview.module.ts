@@ -14,6 +14,7 @@ import { InterviewEvaluatorService } from './services/interview-evaluator.servic
 import { InterviewReportService } from './services/interview-report.service';
 import { SpeechRecognitionService } from './services/speech-recognition.service';
 import { SpeechSynthesisService } from './services/speech-synthesis.service';
+import { VideoAnalysisService } from './services/video-analysis.service';
 import { ResumeAnalysisModule } from '../resume-analysis/resume-analysis.module';
 
 @Module({
@@ -42,6 +43,7 @@ import { ResumeAnalysisModule } from '../resume-analysis/resume-analysis.module'
     InterviewReportService,
     SpeechRecognitionService,
     SpeechSynthesisService,
+    VideoAnalysisService,
   ],
   exports: [
     SceneService,
@@ -52,6 +54,7 @@ import { ResumeAnalysisModule } from '../resume-analysis/resume-analysis.module'
     InterviewReportService,
     SpeechRecognitionService,
     SpeechSynthesisService,
+    VideoAnalysisService,
   ],
 })
 export class InterviewModule {}

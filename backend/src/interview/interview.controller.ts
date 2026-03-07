@@ -22,6 +22,7 @@ import { InterviewMessageService } from './services/interview-message.service';
 import { InterviewReportService } from './services/interview-report.service';
 import { SpeechRecognitionService } from './services/speech-recognition.service';
 import { SpeechSynthesisService } from './services/speech-synthesis.service';
+import { VideoAnalysisService } from './services/video-analysis.service';
 import { CreateInterviewDto } from './dto/create-interview.dto';
 import { SendMessageDto } from './dto/send-message.dto';
 import { Interview } from './entities/interview.entity';
@@ -38,6 +39,7 @@ export class InterviewController {
     private reportService: InterviewReportService,
     private speechRecognitionService: SpeechRecognitionService,
     private speechSynthesisService: SpeechSynthesisService,
+    private videoAnalysisService: VideoAnalysisService,
     private resumeAnalysisService: ResumeAnalysisService,
   ) {}
 
@@ -857,6 +859,208 @@ export class InterviewController {
         res.status(500).json({
           success: false,
           message: error.message || '语音通话处理失败',
+        });
+      }
+    }
+  }
+
+  // =================== 视频分析相关接口 ===================
+
+  /**
+   * 分析视频帧
+   * POST /interview/video/analyze-frame
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Post('video/analyze-frame')
+  async analyzeVideoFrame(
+    @Request() req: any,
+    @Body() body: { image: string; timestamp: number },
+  ) {
+    try {
+      const { image, timestamp } = body;
+
+      if (!image) {
+        return {
+          success: false,
+          message: '请提供图像数据',
+        };
+      }
+
+      const result = await this.videoAnalysisService.analyzeFrameBase64(image, timestamp);
+
+      return {
+        success: true,
+        data: result,
+      };
+    } catch (error: any) {
+      this.logger.error('视频帧分析失败:', error);
+      return {
+        success: false,
+        message: error.message || '视频帧分析失败',
+      };
+    }
+  }
+
+  /**
+   * 生成视频分析总结
+   * POST /interview/video/generate-summary
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Post('video/generate-summary')
+  async generateVideoSummary(
+    @Request() req: any,
+    @Body() body: { analyses: any[] },
+  ) {
+    try {
+      const { analyses } = body;
+
+      if (!Array.isArray(analyses)) {
+        return {
+          success: false,
+          message: 'analyses 必须是数组',
+        };
+      }
+
+      const summary = this.videoAnalysisService.generateSummary(analyses);
+
+      return {
+        success: true,
+        data: summary,
+      };
+    } catch (error: any) {
+      this.logger.error('生成视频分析总结失败:', error);
+      return {
+        success: false,
+        message: error.message || '生成视频分析总结失败',
+      };
+    }
+  }
+
+  /**
+   * 视频通话会话 - 处理用户视频和语音并返回AI回复
+   * POST /interview/video-session/:sessionId/message
+   */
+  @UseGuards(AuthGuard('jwt'))
+  @Post('video-session/:sessionId/message')
+  async sendVideoMessage(
+    @Request() req: any,
+    @Param('sessionId') sessionId: string,
+    @Body() body: {
+      audio: string;
+      audioMimeType?: string;
+      videoFrame?: string;
+      voice?: string;
+    },
+    @Res() res: Response,
+  ) {
+    try {
+      const userId = req.user.id;
+      const { audio, audioMimeType = 'audio/webm', videoFrame, voice = 'anna' } = body;
+
+      if (!audio) {
+        res.status(400).json({ success: false, message: '请提供音频数据' });
+        return;
+      }
+
+      this.logger.log(`[视频通话] 开始处理视频消息，会话: ${sessionId}`);
+
+      // 1. 语音识别 - 将用户语音转为文字
+      const transcriptionResult = await this.speechRecognitionService.transcribeBase64Audio(
+        audio,
+        { mimeType: audioMimeType },
+      );
+
+      const userText = transcriptionResult.text;
+      if (!userText || userText.trim().length === 0) {
+        res.status(400).json({ success: false, message: '未能识别到语音内容' });
+        return;
+      }
+
+      this.logger.log(`[视频通话] 识别文本: "${userText.substring(0, 50)}"`);
+
+      // 2. 获取会话和面试信息
+      const session = await this.sessionService.getSessionById(sessionId);
+      if (!session) {
+        res.status(404).json({ success: false, message: '会话不存在' });
+        return;
+      }
+
+      const interview = await this.sessionService.getInterviewById(session.interviewId, userId);
+
+      let resumeContent: string | undefined;
+      if (interview.resumeId) {
+        try {
+          const resume = await this.resumeAnalysisService.getResumeById(interview.resumeId, userId);
+          resumeContent = this.extractResumeContent(resume);
+        } catch (error) {
+          this.logger.warn('获取简历内容失败:', error);
+        }
+      }
+
+      // 3. 发送给 LLM 处理，收集完整 AI 回复
+      const requestId = `video-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      this.messageService.registerAbortController(userId, requestId);
+
+      let aiText = '';
+      let shouldEnd = false;
+
+      const generator = this.messageService.processMessageStream(
+        sessionId,
+        userText,
+        interview,
+        resumeContent,
+        requestId,
+        userId,
+      );
+
+      for await (const event of generator) {
+        if (event.type === 'chunk') {
+          aiText += event.data as string;
+        } else if (event.type === 'done') {
+          shouldEnd = (event.data as any)?.shouldEnd || false;
+        }
+      }
+
+      this.messageService.cleanupAbortController(userId, requestId);
+
+      // 4. 将 AI 回复合成语音
+      this.logger.log(`[视频通话] AI 回复: "${aiText.substring(0, 50)}", 合成语音...`);
+      const ttsResult = await this.speechSynthesisService.synthesizeSpeech(aiText, {
+        voice: voice as any,
+        speed: 1.0,
+      });
+
+      // 5. 如果提供了视频帧，进行分析
+      let videoAnalysis: any = null;
+      if (videoFrame) {
+        try {
+          videoAnalysis = await this.videoAnalysisService.analyzeFrameBase64(
+            videoFrame,
+            Date.now(),
+          );
+        } catch (error) {
+          this.logger.warn('视频帧分析失败:', error);
+        }
+      }
+
+      // 6. 返回结果
+      res.json({
+        success: true,
+        data: {
+          userText,
+          aiText,
+          audioBase64: ttsResult.audioBuffer.toString('base64'),
+          audioFormat: ttsResult.format,
+          shouldEnd,
+          videoAnalysis,
+        },
+      });
+    } catch (error: any) {
+      this.logger.error('视频通话处理失败:', error);
+      if (!res.headersSent) {
+        res.status(500).json({
+          success: false,
+          message: error.message || '视频通话处理失败',
         });
       }
     }

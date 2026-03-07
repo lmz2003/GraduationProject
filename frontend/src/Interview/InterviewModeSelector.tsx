@@ -29,48 +29,55 @@ const InterviewModeSelector: React.FC<InterviewModeSelectorProps> = ({ value, on
       requirements: ['麦克风'],
       available: false,
     },
+    {
+      code: 'video',
+      name: '视频面试',
+      description: '视频语音交互，支持表情分析反馈',
+      icon: '📹',
+      requirements: ['摄像头', '麦克风'],
+      available: false,
+    },
   ]);
 
-  // 检测麦克风可用性
   useEffect(() => {
-    const checkMicAvailability = async () => {
+    const checkDeviceAvailability = async () => {
       try {
-        // 检查是否支持 MediaDevices API
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           return;
         }
 
-        // 检查是否已有麦克风权限
         const devices = await navigator.mediaDevices.enumerateDevices();
         const hasMicrophone = devices.some((device) => device.kind === 'audioinput');
+        const hasCamera = devices.some((device) => device.kind === 'videoinput');
 
-        if (hasMicrophone) {
-          setModes((prev) =>
-            prev.map((mode) =>
-              mode.code === 'voice' ? { ...mode, available: true } : mode,
-            ),
-          );
-        }
+        setModes((prev) =>
+          prev.map((mode) => {
+            if (mode.code === 'voice') {
+              return { ...mode, available: hasMicrophone };
+            }
+            if (mode.code === 'video') {
+              return { ...mode, available: hasMicrophone && hasCamera };
+            }
+            return mode;
+          }),
+        );
       } catch {
-        // 忽略错误，保持 voice 不可用
+        // 忽略错误，保持设备不可用
       }
     };
 
-    checkMicAvailability();
+    checkDeviceAvailability();
   }, []);
 
   const handleSelect = async (mode: InterviewModeOption) => {
     if (!mode.available) return;
 
     if (mode.code === 'voice') {
-      // 语音模式需要请求麦克风权限
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // 立即停止流，只需要确认权限
         stream.getTracks().forEach((track) => track.stop());
         onChange(mode.code);
       } catch {
-        // 更新权限状态
         setModes((prev) =>
           prev.map((m) =>
             m.code === 'voice'
@@ -79,6 +86,21 @@ const InterviewModeSelector: React.FC<InterviewModeSelectorProps> = ({ value, on
           ),
         );
         alert('无法访问麦克风，请检查浏览器权限设置后重试');
+      }
+    } else if (mode.code === 'video') {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+        stream.getTracks().forEach((track) => track.stop());
+        onChange(mode.code);
+      } catch {
+        setModes((prev) =>
+          prev.map((m) =>
+            m.code === 'video'
+              ? { ...m, available: false }
+              : m,
+          ),
+        );
+        alert('无法访问摄像头或麦克风，请检查浏览器权限设置后重试');
       }
     } else {
       onChange(mode.code);

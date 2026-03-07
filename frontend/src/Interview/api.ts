@@ -12,6 +12,8 @@ import type {
   TranscriptionResult,
   TTSVoice,
   VoiceMessageResult,
+  VideoMessageResult,
+  VideoAnalysisSummary,
 } from './types';
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
@@ -373,6 +375,74 @@ export const interviewApi = {
 
     const data = await response.json();
     if (!data.success) throw new Error(data.message || '语音通话处理失败');
+    return data.data;
+  },
+
+  // =================== 视频相关 API ===================
+
+  /**
+   * 分析视频帧
+   */
+  async analyzeVideoFrame(
+    imageBase64: string,
+    timestamp: number,
+  ): Promise<VideoMessageResult['videoAnalysis']> {
+    const response = await fetch(`${API_BASE}/interview/video/analyze-frame`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        image: imageBase64,
+        timestamp,
+      }),
+    });
+
+    const data = await response.json();
+    if (!data.success) throw new Error(data.message || '视频帧分析失败');
+    return data.data;
+  },
+
+  /**
+   * 生成视频分析总结
+   */
+  async generateVideoSummary(analyses: any[]): Promise<VideoAnalysisSummary> {
+    const response = await fetch(`${API_BASE}/interview/video/generate-summary`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ analyses }),
+    });
+
+    const data = await response.json();
+    if (!data.success) throw new Error(data.message || '生成视频分析总结失败');
+    return data.data;
+  },
+
+  /**
+   * 视频通话：发送视频和语音消息，返回AI语音回复
+   */
+  async sendVideoMessage(
+    sessionId: string,
+    audioBase64: string,
+    options: {
+      audioMimeType?: string;
+      videoFrame?: string;
+      voice?: string;
+    } = {},
+  ): Promise<VideoMessageResult> {
+    const { audioMimeType = 'audio/webm', videoFrame, voice = 'anna' } = options;
+
+    const response = await fetch(`${API_BASE}/interview/video-session/${sessionId}/message`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      body: JSON.stringify({
+        audio: audioBase64,
+        audioMimeType,
+        videoFrame,
+        voice,
+      }),
+    });
+
+    const data = await response.json();
+    if (!data.success) throw new Error(data.message || '视频通话处理失败');
     return data.data;
   },
 };

@@ -14,6 +14,11 @@ interface StreamCallbacks {
   shouldAbort?: () => boolean;
 }
 
+export interface StreamChunk {
+  content: string;
+  done: boolean;
+}
+
 @Injectable()
 export class InterviewLLMService {
   private llm: ChatOpenAI;
@@ -375,6 +380,39 @@ ${historyText.substring(0, 1000)}...
       }
 
       return fullContent;
+    } catch (error) {
+      this.logger.error('流式生成失败:', error);
+      throw error;
+    }
+  }
+
+  async *streamGenerateAsync(
+    systemPrompt: string,
+    userPrompt: string,
+    shouldAbort?: () => boolean,
+  ): AsyncGenerator<StreamChunk> {
+    try {
+      const messages: (SystemMessage | HumanMessage)[] = [];
+      if (systemPrompt) {
+        messages.push(new SystemMessage(systemPrompt));
+      }
+      messages.push(new HumanMessage(userPrompt));
+
+      const stream = await this.llm.stream(messages);
+
+      for await (const chunk of stream) {
+        if (shouldAbort && shouldAbort()) {
+          this.logger.log('检测到中止信号，停止流式生成');
+          break;
+        }
+
+        const content = this.extractChunkContent(chunk);
+        if (content) {
+          yield { content, done: false };
+        }
+      }
+
+      yield { content: '', done: true };
     } catch (error) {
       this.logger.error('流式生成失败:', error);
       throw error;

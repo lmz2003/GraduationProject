@@ -14,9 +14,10 @@ import InterviewChat from './InterviewChat';
 import InterviewReport from './InterviewReport';
 import InterviewModeSelector from './InterviewModeSelector';
 import VoiceInterview from './VoiceInterview';
+import VideoInterview from './VideoInterview';
 import './Interview.scss';
 
-type ViewMode = 'list' | 'select' | 'chat' | 'voice' | 'report';
+type ViewMode = 'list' | 'select' | 'chat' | 'voice' | 'video' | 'report';
 
 // SVG 图标组件
 const MicIcon = () => (
@@ -387,6 +388,263 @@ const VoiceInterviewLoader: React.FC<VoiceInterviewLoaderProps> = ({
   );
 };
 
+interface VideoInterviewLoaderProps {
+  interview: Interview;
+  initialSessionId: string | null;
+  initialElapsedTime?: number;
+  onEnd: (reportId: string) => void;
+  onBack: () => void;
+  onSessionReady: (sessionId: string) => void;
+}
+
+const VideoInterviewLoader: React.FC<VideoInterviewLoaderProps> = ({
+  interview,
+  initialSessionId,
+  initialElapsedTime = 0,
+  onEnd,
+  onBack,
+  onSessionReady,
+}) => {
+  const [sessionId, setSessionId] = useState<string | null>(initialSessionId);
+  const [isStarting, setIsStarting] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
+  const [openingText, setOpeningText] = useState('');
+  const [isPlayingOpening, setIsPlayingOpening] = useState(false);
+  const [callDuration, setCallDuration] = useState(initialElapsedTime);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const formatDuration = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const playOpeningAudio = useCallback(async (text: string) => {
+    if (!text.trim()) return;
+
+    setIsPlayingOpening(true);
+    try {
+      const audioBlob = await interviewApi.textToSpeech(text, 'anna', 1.0);
+      const audioUrl = URL.createObjectURL(audioBlob);
+      const audio = new Audio(audioUrl);
+      audioRef.current = audio;
+
+      audio.onended = () => {
+        setIsPlayingOpening(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+
+      audio.onerror = () => {
+        setIsPlayingOpening(false);
+        URL.revokeObjectURL(audioUrl);
+      };
+
+      await audio.play();
+    } catch (err) {
+      console.error('播放开场白失败:', err);
+      setIsPlayingOpening(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (sessionId) {
+      timerRef.current = setInterval(() => {
+        setCallDuration((prev) => prev + 1);
+      }, 1000);
+      return () => {
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+      };
+    }
+
+    setIsStarting(true);
+    let tempSessionId: string | null = null;
+    let tempText = '';
+
+    const control = interviewApi.startInterviewStream(
+      interview.id,
+      (event) => {
+        if (event.type === 'session') {
+          tempSessionId = event.data.sessionId as string;
+          timerRef.current = setInterval(() => {
+            setCallDuration((prev) => prev + 1);
+          }, 1000);
+        } else if (event.type === 'chunk') {
+          tempText += event.data as string;
+          setOpeningText(tempText);
+        } else if (event.type === 'done') {
+          if (tempSessionId) {
+            setSessionId(tempSessionId);
+            onSessionReady(tempSessionId);
+          }
+          setIsStarting(false);
+          if (tempText.trim()) {
+            playOpeningAudio(tempText);
+          }
+        } else if (event.type === 'error') {
+          setStartError((event.data?.message as string) || '启动面试失败');
+          setIsStarting(false);
+        }
+      },
+      (err) => {
+        setStartError(err.message);
+        setIsStarting(false);
+      },
+    );
+
+    return () => {
+      control.abort();
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sessionId]);
+
+  if (startError) {
+    return (
+      <div className="video-interview-page">
+        <div className="video-header">
+          <button className="back-btn" onClick={onBack}>
+            <ChevronLeftIcon /> 返回
+          </button>
+          <div className="video-header-info">
+            <div className="video-title">{interview.title || interview.sceneName}</div>
+            <div className="video-meta">
+              {interview.jobName || '通用岗位'} · {interview.difficultyName}
+            </div>
+          </div>
+          <div className="video-duration">{formatDuration(callDuration)}</div>
+        </div>
+        <div className="video-main">
+          <div className="video-container">
+            <div className="error-state">
+              <div className="error-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="32" height="32">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+              </div>
+              <p>启动面试失败：{startError}</p>
+              <button className="start-btn" onClick={onBack}>返回重试</button>
+            </div>
+          </div>
+          <div className="video-status-label">启动失败</div>
+        </div>
+        <div className="video-controls">
+          <button className="control-btn end-call-btn" onClick={onBack}>
+            <PhoneOffIcon />
+            <span>返回</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isStarting || !sessionId) {
+    return (
+      <div className="video-interview-page">
+        <div className="video-header">
+          <button className="back-btn" onClick={onBack}>
+            <ChevronLeftIcon /> 返回
+          </button>
+          <div className="video-header-info">
+            <div className="video-title">{interview.title || interview.sceneName}</div>
+            <div className="video-meta">
+              {interview.jobName || '通用岗位'} · {interview.difficultyName}
+            </div>
+          </div>
+          <div className="video-duration">{formatDuration(callDuration)}</div>
+        </div>
+        <div className="video-main">
+          <div className="video-container">
+            <div className="loading-state">
+              <div className="spinner" />
+              <p>正在连接面试官...</p>
+              {openingText && (
+                <div className="opening-preview">{openingText}</div>
+              )}
+            </div>
+          </div>
+          <div className="video-status-label">正在连接面试官...</div>
+        </div>
+        <div className="video-controls">
+          <button className="control-btn end-call-btn" disabled={true}>
+            <PhoneOffIcon />
+            <span>结束面试</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isPlayingOpening) {
+    return (
+      <div className="video-interview-page">
+        <div className="video-header">
+          <button className="back-btn" onClick={onBack}>
+            <ChevronLeftIcon /> 返回
+          </button>
+          <div className="video-header-info">
+            <div className="video-title">{interview.title || interview.sceneName}</div>
+            <div className="video-meta">
+              {interview.jobName || '通用岗位'} · {interview.difficultyName}
+            </div>
+          </div>
+          <div className="video-duration">{formatDuration(callDuration)}</div>
+        </div>
+        <div className="video-main">
+          <div className="video-container">
+            <div className={`ai-video-section speaking`}>
+              <div className="ai-avatar-large">
+                <BotIcon />
+                <div className="ai-speaking-ring-large" />
+              </div>
+              <div className="ai-label">AI 面试官</div>
+              <div className="ai-waveform-large">
+                {Array.from({ length: 8 }, (_, i) => (
+                  <div key={i} className="ai-wave-bar-large" style={{ animationDelay: `${i * 0.1}s` }} />
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="video-info-row">
+            <div className="subtitles-area">
+              <div className="current-subtitle">{openingText}</div>
+            </div>
+          </div>
+          <div className="video-status-label">面试官正在说话...</div>
+        </div>
+        <div className="video-controls">
+          <button className="control-btn end-call-btn" disabled={true}>
+            <PhoneOffIcon />
+            <span>结束面试</span>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <VideoInterview
+      interview={interview}
+      sessionId={sessionId}
+      onEnd={onEnd}
+      onBack={onBack}
+      initialDuration={callDuration}
+    />
+  );
+};
+
 const InterviewModule: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [scenes, setScenes] = useState<Scene[]>([]);
@@ -480,6 +738,8 @@ const InterviewModule: React.FC = () => {
       setCurrentInterview(interview);
       if (selectedMode === 'voice') {
         setViewMode('voice');
+      } else if (selectedMode === 'video') {
+        setViewMode('video');
       } else {
         setViewMode('chat');
       }
@@ -498,6 +758,8 @@ const InterviewModule: React.FC = () => {
       if (currentInterview?.id === interview.id && currentSessionId) {
         if (interview.mode === 'voice') {
           setViewMode('voice');
+        } else if (interview.mode === 'video') {
+          setViewMode('video');
         } else {
           setViewMode('chat');
         }
@@ -519,6 +781,8 @@ const InterviewModule: React.FC = () => {
 
       if (data.interview.mode === 'voice') {
         setViewMode('voice');
+      } else if (data.interview.mode === 'video') {
+        setViewMode('video');
       } else {
         setViewMode('chat');
       }
@@ -658,6 +922,19 @@ const InterviewModule: React.FC = () => {
   if (viewMode === 'voice' && currentInterview) {
     return (
       <VoiceInterviewLoader
+        interview={currentInterview}
+        initialSessionId={currentSessionId}
+        initialElapsedTime={currentSessionElapsedTime}
+        onEnd={handleVoiceChatEnd}
+        onBack={handleBackToList}
+        onSessionReady={setCurrentSessionId}
+      />
+    );
+  }
+
+  if (viewMode === 'video' && currentInterview) {
+    return (
+      <VideoInterviewLoader
         interview={currentInterview}
         initialSessionId={currentSessionId}
         initialElapsedTime={currentSessionElapsedTime}

@@ -128,8 +128,14 @@ export class InterviewMessageService {
         ? userMessages.reduce((sum, msg) => sum + (msg.evaluation?.overall || 0), 0) / userMessages.length
         : 0;
 
-      responseContent = await this.llmService.generateClosing(interview, history, avgScore);
-      yield { type: 'chunk', data: responseContent };
+      const closingPrompt = this.buildClosingPrompt(interview, history, avgScore);
+      const shouldAbort = requestId && userId ? () => this.isAborted(userId, requestId) : undefined;
+
+      for await (const chunk of this.llmService.streamGenerateAsync('', closingPrompt, shouldAbort)) {
+        if (chunk.done) break;
+        responseContent += chunk.content;
+        yield { type: 'chunk', data: chunk.content };
+      }
 
       await this.saveMessage(sessionId, 'assistant', responseContent, 'closing');
 
@@ -141,24 +147,18 @@ export class InterviewMessageService {
         },
       };
     } else {
-      const shouldAbort = requestId && userId
-        ? () => this.isAborted(userId, requestId)
-        : undefined;
+      const questionPrompt = this.buildQuestionPrompt(interview, history, session.questionCount, resumeContent);
+      const shouldAbort = requestId && userId ? () => this.isAborted(userId, requestId) : undefined;
 
-      responseContent = await this.llmService.generateQuestionStream(
-        interview,
-        history,
-        session.questionCount,
-        resumeContent,
-        {
-          onChunk: (chunk) => {
-            // chunks will be yielded separately
-          },
-          shouldAbort,
-        },
-      );
-
-      yield { type: 'chunk', data: responseContent };
+      for await (const chunk of this.llmService.streamGenerateAsync(
+        SCENE_CONFIG[interview.sceneType as keyof typeof SCENE_CONFIG]?.systemPrompt || '',
+        questionPrompt,
+        shouldAbort,
+      )) {
+        if (chunk.done) break;
+        responseContent += chunk.content;
+        yield { type: 'chunk', data: chunk.content };
+      }
 
       const questionType = this.determineQuestionType(session.questionCount);
       await this.saveMessage(sessionId, 'assistant', responseContent, questionType);
@@ -171,6 +171,71 @@ export class InterviewMessageService {
         },
       };
     }
+  }
+
+  private buildQuestionPrompt(
+    interview: Interview,
+    history: InterviewMessage[],
+    questionCount: number,
+    resumeContent?: string,
+  ): string {
+    const sceneConfig = SCENE_CONFIG[interview.sceneType as keyof typeof SCENE_CONFIG];
+    const historyText = this.formatHistory(history);
+
+    return `面试进行中，当前是第${questionCount + 1}个问题。
+
+面试信息：
+- 面试场景：${sceneConfig?.name || interview.sceneType}
+- 岗位类型：${interview.jobType || '通用岗位'}
+- 难度等级：${interview.difficulty || 'medium'}
+- 已提问数量：${questionCount}
+- 剩余问题数量：${(sceneConfig?.questionCount.max || 8) - questionCount}
+
+${resumeContent ? `候选人简历摘要：\n${resumeContent}\n` : ''}
+
+历史对话：
+${historyText}
+
+请生成下一个面试问题。要求：
+1. 问题应该与面试场景和岗位相关
+2. 根据候选人的回答情况，可以追问或提出新问题
+3. 问题要有针对性和深度
+4. 不要使用markdown格式，直接输出纯文本`;
+  }
+
+  private buildClosingPrompt(
+    interview: Interview,
+    history: InterviewMessage[],
+    averageScore: number,
+  ): string {
+    const sceneConfig = SCENE_CONFIG[interview.sceneType as keyof typeof SCENE_CONFIG];
+    const historyText = this.formatHistory(history);
+
+    return `面试即将结束，请生成结束语。
+
+面试信息：
+- 面试场景：${sceneConfig?.name || interview.sceneType}
+- 岗位类型：${interview.jobType || '通用岗位'}
+- 候选人整体表现评分：${averageScore.toFixed(1)}/10
+
+历史对话摘要：
+${historyText.substring(0, 1000)}...
+
+请生成一个结束语，包括：
+1. 感谢候选人参加面试
+2. 简要说明后续流程
+3. 给予候选人一些鼓励
+
+要求：
+- 语气专业友善
+- 简洁明了，不超过100字
+- 不要使用markdown格式，直接输出纯文本`;
+  }
+
+  private formatHistory(history: InterviewMessage[]): string {
+    return history
+      .map((msg) => `${msg.role === 'user' ? '候选人' : '面试官'}：${msg.content}`)
+      .join('\n');
   }
 
   private async evaluateAnswerAsync(
@@ -204,21 +269,43 @@ export class InterviewMessageService {
       ? () => this.isAborted(userId, requestId)
       : undefined;
 
-    let fullContent = '';
+    const sceneConfig = SCENE_CONFIG[interview.sceneType as keyof typeof SCENE_CONFIG];
+    const openingPrompt = this.buildOpeningPrompt(interview, resumeContent);
 
-    const content = await this.llmService.generateOpeningStream(
-      interview,
-      resumeContent,
-      {
-        onChunk: (chunk) => {
-          fullContent += chunk;
-        },
-        shouldAbort,
-      },
-    );
+    for await (const chunk of this.llmService.streamGenerateAsync(
+      sceneConfig?.systemPrompt || '',
+      openingPrompt,
+      shouldAbort,
+    )) {
+      if (chunk.done) break;
+      yield { type: 'chunk', data: chunk.content };
+    }
 
-    yield { type: 'chunk', data: content };
     yield { type: 'done', data: { message: '开场白生成完成' } };
+  }
+
+  private buildOpeningPrompt(interview: Interview, resumeContent?: string): string {
+    const sceneConfig = SCENE_CONFIG[interview.sceneType as keyof typeof SCENE_CONFIG];
+
+    return `你是一位面试官，现在要开始一场${sceneConfig?.name || interview.sceneType}。
+
+面试信息：
+- 面试场景：${sceneConfig?.name || interview.sceneType}
+- 岗位类型：${interview.jobType || '通用岗位'}
+- 难度等级：${interview.difficulty || 'medium'}
+- 预计问题数量：${sceneConfig?.questionCount.min || 5}-${sceneConfig?.questionCount.max || 8}个
+
+${resumeContent ? `候选人简历摘要：\n${resumeContent}\n` : ''}
+
+请生成一个开场白，包括：
+1. 简短的自我介绍（作为面试官）
+2. 简单说明今天的面试流程
+3. 请候选人进行自我介绍
+
+要求：
+- 语气专业友善
+- 简洁明了，不超过100字
+- 不要使用markdown格式，直接输出纯文本`;
   }
 
   private determineQuestionType(questionCount: number): string {

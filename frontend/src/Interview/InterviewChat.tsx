@@ -392,32 +392,39 @@ const InterviewChat: React.FC<InterviewChatProps> = ({
       </div>
 
       <div className="chat-input">
-        <textarea
-          ref={textareaRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyPress={handleKeyPress}
-          placeholder="输入你的回答，或点击语音输入..."
-          disabled={isTyping}
-          rows={3}
-        />
-        <div className="input-actions">
-          <VoiceInput
-            onTranscription={(text) => {
-              setInput((prev) => prev ? `${prev} ${text}` : text);
+        <div className="input-field-wrapper">
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => {
+              setInput(e.target.value);
+              const textarea = e.target;
+              textarea.style.height = 'auto';
+              const lineHeight = 22;
+              const maxHeight = lineHeight * 4 + 24;
+              textarea.style.height = Math.min(textarea.scrollHeight, maxHeight) + 'px';
             }}
+            onKeyPress={handleKeyPress}
+            placeholder="输入你的回答..."
             disabled={isTyping}
-            language="zh"
+            rows={1}
           />
-          <button
-            className="send-btn"
-            onClick={handleSend}
-            disabled={!input.trim() || isTyping}
-          >
-            <SendIcon />
-            发送
-          </button>
         </div>
+        <VoiceInput
+          onTranscription={(text) => {
+            setInput((prev) => prev ? `${prev} ${text}` : text);
+          }}
+          disabled={isTyping}
+          language="zh"
+        />
+        <button
+          className="send-btn"
+          onClick={handleSend}
+          disabled={!input.trim() || isTyping}
+          aria-label="发送消息"
+        >
+          <SendIcon />
+        </button>
       </div>
     </div>
   );

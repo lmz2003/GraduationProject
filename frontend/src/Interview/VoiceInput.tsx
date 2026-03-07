@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { interviewApi } from './api';
 
-// SVG 图标
 const MicIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20">
     <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
@@ -239,41 +238,47 @@ const VoiceInput: React.FC<VoiceInputProps> = ({
     return '点击开始录音';
   };
 
+  const showPopup = error || isRecording || isProcessing;
+
   return (
-    <div className="voice-input-container">
-      {error && (
-        <div className="voice-input-error">
-          <AlertTriangleIcon />
-          <span>{error}</span>
-          <button className="error-dismiss" onClick={() => setError(null)}>
-            <XIcon />
-          </button>
-        </div>
-      )}
+    <div className="voice-input-wrapper">
+      {showPopup && (
+        <div className="voice-input-popup">
+          {error && (
+            <div className="voice-popup-error">
+              <AlertTriangleIcon />
+              <span>{error}</span>
+              <button className="error-dismiss" onClick={() => setError(null)} title="关闭错误提示" aria-label="关闭错误提示">
+                <XIcon />
+              </button>
+            </div>
+          )}
 
-      {isRecording && (
-        <div className="voice-input-recording">
-          <div className="waveform-container">
-            {waveformData.map((height, index) => (
-              <div
-                key={index}
-                className="waveform-bar"
-                style={{ height: `${Math.max(4, height)}%` }}
-              />
-            ))}
-          </div>
-          <div className="recording-info">
-            <span className="recording-dot" />
-            <span className="recording-time">{formatTime(recordingTime)}</span>
-            <span className="recording-hint">点击麦克风停止录音</span>
-          </div>
-        </div>
-      )}
+          {isRecording && (
+            <div className="voice-popup-recording">
+              <div className="waveform-container">
+                {waveformData.map((height, index) => (
+                  <div
+                    key={index}
+                    className="waveform-bar"
+                    style={{ height: `${Math.max(4, height)}%` }}
+                  />
+                ))}
+              </div>
+              <div className="recording-info">
+                <span className="recording-dot" />
+                <span className="recording-time">{formatTime(recordingTime)}</span>
+                <span className="recording-hint">点击麦克风停止</span>
+              </div>
+            </div>
+          )}
 
-      {isProcessing && (
-        <div className="voice-input-processing">
-          <span className="processing-spinner" />
-          <span>正在识别语音...</span>
+          {isProcessing && (
+            <div className="voice-popup-processing">
+              <span className="processing-spinner" />
+              <span>正在识别语音...</span>
+            </div>
+          )}
         </div>
       )}
 

@@ -32,8 +32,8 @@ export class CreateInterviewDto {
 
   @IsOptional()
   @IsString({ message: '面试模式必须是字符串' })
-  @IsIn(['text', 'voice'], {
-    message: '面试模式必须是 text 或 voice',
+  @IsIn(['text', 'voice', 'video'], {
+    message: '面试模式必须是 text、voice 或 video',
   })
   mode?: InterviewMode;
 

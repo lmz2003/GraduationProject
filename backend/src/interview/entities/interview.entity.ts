@@ -13,7 +13,7 @@ import { Resume } from '../../resume-analysis/entities/resume.entity';
 import { InterviewSession } from './interview-session.entity';
 import { InterviewReport } from './interview-report.entity';
 
-export type InterviewMode = 'text' | 'voice';
+export type InterviewMode = 'text' | 'voice' | 'video';
 
 @Entity('interviews')
 export class Interview {
