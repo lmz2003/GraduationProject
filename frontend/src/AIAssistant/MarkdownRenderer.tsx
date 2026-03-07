@@ -1,6 +1,4 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { marked, Renderer } from 'marked';
-import type { Tokens } from 'marked';
 import DOMPurify from 'dompurify';
 import hljs from 'highlight.js';
 import 'highlight.js/styles/github-dark.css';
@@ -11,114 +9,184 @@ interface MarkdownRendererProps {
   isStreaming?: boolean;
 }
 
-class CustomRenderer extends Renderer {
-  override code(token: Tokens.Code): string {
-    const lang = token.lang || '';
-    const text = token.text || '';
-    const language = lang && hljs.getLanguage(lang) ? lang : 'plaintext';
-    const highlighted = hljs.highlight(text, { language }).value;
-    const escapedLang = language.replace(/"/g, '&quot;');
-    return `<div class="md-code-wrapper" data-language="${escapedLang}"><pre class="md-pre"><code class="hljs language-${escapedLang}">${highlighted}</code></pre></div>`;
-  }
+const languageMap: Record<string, string> = {
+  js: 'javascript',
+  ts: 'typescript',
+  py: 'python',
+  rb: 'ruby',
+  java: 'java',
+  go: 'go',
+  rs: 'rust',
+  cpp: 'cpp',
+  c: 'c',
+  cs: 'csharp',
+  html: 'html',
+  css: 'css',
+  scss: 'scss',
+  less: 'less',
+  json: 'json',
+  yaml: 'yaml',
+  yml: 'yaml',
+  md: 'markdown',
+  markdown: 'markdown',
+  sh: 'bash',
+  bash: 'bash',
+  shell: 'bash',
+  sql: 'sql',
+  xml: 'xml',
+  php: 'php',
+};
 
-  override codespan(token: Tokens.Codespan): string {
-    return `<code class="md-inline-code">${token.text}</code>`;
-  }
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let mdInstance: any = null;
 
-  override heading(token: Tokens.Heading): string {
-    const text = this.parser.parseInline(token.tokens);
-    return `<h${token.depth} class="md-h${token.depth}">${text}</h${token.depth}>`;
-  }
-
-  override paragraph(token: Tokens.Paragraph): string {
-    const text = this.parser.parseInline(token.tokens);
-    return `<p class="md-p">${text}</p>`;
-  }
-
-  override list(token: Tokens.List): string {
-    const body = this.parser.parse(token.items);
-    const tag = token.ordered ? 'ol' : 'ul';
-    return `<${tag} class="md-${tag}">${body}</${tag}>`;
-  }
-
-  override listitem(token: Tokens.ListItem): string {
-    let itemBody = '';
-    if (token.tokens) {
-      itemBody = this.parser.parse(token.tokens);
-    }
-    return `<li class="md-li">${itemBody}</li>`;
-  }
-
-  override blockquote(token: Tokens.Blockquote): string {
-    const body = this.parser.parse(token.tokens);
-    return `<blockquote class="md-blockquote">${body}</blockquote>`;
-  }
-
-  override strong(token: Tokens.Strong): string {
-    const text = this.parser.parseInline(token.tokens);
-    return `<strong class="md-strong">${text}</strong>`;
-  }
-
-  override em(token: Tokens.Em): string {
-    const text = this.parser.parseInline(token.tokens);
-    return `<em class="md-em">${text}</em>`;
-  }
-
-  override hr(_token: Tokens.Hr): string {
-    return `<hr class="md-hr" />`;
-  }
-
-  override table(token: Tokens.Table): string {
-    let header = '<tr class="md-tr">';
-    for (const cell of token.header) {
-      const cellText = this.parser.parseInline(cell.tokens);
-      const align = cell.align ? ` style="text-align:${cell.align}"` : '';
-      header += `<th class="md-td"${align}>${cellText}</th>`;
-    }
-    header += '</tr>';
-
-    let body = '';
-    for (const row of token.rows) {
-      body += '<tr class="md-tr">';
-      for (const cell of row) {
-        const cellText = this.parser.parseInline(cell.tokens);
-        const align = cell.align ? ` style="text-align:${cell.align}"` : '';
-        body += `<td class="md-td"${align}>${cellText}</td>`;
+const getMarkdownIt = async () => {
+  if (mdInstance) return mdInstance;
+  
+  const MarkdownIt = (await import('markdown-it')).default;
+  const md = new MarkdownIt({
+    html: false,
+    xhtmlOut: false,
+    breaks: true,
+    linkify: true,
+    typographer: true,
+    highlight: (str: string, lang: string): string => {
+      let normalizedLang = lang?.toLowerCase() || '';
+      if (languageMap[normalizedLang]) {
+        normalizedLang = languageMap[normalizedLang];
       }
-      body += '</tr>';
+      
+      const language = normalizedLang && hljs.getLanguage(normalizedLang) 
+        ? normalizedLang 
+        : 'plaintext';
+      
+      let highlighted: string;
+      try {
+        highlighted = hljs.highlight(str, { language }).value;
+      } catch {
+        try {
+          highlighted = hljs.highlightAuto(str).value;
+        } catch {
+          highlighted = str;
+        }
+      }
+      
+      const escapedLang = language.replace(/"/g, '&quot;');
+      const escapedCode = btoa(unescape(encodeURIComponent(str)));
+      
+      return `<div class="md-code-wrapper" data-language="${escapedLang}" data-code="${escapedCode}"><pre class="md-pre"><code class="hljs language-${escapedLang}">${highlighted}</code></pre></div>`;
+    },
+  });
+
+  md.renderer.rules.heading_open = (tokens: { tag: string }[], idx: number) => {
+    const level = tokens[idx].tag;
+    return `<${level} class="md-${level}">`;
+  };
+
+  md.renderer.rules.paragraph_open = () => '<p class="md-p">';
+  
+  md.renderer.rules.paragraph_close = () => '</p>\n';
+
+  md.renderer.rules.bullet_list_open = () => '<ul class="md-ul">\n';
+  
+  md.renderer.rules.ordered_list_open = (tokens: { attrGet: (name: string) => string | null }[], idx: number) => {
+    const token = tokens[idx];
+    const start = token.attrGet('start');
+    const startAttr = start && start !== '1' ? ` start="${start}"` : '';
+    return `<ol class="md-ol"${startAttr}>\n`;
+  };
+
+  md.renderer.rules.list_item_open = (tokens: { type: string; content: string }[], idx: number) => {
+    const nextToken = tokens[idx + 1];
+    const isTaskItem = nextToken && 
+                       nextToken.type === 'paragraph_open' && 
+                       tokens[idx + 2] && 
+                       tokens[idx + 2].content &&
+                       /^\[([ xX])\]\s/.test(tokens[idx + 2].content);
+    
+    if (isTaskItem) {
+      const match = tokens[idx + 2].content.match(/^\[([ xX])\]\s(.*)$/);
+      if (match) {
+        const checked = match[1].toLowerCase() === 'x';
+        tokens[idx + 2].content = match[2];
+        return `<li class="md-li md-task-list-item" data-checked="${checked}">`;
+      }
     }
+    return '<li class="md-li">';
+  };
 
-    return `<div class="md-table-wrapper"><table class="md-table"><thead class="md-thead">${header}</thead><tbody class="md-tbody">${body}</tbody></table></div>`;
-  }
+  md.renderer.rules.blockquote_open = () => '<blockquote class="md-blockquote">\n';
 
-  override link(token: Tokens.Link): string {
-    const text = this.parser.parseInline(token.tokens);
-    const title = token.title ? ` title="${token.title}"` : '';
-    return `<a href="${token.href}"${title} class="md-link">${text}</a>`;
-  }
+  md.renderer.rules.code_inline = (tokens: { content: string }[], idx: number) => {
+    const content = tokens[idx].content;
+    return `<code class="md-inline-code">${content}</code>`;
+  };
 
-  override image(token: Tokens.Image): string {
-    const title = token.title ? ` title="${token.title}"` : '';
-    return `<img src="${token.href}" alt="${token.text}"${title} class="md-image" />`;
-  }
+  md.renderer.rules.hr = () => '<hr class="md-hr" />\n';
 
-  override text(token: Tokens.Text | Tokens.Escape | Tokens.Tag): string {
-    return 'tokens' in token && token.tokens
-      ? this.parser.parseInline(token.tokens)
-      : ('text' in token ? token.text : '');
-  }
-}
+  md.renderer.rules.table_open = () => '<div class="md-table-wrapper"><table class="md-table">\n';
+  
+  md.renderer.rules.table_close = () => '</table></div>\n';
+  
+  md.renderer.rules.thead_open = () => '<thead class="md-thead">\n';
+  
+  md.renderer.rules.tbody_open = () => '<tbody class="md-tbody">\n';
+  
+  md.renderer.rules.tr_open = () => '<tr class="md-tr">\n';
+  
+  md.renderer.rules.th_open = (tokens: { attrGet: (name: string) => string | null }[], idx: number) => {
+    const align = tokens[idx].attrGet('style');
+    return `<th class="md-td"${align ? ` style="${align}"` : ''}>`;
+  };
+  
+  md.renderer.rules.td_open = (tokens: { attrGet: (name: string) => string | null }[], idx: number) => {
+    const align = tokens[idx].attrGet('style');
+    return `<td class="md-td"${align ? ` style="${align}"` : ''}>`;
+  };
 
-marked.use({ renderer: new CustomRenderer(), breaks: true, gfm: true });
+  md.renderer.rules.strong_open = () => '<strong class="md-strong">';
+  
+  md.renderer.rules.em_open = () => '<em class="md-em">';
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  md.renderer.rules.link_open = (tokens: any, idx: number, options: any, _env: any, self: any) => {
+    const token = tokens[idx];
+    token.attrPush(['class', 'md-link']);
+    token.attrPush(['target', '_blank']);
+    token.attrPush(['rel', 'noopener noreferrer']);
+    return self.renderToken(tokens, idx, options);
+  };
+
+  md.renderer.rules.image = (tokens: { attrGet: (name: string) => string | null; content: string }[], idx: number) => {
+    const token = tokens[idx];
+    const src = token.attrGet('src') || '';
+    const alt = token.content || '';
+    const title = token.attrGet('title');
+    const titleAttr = title ? ` title="${title}"` : '';
+    return `<img src="${src}" alt="${alt}"${titleAttr} class="md-image" />`;
+  };
+
+  md.renderer.rules.softbreak = () => '<br class="md-br" />\n';
+  
+  md.renderer.rules.hardbreak = () => '<br class="md-br" />\n';
+
+  mdInstance = md;
+  return md;
+};
 
 const MarkdownRenderer = ({ content, isStreaming = false }: MarkdownRendererProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
+  const [copiedIndices, setCopiedIndices] = useState<Set<number>>(new Set());
+  const [md, setMd] = useState<{ render: (content: string) => string } | null>(null);
+
+  useEffect(() => {
+    getMarkdownIt().then(setMd);
+  }, []);
 
   const rawHtml = useMemo(() => {
-    if (!content) return '';
+    if (!content || !md) return '';
     try {
-      const html = marked.parse(content) as string;
+      const html = md.render(content);
       return DOMPurify.sanitize(html, {
         ALLOWED_TAGS: [
           'p', 'br', 'strong', 'em', 'u', 's', 'code', 'pre',
@@ -129,7 +197,11 @@ const MarkdownRenderer = ({ content, isStreaming = false }: MarkdownRendererProp
           'table', 'thead', 'tbody', 'tr', 'th', 'td',
           'hr', 'div', 'span',
         ],
-        ALLOWED_ATTR: ['href', 'target', 'rel', 'src', 'alt', 'title', 'class', 'id', 'style', 'data-language'],
+        ALLOWED_ATTR: [
+          'href', 'target', 'rel', 'src', 'alt', 'title', 
+          'class', 'id', 'style', 'data-language', 'data-code', 
+          'data-checked', 'start'
+        ],
         ALLOW_DATA_ATTR: true,
         FORBID_TAGS: ['script', 'iframe', 'object', 'embed'],
         FORBID_ATTR: ['onclick', 'onload', 'onerror', 'onmouseover'],
@@ -138,7 +210,7 @@ const MarkdownRenderer = ({ content, isStreaming = false }: MarkdownRendererProp
       console.error('Markdown parse error:', e);
       return `<p class="md-p">${DOMPurify.sanitize(content)}</p>`;
     }
-  }, [content]);
+  }, [content, md]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -149,6 +221,7 @@ const MarkdownRenderer = ({ content, isStreaming = false }: MarkdownRendererProp
     const wrappers = container.querySelectorAll<HTMLElement>('.md-code-wrapper');
     wrappers.forEach((wrapper, idx) => {
       const lang = wrapper.dataset.language || 'plaintext';
+      const isCopied = copiedIndices.has(idx);
 
       const header = document.createElement('div');
       header.className = 'md-code-header';
@@ -159,18 +232,41 @@ const MarkdownRenderer = ({ content, isStreaming = false }: MarkdownRendererProp
       header.appendChild(langEl);
 
       const copyBtn = document.createElement('button');
-      copyBtn.className = `md-copy-btn${copiedIndex === idx ? ' copied' : ''}`;
+      copyBtn.className = `md-copy-btn${isCopied ? ' copied' : ''}`;
       copyBtn.type = 'button';
-      copyBtn.innerHTML = copiedIndex === idx
+      copyBtn.dataset.index = String(idx);
+      copyBtn.innerHTML = isCopied
         ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg><span>已复制</span>`
         : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg><span>复制</span>`;
+      
       copyBtn.addEventListener('click', async () => {
-        const code = wrapper.querySelector('code');
-        const text = code?.textContent || '';
+        let text = '';
+        if (wrapper.dataset.code) {
+          try {
+            text = decodeURIComponent(escape(atob(wrapper.dataset.code)));
+          } catch {
+            const code = wrapper.querySelector('code');
+            text = code?.textContent || '';
+          }
+        } else {
+          const code = wrapper.querySelector('code');
+          text = code?.textContent || '';
+        }
+        
         try {
           await navigator.clipboard.writeText(text);
-          setCopiedIndex(idx);
-          setTimeout(() => setCopiedIndex(null), 2000);
+          setCopiedIndices(prev => {
+            const next = new Set(prev);
+            next.add(idx);
+            return next;
+          });
+          setTimeout(() => {
+            setCopiedIndices(prev => {
+              const next = new Set(prev);
+              next.delete(idx);
+              return next;
+            });
+          }, 2000);
         } catch (err) {
           console.error('复制失败:', err);
         }
@@ -184,7 +280,37 @@ const MarkdownRenderer = ({ content, isStreaming = false }: MarkdownRendererProp
       link.setAttribute('target', '_blank');
       link.setAttribute('rel', 'noopener noreferrer');
     });
-  }, [rawHtml, copiedIndex]);
+
+    container.querySelectorAll<HTMLElement>('li[data-checked]').forEach(li => {
+      const isChecked = li.dataset.checked === 'true';
+      li.classList.add('md-task-list-item');
+      li.style.listStyle = 'none';
+      li.style.position = 'relative';
+      
+      const checkbox = document.createElement('span');
+      checkbox.className = `md-task-checkbox${isChecked ? ' checked' : ''}`;
+      checkbox.innerHTML = isChecked ? '✓' : '';
+      checkbox.style.display = 'inline-block';
+      checkbox.style.width = '16px';
+      checkbox.style.height = '16px';
+      checkbox.style.border = '1px solid #9ca3af';
+      checkbox.style.borderRadius = '3px';
+      checkbox.style.marginRight = '8px';
+      checkbox.style.textAlign = 'center';
+      checkbox.style.lineHeight = '14px';
+      checkbox.style.fontSize = '12px';
+      checkbox.style.verticalAlign = 'middle';
+      checkbox.style.flexShrink = '0';
+      
+      if (isChecked) {
+        checkbox.style.backgroundColor = '#6366f1';
+        checkbox.style.borderColor = '#6366f1';
+        checkbox.style.color = '#fff';
+      }
+      
+      li.insertBefore(checkbox, li.firstChild);
+    });
+  }, [rawHtml, copiedIndices]);
 
   return (
     <div
