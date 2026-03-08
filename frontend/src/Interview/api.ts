@@ -425,10 +425,11 @@ export const interviewApi = {
     options: {
       audioMimeType?: string;
       videoFrame?: string;
+      videoFrames?: string[];
       voice?: string;
     } = {},
   ): Promise<VideoMessageResult> {
-    const { audioMimeType = 'audio/webm', videoFrame, voice = 'anna' } = options;
+    const { audioMimeType = 'audio/webm', videoFrame, videoFrames, voice = 'anna' } = options;
 
     const response = await fetch(`${API_BASE}/interview/video-session/${sessionId}/message`, {
       method: 'POST',
@@ -437,6 +438,7 @@ export const interviewApi = {
         audio: audioBase64,
         audioMimeType,
         videoFrame,
+        videoFrames,
         voice,
       }),
     });

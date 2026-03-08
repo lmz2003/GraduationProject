@@ -81,7 +81,6 @@ const VoiceInterview: React.FC<VoiceInterviewProps> = ({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const subtitleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const progressSaveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const subtitlesEndRef = useRef<HTMLDivElement>(null);
   const sessionIdRef = useRef(sessionId);
@@ -112,17 +111,18 @@ const VoiceInterview: React.FC<VoiceInterviewProps> = ({
     }, 1000);
   }, []);
 
+  const saveProgressRef = useRef(saveProgress);
+  saveProgressRef.current = saveProgress;
+
+  const initialDurationRef = useRef(initialDuration);
+
   useEffect(() => {
-    if (initialDuration > 0) {
+    if (initialDurationRef.current > 0) {
       startCallTimer();
     }
 
-    progressSaveTimerRef.current = setInterval(() => {
-      saveProgress();
-    }, 30000);
-
     const handleBeforeUnload = () => {
-      saveProgress();
+      saveProgressRef.current();
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
 
@@ -131,14 +131,10 @@ const VoiceInterview: React.FC<VoiceInterviewProps> = ({
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
-      if (progressSaveTimerRef.current) {
-        clearInterval(progressSaveTimerRef.current);
-        progressSaveTimerRef.current = null;
-      }
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      saveProgress();
+      saveProgressRef.current();
     };
-  }, [initialDuration, startCallTimer, saveProgress]);
+  }, []);
 
   const cleanup = useCallback(() => {
     if (timerRef.current) {
@@ -251,11 +247,31 @@ const VoiceInterview: React.FC<VoiceInterviewProps> = ({
       source.connect(analyser);
       analyserRef.current = analyser;
 
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : 'audio/webm';
+      const mimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/mpeg',
+        'audio/ogg',
+        'audio/wav',
+      ];
 
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      let mimeType = '';
+      for (const type of mimeTypes) {
+        if (MediaRecorder.isTypeSupported(type)) {
+          mimeType = type;
+          break;
+        }
+      }
+
+      if (!mimeType) {
+        mimeType = 'audio/webm';
+      }
+
+      const audioTrack = stream.getAudioTracks()[0];
+      const audioStream = new MediaStream([audioTrack]);
+
+      const mediaRecorder = new MediaRecorder(audioStream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 

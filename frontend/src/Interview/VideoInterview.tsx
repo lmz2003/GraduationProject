@@ -68,6 +68,19 @@ interface ConversationMessage {
   timestamp: Date;
 }
 
+interface FrameData {
+  base64: string;
+  timestamp: number;
+  sessionId: number;
+}
+
+interface QASession {
+  sessionId: number;
+  startTime: number;
+  endTime: number | null;
+  frames: FrameData[];
+}
+
 const VideoInterview: React.FC<VideoInterviewProps> = ({
   interview,
   sessionId,
@@ -97,9 +110,14 @@ const VideoInterview: React.FC<VideoInterviewProps> = ({
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const subtitleTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const progressSaveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const videoCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  const frameBufferRef = useRef<FrameData[]>([]);
+  const qaSessionRef = useRef<QASession | null>(null);
+  const qaSessionCounterRef = useRef(0);
   const frameCaptureIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const FRAME_CAPTURE_INTERVAL = 2000;
+  const MAX_FRAMES_PER_SESSION = 30;
 
   const subtitlesEndRef = useRef<HTMLDivElement>(null);
   const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
@@ -131,17 +149,18 @@ const VideoInterview: React.FC<VideoInterviewProps> = ({
     }, 1000);
   }, []);
 
+  const saveProgressRef = useRef(saveProgress);
+  saveProgressRef.current = saveProgress;
+
+  const initialDurationRef = useRef(initialDuration);
+
   useEffect(() => {
-    if (initialDuration > 0) {
+    if (initialDurationRef.current > 0) {
       startCallTimer();
     }
 
-    progressSaveTimerRef.current = setInterval(() => {
-      saveProgress();
-    }, 30000);
-
     const handleBeforeUnload = () => {
-      saveProgress();
+      saveProgressRef.current();
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
 
@@ -150,14 +169,10 @@ const VideoInterview: React.FC<VideoInterviewProps> = ({
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
-      if (progressSaveTimerRef.current) {
-        clearInterval(progressSaveTimerRef.current);
-        progressSaveTimerRef.current = null;
-      }
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      saveProgress();
+      saveProgressRef.current();
     };
-  }, [initialDuration, startCallTimer, saveProgress]);
+  }, []);
 
   const cleanup = useCallback(() => {
     if (timerRef.current) {
@@ -265,13 +280,107 @@ const VideoInterview: React.FC<VideoInterviewProps> = ({
     return canvas.toDataURL('image/jpeg', 0.6);
   }, [isCameraOff]);
 
+  const captureFrameToBuffer = useCallback(() => {
+    const frameBase64 = captureVideoFrame();
+    if (!frameBase64) {
+      console.log('[VideoInterview] 截帧失败：无法获取视频帧');
+      return;
+    }
+
+    const frameData: FrameData = {
+      base64: frameBase64,
+      timestamp: Date.now(),
+      sessionId: qaSessionCounterRef.current,
+    };
+
+    frameBufferRef.current.push(frameData);
+    console.log(`[VideoInterview] 截帧成功：sessionId=${frameData.sessionId}, 缓冲区帧数=${frameBufferRef.current.length}`);
+
+    if (frameBufferRef.current.length > MAX_FRAMES_PER_SESSION * 2) {
+      const currentSessionId = qaSessionCounterRef.current;
+      const beforeLength = frameBufferRef.current.length;
+      frameBufferRef.current = frameBufferRef.current.filter(
+        f => f.sessionId >= currentSessionId - 1
+      );
+      console.log(`[VideoInterview] 缓冲区清理：${beforeLength} -> ${frameBufferRef.current.length}`);
+    }
+  }, [captureVideoFrame]);
+
+  const startFrameCapture = useCallback(() => {
+    if (frameCaptureIntervalRef.current) {
+      console.log('[VideoInterview] 截帧已在进行中，跳过启动');
+      return;
+    }
+
+    qaSessionCounterRef.current += 1;
+    qaSessionRef.current = {
+      sessionId: qaSessionCounterRef.current,
+      startTime: Date.now(),
+      endTime: null,
+      frames: [],
+    };
+
+    console.log(`[VideoInterview] 开始截帧：sessionId=${qaSessionCounterRef.current}, 间隔=${FRAME_CAPTURE_INTERVAL}ms`);
+
+    captureFrameToBuffer();
+
+    frameCaptureIntervalRef.current = setInterval(() => {
+      captureFrameToBuffer();
+    }, FRAME_CAPTURE_INTERVAL);
+    
+    console.log('[VideoInterview] 截帧定时器已启动');
+  }, [captureFrameToBuffer]);
+
+  const stopFrameCapture = useCallback((): FrameData[] => {
+    console.log('[VideoInterview] 停止截帧...');
+    
+    if (frameCaptureIntervalRef.current) {
+      clearInterval(frameCaptureIntervalRef.current);
+      frameCaptureIntervalRef.current = null;
+      console.log('[VideoInterview] 截帧定时器已清除');
+    }
+
+    if (qaSessionRef.current) {
+      qaSessionRef.current.endTime = Date.now();
+      
+      const sessionFrames = frameBufferRef.current.filter(
+        f => f.sessionId === qaSessionRef.current!.sessionId
+      );
+      
+      qaSessionRef.current.frames = sessionFrames;
+      
+      const duration = qaSessionRef.current.endTime - qaSessionRef.current.startTime;
+      console.log(`[VideoInterview] 截帧统计：sessionId=${qaSessionRef.current.sessionId}, 帧数=${sessionFrames.length}, 时长=${duration}ms`);
+      
+      return sessionFrames;
+    }
+
+    console.log('[VideoInterview] 无活跃的问答环节');
+    return [];
+  }, []);
+
+  const getFramesForCurrentSession = useCallback((): FrameData[] => {
+    const currentSessionId = qaSessionCounterRef.current;
+    return frameBufferRef.current.filter(f => f.sessionId === currentSessionId);
+  }, []);
+
   const startRecording = useCallback(async () => {
-    if (callStatus !== 'idle' && callStatus !== 'playing') return;
-    if (isMuted) return;
+    console.log('[VideoInterview] startRecording called', { callStatus, isMuted });
+    
+    if (callStatus !== 'idle' && callStatus !== 'playing') {
+      console.log('[VideoInterview] Cannot start: invalid callStatus', callStatus);
+      return;
+    }
+    if (isMuted) {
+      console.log('[VideoInterview] Cannot start: isMuted is true');
+      return;
+    }
 
     setError(null);
 
     try {
+      console.log('[VideoInterview] Requesting media devices...');
+      
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
           echoCancellation: true,
@@ -299,11 +408,37 @@ const VideoInterview: React.FC<VideoInterviewProps> = ({
       source.connect(analyser);
       analyserRef.current = analyser;
 
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
-        ? 'audio/webm;codecs=opus'
-        : 'audio/webm';
+      const mimeTypes = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/mpeg',
+        'audio/ogg',
+        'audio/wav',
+      ];
 
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      let mimeType = '';
+      for (const type of mimeTypes) {
+        if (MediaRecorder.isTypeSupported(type)) {
+          mimeType = type;
+          console.log('[VideoInterview] Using MIME type:', mimeType);
+          break;
+        }
+      }
+
+      if (!mimeType) {
+        console.error('[VideoInterview] No supported MIME type found, trying default');
+        mimeType = 'audio/webm';
+      }
+
+      console.log('[VideoInterview] Creating MediaRecorder with stream tracks:', stream.getTracks().map(t => t.kind + ':' + t.label));
+
+      const audioTrack = stream.getAudioTracks()[0];
+      const audioStream = new MediaStream([audioTrack]);
+      console.log('[VideoInterview] Using audio stream with tracks:', audioStream.getTracks().map(t => t.kind));
+
+      const mediaRecorder = new MediaRecorder(audioStream, { mimeType });
+      console.log('[VideoInterview] MediaRecorder created, state:', mediaRecorder.state);
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
 
@@ -316,15 +451,26 @@ const VideoInterview: React.FC<VideoInterviewProps> = ({
 
       if (callDuration === 0) startCallTimer();
 
+      startFrameCapture();
+
       animationFrameRef.current = requestAnimationFrame(updateWaveform);
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'NotAllowedError') {
-        setError('摄像头或麦克风权限被拒绝');
+      console.error('启动录制失败:', err);
+      if (err instanceof DOMException) {
+        if (err.name === 'NotAllowedError') {
+          setError('摄像头或麦克风权限被拒绝');
+        } else if (err.name === 'NotFoundError') {
+          setError('未找到摄像头或麦克风设备');
+        } else if (err.name === 'NotReadableError') {
+          setError('摄像头或麦克风已被其他应用占用');
+        } else {
+          setError(`无法启动录制: ${err.name} - ${err.message}`);
+        }
       } else {
-        setError('无法启动录制');
+        setError('无法启动录制: ' + (err instanceof Error ? err.message : String(err)));
       }
     }
-  }, [callStatus, isMuted, callDuration, startCallTimer, updateWaveform]);
+  }, [callStatus, isMuted, callDuration, startCallTimer, updateWaveform, startFrameCapture]);
 
   const stopRecordingAndSend = useCallback(async () => {
     if (callStatus !== 'recording') return;
@@ -339,7 +485,7 @@ const VideoInterview: React.FC<VideoInterviewProps> = ({
     }
     setWaveformData(new Array(24).fill(2));
 
-    const videoFrame = captureVideoFrame();
+    const sessionFrames = stopFrameCapture();
 
     mediaRecorderRef.current.onstop = async () => {
       if (audioChunksRef.current.length === 0) {
@@ -356,11 +502,23 @@ const VideoInterview: React.FC<VideoInterviewProps> = ({
         try {
           const base64 = (reader.result as string).split(',')[1];
 
+          const videoFrames = sessionFrames.map(f => f.base64);
+          console.log(`[VideoInterview] 准备发送：音频大小=${base64.length}bytes, 视频帧数=${videoFrames.length}`);
+          
+          if (videoFrames.length > 0) {
+            console.log(`[VideoInterview] 帧时间戳范围：${new Date(sessionFrames[0].timestamp).toLocaleTimeString()} - ${new Date(sessionFrames[sessionFrames.length - 1].timestamp).toLocaleTimeString()}`);
+          }
+
           const result = await interviewApi.sendVideoMessage(sessionId, base64, {
             audioMimeType: 'audio/webm',
-            videoFrame: videoFrame || undefined,
+            videoFrames: videoFrames.length > 0 ? videoFrames : undefined,
             voice,
           });
+          
+          console.log(`[VideoInterview] 收到响应：AI回复长度=${result.aiText.length}, 视频分析=${result.videoAnalysis ? '有' : '无'}`);
+          if (result.videoAnalysis) {
+            console.log('[VideoInterview] 视频分析结果:', JSON.stringify(result.videoAnalysis, null, 2));
+          }
 
           setConversations((prev) => [
             ...prev,
@@ -404,7 +562,7 @@ const VideoInterview: React.FC<VideoInterviewProps> = ({
     };
 
     mediaRecorderRef.current.stop();
-  }, [callStatus, sessionId, voice, playAudioBase64, onEnd, captureVideoFrame]);
+  }, [callStatus, sessionId, voice, playAudioBase64, onEnd, stopFrameCapture]);
 
   const handleEndInterview = useCallback(async () => {
     if (!confirm('确定要结束视频面试吗？')) return;

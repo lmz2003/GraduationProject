@@ -291,6 +291,7 @@ export class InterviewSessionService {
     questionType?: string,
     evaluation?: any,
     score?: number,
+    videoAnalysis?: any,
   ): Promise<InterviewMessage> {
     const message = this.messageRepository.create({
       sessionId,
@@ -299,6 +300,7 @@ export class InterviewSessionService {
       questionType,
       evaluation,
       score,
+      videoAnalysis,
       timestamp: new Date(),
     });
 

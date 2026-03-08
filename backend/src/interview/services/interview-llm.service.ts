@@ -67,7 +67,7 @@ export class InterviewLLMService {
 
     const systemPrompt = sceneConfig.systemPrompt;
 
-    let openingPrompt = `你是一位面试官，现在要开始一场${sceneConfig.name}。
+    let openingPrompt = `你是一位资深${interview.jobType || '技术'}面试官，现在要开始一场${sceneConfig.name}。
 
 面试信息：
 - 面试场景：${sceneConfig.name}
@@ -77,12 +77,13 @@ export class InterviewLLMService {
 
 ${resumeContent ? `候选人简历摘要：\n${resumeContent}\n` : ''}
 
-请生成一个开场白，包括：
-1. 简短的自我介绍（作为面试官）
+请以面试官的身份直接开始说话，生成一个开场白，包括：
+1. 简短自我介绍（如：你好，我是这次面试的面试官）
 2. 简单说明今天的面试流程
 3. 请候选人进行自我介绍
 
 要求：
+- 直接以面试官的口吻说话，不要说"以下是"之类的话
 - 语气专业友善
 - 简洁明了，不超过100字
 - 不要使用markdown格式，直接输出纯文本`;
@@ -93,7 +94,8 @@ ${resumeContent ? `候选人简历摘要：\n${resumeContent}\n` : ''}
         new HumanMessage(openingPrompt),
       ]);
 
-      return response.content as string;
+      const content = response.content as string;
+      return this.filterThinkingContent(content);
     } catch (error) {
       this.logger.error('生成开场白失败:', error);
       throw error;
@@ -175,7 +177,8 @@ ${historyText}
         new HumanMessage(questionPrompt),
       ]);
 
-      return response.content as string;
+      const content = response.content as string;
+      return this.filterThinkingContent(content);
     } catch (error) {
       this.logger.error('生成问题失败:', error);
       throw error;
@@ -311,7 +314,8 @@ ${historyText.substring(0, 1000)}...
         new HumanMessage(closingPrompt),
       ]);
 
-      return response.content as string;
+      const content = response.content as string;
+      return this.filterThinkingContent(content);
     } catch (error) {
       this.logger.error('生成结束语失败:', error);
       return '感谢您参加今天的面试，我们会尽快给您反馈。祝您求职顺利！';
@@ -419,6 +423,16 @@ ${historyText.substring(0, 1000)}...
     }
   }
 
+  private filterThinkingContent(content: string): string {
+    let filtered = content;
+    
+    filtered = filtered.replace(/<think>[\s\S]*?<\/think>/g, '');
+    
+    filtered = filtered.replace(/<\/?think>/g, '');
+    
+    return filtered;
+  }
+
   private extractChunkContent(chunk: unknown): string | null {
     if (!chunk) return null;
 
@@ -431,7 +445,7 @@ ${historyText.substring(0, 1000)}...
           return content;
         }
         if (Array.isArray(content)) {
-          return content
+          const rawContent = content
             .map((item: unknown) => {
               if (typeof item === 'string') return item;
               if (item && typeof item === 'object') {
@@ -443,6 +457,7 @@ ${historyText.substring(0, 1000)}...
               return '';
             })
             .join('');
+          return rawContent;
         }
       }
 

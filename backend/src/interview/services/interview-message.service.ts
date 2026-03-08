@@ -42,6 +42,7 @@ export class InterviewMessageService {
     questionType?: string,
     evaluation?: MessageEvaluation,
     score?: number,
+    videoAnalysis?: any,
   ): Promise<InterviewMessage> {
     return this.sessionService.saveMessage(
       sessionId,
@@ -50,6 +51,7 @@ export class InterviewMessageService {
       questionType,
       evaluation,
       score,
+      videoAnalysis,
     );
   }
 
@@ -92,6 +94,7 @@ export class InterviewMessageService {
     resumeContent?: string,
     requestId?: string,
     userId?: string,
+    videoAnalysis?: any,
   ): AsyncGenerator<SSEEvent> {
     this.logger.log(`[流式处理] 开始处理消息 - 会话: ${sessionId}`);
 
@@ -101,7 +104,7 @@ export class InterviewMessageService {
       return;
     }
 
-    const tempMessage = await this.saveMessage(sessionId, 'user', userMessage);
+    const tempMessage = await this.saveMessage(sessionId, 'user', userMessage, undefined, undefined, undefined, videoAnalysis);
 
     const history = await this.getMessageHistory(sessionId);
 

@@ -108,9 +108,8 @@ const VoiceInterviewLoader: React.FC<VoiceInterviewLoaderProps> = ({
   const [startError, setStartError] = useState<string | null>(null);
   const [openingText, setOpeningText] = useState('');
   const [isPlayingOpening, setIsPlayingOpening] = useState(false);
-  const [callDuration, setCallDuration] = useState(initialElapsedTime);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const initialElapsedTimeRef = useRef(initialElapsedTime);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -146,17 +145,7 @@ const VoiceInterviewLoader: React.FC<VoiceInterviewLoaderProps> = ({
   }, []);
 
   useEffect(() => {
-    if (sessionId) {
-      timerRef.current = setInterval(() => {
-        setCallDuration((prev) => prev + 1);
-      }, 1000);
-      return () => {
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
-      };
-    }
+    if (sessionId) return;
 
     setIsStarting(true);
     let tempSessionId: string | null = null;
@@ -167,9 +156,6 @@ const VoiceInterviewLoader: React.FC<VoiceInterviewLoaderProps> = ({
       (event) => {
         if (event.type === 'session') {
           tempSessionId = event.data.sessionId as string;
-          timerRef.current = setInterval(() => {
-            setCallDuration((prev) => prev + 1);
-          }, 1000);
         } else if (event.type === 'chunk') {
           tempText += event.data as string;
           setOpeningText(tempText);
@@ -195,10 +181,6 @@ const VoiceInterviewLoader: React.FC<VoiceInterviewLoaderProps> = ({
 
     return () => {
       control.abort();
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
@@ -220,7 +202,6 @@ const VoiceInterviewLoader: React.FC<VoiceInterviewLoaderProps> = ({
               {interview.jobName || '通用岗位'} · {interview.difficultyName}
             </div>
           </div>
-          <div className="voice-duration">{formatDuration(callDuration)}</div>
         </div>
         <div className="voice-main">
           <div className="ai-avatar-section">
@@ -279,7 +260,6 @@ const VoiceInterviewLoader: React.FC<VoiceInterviewLoaderProps> = ({
               {interview.jobName || '通用岗位'} · {interview.difficultyName}
             </div>
           </div>
-          <div className="voice-duration">{formatDuration(callDuration)}</div>
         </div>
         <div className="voice-main">
           <div className="ai-avatar-section">
@@ -333,7 +313,6 @@ const VoiceInterviewLoader: React.FC<VoiceInterviewLoaderProps> = ({
               {interview.jobName || '通用岗位'} · {interview.difficultyName}
             </div>
           </div>
-          <div className="voice-duration">{formatDuration(callDuration)}</div>
         </div>
         <div className="voice-main">
           <div className={`ai-avatar-section ${isPlayingOpening ? 'speaking' : ''}`}>
@@ -383,7 +362,7 @@ const VoiceInterviewLoader: React.FC<VoiceInterviewLoaderProps> = ({
       sessionId={sessionId}
       onEnd={onEnd}
       onBack={onBack}
-      initialDuration={callDuration}
+      initialDuration={initialElapsedTimeRef.current}
     />
   );
 };
@@ -410,9 +389,8 @@ const VideoInterviewLoader: React.FC<VideoInterviewLoaderProps> = ({
   const [startError, setStartError] = useState<string | null>(null);
   const [openingText, setOpeningText] = useState('');
   const [isPlayingOpening, setIsPlayingOpening] = useState(false);
-  const [callDuration, setCallDuration] = useState(initialElapsedTime);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const initialElapsedTimeRef = useRef(initialElapsedTime);
 
   const formatDuration = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -448,17 +426,7 @@ const VideoInterviewLoader: React.FC<VideoInterviewLoaderProps> = ({
   }, []);
 
   useEffect(() => {
-    if (sessionId) {
-      timerRef.current = setInterval(() => {
-        setCallDuration((prev) => prev + 1);
-      }, 1000);
-      return () => {
-        if (timerRef.current) {
-          clearInterval(timerRef.current);
-          timerRef.current = null;
-        }
-      };
-    }
+    if (sessionId) return;
 
     setIsStarting(true);
     let tempSessionId: string | null = null;
@@ -469,9 +437,6 @@ const VideoInterviewLoader: React.FC<VideoInterviewLoaderProps> = ({
       (event) => {
         if (event.type === 'session') {
           tempSessionId = event.data.sessionId as string;
-          timerRef.current = setInterval(() => {
-            setCallDuration((prev) => prev + 1);
-          }, 1000);
         } else if (event.type === 'chunk') {
           tempText += event.data as string;
           setOpeningText(tempText);
@@ -497,10 +462,6 @@ const VideoInterviewLoader: React.FC<VideoInterviewLoaderProps> = ({
 
     return () => {
       control.abort();
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-        timerRef.current = null;
-      }
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
@@ -522,7 +483,6 @@ const VideoInterviewLoader: React.FC<VideoInterviewLoaderProps> = ({
               {interview.jobName || '通用岗位'} · {interview.difficultyName}
             </div>
           </div>
-          <div className="video-duration">{formatDuration(callDuration)}</div>
         </div>
         <div className="video-main">
           <div className="video-container">
@@ -563,7 +523,6 @@ const VideoInterviewLoader: React.FC<VideoInterviewLoaderProps> = ({
               {interview.jobName || '通用岗位'} · {interview.difficultyName}
             </div>
           </div>
-          <div className="video-duration">{formatDuration(callDuration)}</div>
         </div>
         <div className="video-main">
           <div className="video-container">
@@ -600,7 +559,6 @@ const VideoInterviewLoader: React.FC<VideoInterviewLoaderProps> = ({
               {interview.jobName || '通用岗位'} · {interview.difficultyName}
             </div>
           </div>
-          <div className="video-duration">{formatDuration(callDuration)}</div>
         </div>
         <div className="video-main">
           <div className="video-container">
@@ -640,7 +598,7 @@ const VideoInterviewLoader: React.FC<VideoInterviewLoaderProps> = ({
       sessionId={sessionId}
       onEnd={onEnd}
       onBack={onBack}
-      initialDuration={callDuration}
+      initialDuration={initialElapsedTimeRef.current}
     />
   );
 };
@@ -817,6 +775,9 @@ const InterviewModule: React.FC = () => {
     setViewMode('list');
     setCurrentReportId(null);
     setSelectedMode('text');
+    setCurrentInterview(null);
+    setCurrentSessionId(null);
+    setCurrentSessionElapsedTime(0);
     loadInitialData();
   };
 
@@ -909,6 +870,7 @@ const InterviewModule: React.FC = () => {
   if (viewMode === 'chat' && currentInterview) {
     return (
       <InterviewChat
+        key={currentSessionId || 'new'}
         interview={currentInterview}
         sessionId={currentSessionId}
         onEnd={handleChatEnd}
@@ -922,6 +884,7 @@ const InterviewModule: React.FC = () => {
   if (viewMode === 'voice' && currentInterview) {
     return (
       <VoiceInterviewLoader
+        key={currentSessionId || 'new'}
         interview={currentInterview}
         initialSessionId={currentSessionId}
         initialElapsedTime={currentSessionElapsedTime}
@@ -935,6 +898,7 @@ const InterviewModule: React.FC = () => {
   if (viewMode === 'video' && currentInterview) {
     return (
       <VideoInterviewLoader
+        key={currentSessionId || 'new'}
         interview={currentInterview}
         initialSessionId={currentSessionId}
         initialElapsedTime={currentSessionElapsedTime}

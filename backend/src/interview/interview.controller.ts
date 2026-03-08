@@ -949,13 +949,14 @@ export class InterviewController {
       audio: string;
       audioMimeType?: string;
       videoFrame?: string;
+      videoFrames?: string[];
       voice?: string;
     },
     @Res() res: Response,
   ) {
     try {
       const userId = req.user.id;
-      const { audio, audioMimeType = 'audio/webm', videoFrame, voice = 'anna' } = body;
+      const { audio, audioMimeType = 'audio/webm', videoFrame, videoFrames, voice = 'anna' } = body;
 
       if (!audio) {
         res.status(400).json({ success: false, message: '请提供音频数据' });
@@ -997,7 +998,41 @@ export class InterviewController {
         }
       }
 
-      // 3. 发送给 LLM 处理，收集完整 AI 回复
+      // 3. 如果提供了视频帧，先进行分析
+      let videoAnalysis: any = null;
+      const framesToAnalyze = videoFrames && videoFrames.length > 0 ? videoFrames : (videoFrame ? [videoFrame] : []);
+      
+      this.logger.log(`[视频通话] 收到视频帧数量: ${framesToAnalyze.length}`);
+      
+      if (framesToAnalyze.length > 0) {
+        try {
+          this.logger.log(`[视频通话] 开始并行分析 ${framesToAnalyze.length} 个视频帧...`);
+          
+          const startTime = Date.now();
+          const frameAnalyses = await Promise.all(
+            framesToAnalyze.map((frame, index) =>
+              this.videoAnalysisService.analyzeFrameBase64(frame, Date.now() - (framesToAnalyze.length - index) * 2000)
+            )
+          );
+          const analysisDuration = Date.now() - startTime;
+          
+          if (frameAnalyses.length === 1) {
+            videoAnalysis = frameAnalyses[0];
+            this.logger.log(`[视频通话] 单帧分析完成，耗时 ${analysisDuration}ms`);
+          } else {
+            videoAnalysis = {
+              frames: frameAnalyses,
+              summary: this.videoAnalysisService.generateSummary(frameAnalyses),
+            };
+            this.logger.log(`[视频通话] 多帧分析完成，共 ${frameAnalyses.length} 帧，耗时 ${analysisDuration}ms`);
+            this.logger.log(`[视频通话] 分析摘要: 主导情绪=${videoAnalysis.summary.dominantEmotion}, 眼神交流比例=${(videoAnalysis.summary.eyeContactRatio * 100).toFixed(1)}%, 总分=${videoAnalysis.summary.overallScore}`);
+          }
+        } catch (error) {
+          this.logger.warn('视频帧分析失败:', error);
+        }
+      }
+
+      // 4. 发送给 LLM 处理，收集完整 AI 回复
       const requestId = `video-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       this.messageService.registerAbortController(userId, requestId);
 
@@ -1011,6 +1046,7 @@ export class InterviewController {
         resumeContent,
         requestId,
         userId,
+        videoAnalysis,
       );
 
       for await (const event of generator) {
@@ -1023,25 +1059,12 @@ export class InterviewController {
 
       this.messageService.cleanupAbortController(userId, requestId);
 
-      // 4. 将 AI 回复合成语音
+      // 5. 将 AI 回复合成语音
       this.logger.log(`[视频通话] AI 回复: "${aiText.substring(0, 50)}", 合成语音...`);
       const ttsResult = await this.speechSynthesisService.synthesizeSpeech(aiText, {
         voice: voice as any,
         speed: 1.0,
       });
-
-      // 5. 如果提供了视频帧，进行分析
-      let videoAnalysis: any = null;
-      if (videoFrame) {
-        try {
-          videoAnalysis = await this.videoAnalysisService.analyzeFrameBase64(
-            videoFrame,
-            Date.now(),
-          );
-        } catch (error) {
-          this.logger.warn('视频帧分析失败:', error);
-        }
-      }
 
       // 6. 返回结果
       res.json({

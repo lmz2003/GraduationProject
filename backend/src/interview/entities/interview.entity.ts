@@ -15,6 +15,17 @@ import { InterviewReport } from './interview-report.entity';
 
 export type InterviewMode = 'text' | 'voice' | 'video';
 
+export interface VideoAnalysisSummary {
+  totalFrames: number;
+  averageEyeContactRatio: number;
+  averageFaceDetectionRatio: number;
+  dominantEmotionOverall: string;
+  averageOverallScore: number;
+  emotionDistribution: Record<string, number>;
+  gazeDistribution: Record<string, number>;
+  allFeedback: string[];
+}
+
 @Entity('interviews')
 export class Interview {
   @PrimaryGeneratedColumn('uuid')
@@ -49,6 +60,9 @@ export class Interview {
 
   @Column({ type: 'text', nullable: true })
   title?: string;
+
+  @Column({ type: 'jsonb', nullable: true })
+  videoAnalysisSummary?: VideoAnalysisSummary;
 
   @CreateDateColumn()
   createdAt!: Date;

@@ -76,7 +76,6 @@ const InterviewChat: React.FC<InterviewChatProps> = ({
   const handleEndInterviewRef = useRef<() => Promise<void>>(() => Promise.resolve());
   const elapsedTimeRef = useRef(elapsedTime);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const progressSaveTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const onElapsedTimeChangeRef = useRef(onElapsedTimeChange);
 
   sessionIdRef.current = sessionId;
@@ -108,6 +107,9 @@ const InterviewChat: React.FC<InterviewChatProps> = ({
     scrollToBottom();
   }, [messages]);
 
+  const saveProgressRef = useRef(saveProgress);
+  saveProgressRef.current = saveProgress;
+
   useEffect(() => {
     // 每秒计时，同时通知父组件（不调用保存接口）
     timerRef.current = setInterval(() => {
@@ -118,14 +120,9 @@ const InterviewChat: React.FC<InterviewChatProps> = ({
       });
     }, 1000);
 
-    // 每 30 秒静默保存一次进度
-    progressSaveTimerRef.current = setInterval(() => {
-      saveProgress();
-    }, 30000);
-
     // 页面关闭/刷新时保存
     const handleBeforeUnload = () => {
-      saveProgress();
+      saveProgressRef.current();
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
 
@@ -135,15 +132,9 @@ const InterviewChat: React.FC<InterviewChatProps> = ({
         clearInterval(timerRef.current);
         timerRef.current = null;
       }
-      if (progressSaveTimerRef.current) {
-        clearInterval(progressSaveTimerRef.current);
-        progressSaveTimerRef.current = null;
-      }
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      saveProgress();
+      saveProgressRef.current();
     };
-  // saveProgress 使用 ref，不会重新触发
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

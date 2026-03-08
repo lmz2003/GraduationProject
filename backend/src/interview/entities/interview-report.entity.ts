@@ -16,6 +16,14 @@ export interface DimensionScores {
   highlights: number;
 }
 
+export interface VideoBehaviorScores {
+  eyeContactScore: number;
+  emotionStabilityScore: number;
+  gazeStabilityScore: number;
+  faceVisibilityScore: number;
+  overallVideoScore: number;
+}
+
 export interface LearningResource {
   type: string;
   title: string;
@@ -36,6 +44,9 @@ export class InterviewReport {
   @Column({ type: 'jsonb' })
   dimensionScores!: DimensionScores;
 
+  @Column({ type: 'jsonb', nullable: true })
+  videoBehaviorScores?: VideoBehaviorScores;
+
   @Column({ type: 'text' })
   strengths!: string;
 
@@ -44,6 +55,9 @@ export class InterviewReport {
 
   @Column({ type: 'text' })
   suggestions!: string;
+
+  @Column({ type: 'text', nullable: true })
+  videoBehaviorFeedback?: string;
 
   @Column({ type: 'jsonb', nullable: true })
   learningResources?: LearningResource[];
