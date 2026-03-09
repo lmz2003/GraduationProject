@@ -2,10 +2,22 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToastModal } from '../components/ui/toast-modal';
 import {PlateEditor} from '../components/editor/plate-editor';
-// import { Toaster } from 'sonner';
 import AIAssistant from '../AIAssistant/AIAssistant';
 import { AIAssistantProvider } from '../context/AIAssistantContext';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { 
+  ArrowLeft, 
+  Save, 
+  Trash2, 
+  Bot, 
+  CloudUpload, 
+  CloudCheck,
+  Loader2,
+  FileText,
+  CheckCircle2,
+  AlertCircle,
+  Pencil
+} from 'lucide-react';
 import styles from './NoteDetailPage.module.scss';
 
 interface Note {
@@ -33,7 +45,7 @@ const NoteDetailPage: React.FC = () => {
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [status, setStatus] = useState('draft');
-  const [loading, setLoading] = useState(false);
+  const [dataLoaded, setDataLoaded] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [showAI, setShowAI] = useState(false);
@@ -51,9 +63,12 @@ const NoteDetailPage: React.FC = () => {
   const isNewNote = id === 'new';
 
   const fetchNote = async () => {
-    if (isNewNote) return;
+    if (isNewNote) {
+      setDataLoaded(true);
+      return;
+    }
 
-    setLoading(true);
+    toastModal.loading('正在加载笔记详情...', '加载中');
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -80,13 +95,14 @@ const NoteDetailPage: React.FC = () => {
         setSummary(noteData.summary || '');
         setTags(noteData.tags || []);
         setStatus(noteData.status);
+        setDataLoaded(true);
       }
     } catch (error) {
       console.error('获取笔记失败:', error);
       toastModal.error('获取笔记失败');
       navigate('/dashboard/notes');
     } finally {
-      setLoading(false);
+      toastModal.closeLoading();
     }
   };
 
@@ -366,15 +382,8 @@ const NoteDetailPage: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [hasChanges, saving, handleSave]);
 
-
-  if (loading) {
-    return (
-      <div className={styles.pageContainer}>
-        <div style={{ padding: '40px', textAlign: 'center', color: '#94a3b8' }}>
-          加载中...
-        </div>
-      </div>
-    );
+  if (!dataLoaded) {
+    return null;
   }
 
   return (
@@ -388,17 +397,22 @@ const NoteDetailPage: React.FC = () => {
         minWidth: 0,
         height: '100%'
       }}>
-        <div className={styles.header}>
+        <header className={styles.header}>
           <div className={styles.headerLeft}>
             <button className={styles.backButton} onClick={handleBack}>
-              ← 返回列表
+              <ArrowLeft size={16} />
+              <span>返回</span>
             </button>
-            <input
-              className={styles.titleInput}
-              placeholder="未命名笔记"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
+            
+            <div className={styles.titleWrapper}>
+              <Pencil size={18} className={styles.titleIcon} />
+              <input
+                className={styles.titleInput}
+                placeholder="输入笔记标题..."
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+              />
+            </div>
           </div>
 
           <div className={styles.headerRight}>
@@ -409,12 +423,37 @@ const NoteDetailPage: React.FC = () => {
                 disabled={!needsSync}
                 title={needsSync ? '需要同步到知识库' : '已同步到知识库'}
               >
-                📚 {needsSync ? '同步到知识库' : '已同步'}
+                {needsSync ? (
+                  <>
+                    <CloudUpload size={16} />
+                    <span>同步</span>
+                  </>
+                ) : (
+                  <>
+                    <CloudCheck size={16} />
+                    <span>已同步</span>
+                  </>
+                )}
               </button>
             )}
 
-            <div className={`${styles.saveIndicator} ${saving ? styles.saving : ''}`}>
-              {saving ? '保存中...' : hasChanges ? '有未保存的修改' : '已保存'}
+            <div className={`${styles.saveIndicator} ${saving ? styles.saving : ''} ${hasChanges ? styles.unsaved : ''}`}>
+              {saving ? (
+                <>
+                  <Loader2 size={14} className={styles.spinIcon} />
+                  <span>保存中</span>
+                </>
+              ) : hasChanges ? (
+                <>
+                  <AlertCircle size={14} />
+                  <span>未保存</span>
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 size={14} />
+                  <span>已保存</span>
+                </>
+              )}
             </div>
 
             <button
@@ -422,25 +461,30 @@ const NoteDetailPage: React.FC = () => {
               onClick={handleSave}
               disabled={saving || !hasChanges}
             >
-              💾 保存
+              <Save size={16} />
+              <span>保存</span>
             </button>
 
-            <select
-              className={styles.statusSelect}
-              value={status}
-              onChange={(e) => setStatus(e.target.value)}
-              aria-label="笔记状态"
-            >
-              <option value="draft">草稿</option>
-              <option value="published">已发布</option>
-            </select>
+            <div className={styles.statusWrapper}>
+              <FileText size={14} className={styles.statusIcon} />
+              <select
+                className={styles.statusSelect}
+                value={status}
+                onChange={(e) => setStatus(e.target.value)}
+                aria-label="笔记状态"
+              >
+                <option value="draft">草稿</option>
+                <option value="published">已发布</option>
+              </select>
+            </div>
 
             {!isNewNote && (
               <button
                 className={`${styles.button} ${styles.danger}`}
                 onClick={handleDelete}
               >
-                🗑️ 删除
+                <Trash2 size={16} />
+                <span>删除</span>
               </button>
             )}
 
@@ -448,10 +492,11 @@ const NoteDetailPage: React.FC = () => {
               className={`${styles.button} ${showAI ? styles.active : styles.secondary}`}
               onClick={() => setShowAI(!showAI)}
             >
-              🤖 AI助手
+              <Bot size={16} />
+              <span>AI助手</span>
             </button>
           </div>
-        </div>
+        </header>
 
 
         <div className={styles.metaBar}>

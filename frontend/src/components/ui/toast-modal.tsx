@@ -1,8 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { X, AlertCircle, CheckCircle, AlertTriangle, Info } from 'lucide-react';
+import { X, AlertCircle, CheckCircle, AlertTriangle, Info, Loader2 } from 'lucide-react';
 
-// 弹窗类型定义
-export type ToastModalType = 'info' | 'success' | 'warning' | 'error' | 'confirm';
+export type ToastModalType = 'info' | 'success' | 'warning' | 'error' | 'confirm' | 'loading';
 
 export interface ToastModalOptions {
   type: ToastModalType;
@@ -12,7 +11,7 @@ export interface ToastModalOptions {
   onCancel?: () => void;
   confirmText?: string;
   cancelText?: string;
-  duration?: number; // 仅用于 info/success/warning/error，毫秒
+  duration?: number;
 }
 
 // ---- Design tokens ----
@@ -34,6 +33,7 @@ const getColors = (isDark: boolean) => ({
         case 'warning': return '#FBBF24';
         case 'info':
         case 'confirm': return '#818CF8';
+        case 'loading': return '#818CF8';
         default:        return '#A8A5C7';
       }
     } else {
@@ -43,6 +43,7 @@ const getColors = (isDark: boolean) => ({
         case 'warning': return '#ea580c';
         case 'info':
         case 'confirm': return '#2563eb';
+        case 'loading': return '#2563eb';
         default:        return '#64748b';
       }
     }
@@ -55,6 +56,7 @@ const getColors = (isDark: boolean) => ({
         case 'warning': return 'rgba(251,191,36,0.15)';
         case 'info':
         case 'confirm': return 'rgba(129,140,248,0.15)';
+        case 'loading': return 'rgba(129,140,248,0.15)';
         default:        return 'rgba(168,165,199,0.1)';
       }
     } else {
@@ -64,6 +66,7 @@ const getColors = (isDark: boolean) => ({
         case 'warning': return '#fed7aa';
         case 'info':
         case 'confirm': return '#dbeafe';
+        case 'loading': return '#dbeafe';
         default:        return '#f1f5f9';
       }
     }
@@ -84,6 +87,8 @@ interface ToastModalContextType {
   error: (message: string, title?: string) => Promise<void>;
   warning: (message: string, title?: string) => Promise<void>;
   info: (message: string, title?: string) => Promise<void>;
+  loading: (message: string, title?: string) => void;
+  closeLoading: () => void;
 }
 
 const ToastModalContext = createContext<ToastModalContextType | undefined>(undefined);
@@ -126,8 +131,7 @@ export const ToastModalProvider: React.FC<{ children: React.ReactNode }> = ({
           resolve,
         });
 
-        // 如果不是 confirm 类型，自动关闭
-        if (options.type !== 'confirm') {
+        if (options.type !== 'confirm' && options.type !== 'loading') {
           const duration = options.duration || 3000;
           setTimeout(() => {
             resolve(true);
@@ -138,6 +142,11 @@ export const ToastModalProvider: React.FC<{ children: React.ReactNode }> = ({
     },
     []
   );
+
+  const closeLoading = useCallback(() => {
+    modalState.resolve?.(true);
+    setModalState({ isOpen: false });
+  }, [modalState]);
 
   const handleConfirm = async () => {
     setIsLoading(true);
@@ -212,15 +221,26 @@ export const ToastModalProvider: React.FC<{ children: React.ReactNode }> = ({
         message,
         duration: 3000,
       }).then(() => {}),
+    loading: (message, title) => {
+      setModalState({
+        isOpen: true,
+        options: {
+          type: 'loading',
+          title: title || '加载中',
+          message,
+        },
+        resolve: undefined,
+      });
+    },
+    closeLoading,
   };
 
   return (
     <ToastModalContext.Provider value={contextValue}>
       {children}
       {modalState.isOpen && modalState.options && (
-        // Overlay
         <div
-          onClick={handleClose}
+          onClick={modalState.options.type !== 'loading' ? handleClose : undefined}
           style={{
             position: 'fixed',
             top: 0, left: 0, right: 0, bottom: 0,
@@ -235,6 +255,7 @@ export const ToastModalProvider: React.FC<{ children: React.ReactNode }> = ({
           <style>{`
             @keyframes tmFadeIn { from { opacity: 0; } to { opacity: 1; } }
             @keyframes tmSlideIn { from { transform: translateY(-20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+            @keyframes spin { to { transform: rotate(360deg); } }
           `}</style>
 
           {/* Modal Container */}
@@ -254,28 +275,30 @@ export const ToastModalProvider: React.FC<{ children: React.ReactNode }> = ({
             }}
           >
             {/* Close Button */}
-            <button
-              onClick={handleClose}
-              onMouseEnter={() => setHoveredClose(true)}
-              onMouseLeave={() => setHoveredClose(false)}
-              style={{
-                position: 'absolute',
-                top: '16px',
-                right: '16px',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                color: hoveredClose ? C.closeBtnHover : C.closeBtn,
-                padding: '4px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'color 0.2s',
-                borderRadius: '4px',
-              }}
-            >
-              <X size={20} />
-            </button>
+            {modalState.options.type !== 'loading' && (
+              <button
+                onClick={handleClose}
+                onMouseEnter={() => setHoveredClose(true)}
+                onMouseLeave={() => setHoveredClose(false)}
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  right: '16px',
+                  background: 'none',
+                  border: 'none',
+                  cursor: 'pointer',
+                  color: hoveredClose ? C.closeBtnHover : C.closeBtn,
+                  padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'color 0.2s',
+                  borderRadius: '4px',
+                }}
+              >
+                <X size={20} />
+              </button>
+            )}
 
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
@@ -296,6 +319,9 @@ export const ToastModalProvider: React.FC<{ children: React.ReactNode }> = ({
                 {modalState.options.type === 'warning' && <AlertTriangle size={18} />}
                 {(modalState.options.type === 'info' || modalState.options.type === 'confirm') && (
                   <Info size={18} />
+                )}
+                {modalState.options.type === 'loading' && (
+                  <Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} />
                 )}
               </div>
               {/* Title */}

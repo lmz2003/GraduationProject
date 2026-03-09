@@ -31,11 +31,6 @@ const NoteEmptyIcon = () => (
     <line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>
   </svg>
 );
-const LoadingIcon = () => (
-  <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" style={{ animation: 'spin 1s linear infinite' }}>
-    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-  </svg>
-);
 const SearchIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
 );
@@ -71,7 +66,6 @@ const NotesListPage: React.FC = () => {
   const navigate = useNavigate();
   const toastModal = useToastModal();
   const [notes, setNotes] = useState<Note[]>([]);
-  const [loading, setLoading] = useState(false);
   const [selectedNotes, setSelectedNotes] = useState<Set<string>>(new Set());
   const [batchMode, setBatchMode] = useState(false);
   const [pagination, setPagination] = useState({ page: 1, pageSize: 20, total: 0 });
@@ -82,7 +76,7 @@ const NotesListPage: React.FC = () => {
   const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
   const fetchNotes = async () => {
-    setLoading(true);
+    toastModal.loading('正在加载笔记列表...', '加载中');
     try {
       const token = localStorage.getItem('token');
       if (!token) { navigate('/login'); return; }
@@ -99,7 +93,7 @@ const NotesListPage: React.FC = () => {
       const result = await response.json();
       if (result.code === 0) { setNotes(result.data.list); setPagination(result.data.pagination); }
     } catch (error) { console.error(error); toastModal.error('获取笔记列表失败'); }
-    finally { setLoading(false); }
+    finally { toastModal.closeLoading(); }
   };
 
   useEffect(() => { fetchNotes(); }, [queryParams]);
@@ -191,7 +185,6 @@ const NotesListPage: React.FC = () => {
 
   return (
     <div className={styles.pageContainer}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
 
       {/* Header */}
       <div className={styles.header}>
@@ -274,12 +267,7 @@ const NotesListPage: React.FC = () => {
 
       {/* Content */}
       <div className={styles.contentArea}>
-        {loading ? (
-          <div className={styles.emptyState}>
-            <div className={styles.emptyIcon}><LoadingIcon /></div>
-            <p className={styles.emptyText}>加载中...</p>
-          </div>
-        ) : notes.length === 0 ? (
+        {notes.length === 0 ? (
           <div className={styles.emptyState}>
             <div className={styles.emptyIcon}><NoteEmptyIcon /></div>
             <p className={styles.emptyText}>还没有笔记，点击「新建笔记」开始吧</p>
