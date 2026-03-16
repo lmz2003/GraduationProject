@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, forwardRef, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { validate as validateUUID } from 'uuid';
@@ -6,7 +6,7 @@ import { Resume } from '../entities/resume.entity';
 import { ResumeAnalysis } from '../entities/resume-analysis.entity';
 import { ResumeParserService } from './resume-parser.service';
 import { ResumeAnalyzerService } from './resume-analyzer.service';
-import { ResumeLLMService } from './resume-llm.service';
+import { ResumeAnalysisGateway } from '../resume-analysis.gateway';
 import { UploadResumeDto } from '../dto/upload-resume.dto';
 
 @Injectable()
@@ -20,7 +20,8 @@ export class ResumeAnalysisService {
     private analysisRepository: Repository<ResumeAnalysis>,
     private parserService: ResumeParserService,
     private analyzerService: ResumeAnalyzerService,
-    private llmService: ResumeLLMService
+    @Inject(forwardRef(() => ResumeAnalysisGateway))
+    private gateway: ResumeAnalysisGateway,
   ) {}
 
   /**
@@ -60,6 +61,7 @@ export class ResumeAnalysisService {
       const resume = this.resumeRepository.create({
         title: dto.title,
         content: dto.content || '',
+        jobTitle: dto.jobTitle,
         jobDescription: dto.jobDescription,
         fileType: 'txt',
         ownerId: userId,
@@ -92,7 +94,8 @@ export class ResumeAnalysisService {
     fileType: string,
     fileSize: number,
     userId: string,
-    jobDescription?: string
+    jobDescription?: string,
+    jobTitle?: string
   ): Promise<Resume> {
     try {
       const content = await this.parserService.parseResumeBuffer(fileBuffer, fileType);
@@ -100,6 +103,7 @@ export class ResumeAnalysisService {
       const resume = this.resumeRepository.create({
         title,
         content,
+        jobTitle,
         jobDescription,
         fileBinary: fileBuffer,
         fileName,
@@ -136,6 +140,17 @@ export class ResumeAnalysisService {
    * 5: 分析完全完成
    */
   private async processResumeAsync(resumeId: string, userId: string): Promise<void> {
+    const emitProgress = (stage: number, message: string) => {
+      if (this.gateway) {
+        this.gateway.emitProgress(resumeId, {
+          stage,
+          stageName: this.gateway.getStageName(stage),
+          message,
+          isCompleted: stage === 5,
+        });
+      }
+    };
+
     try {
       const resume = await this.resumeRepository.findOne({ where: { id: resumeId } });
       if (!resume) {
@@ -143,40 +158,40 @@ export class ResumeAnalysisService {
         return;
       }
 
-      // 验证简历内容是否为空
       if (!resume.content || resume.content.trim().length === 0) {
         this.logger.warn(`[Process] Resume content is empty - ResumeId: ${resumeId}, FileName: "${resume.fileName}"`);
-        
-        // 标记为已处理但失败，避免重复尝试
         resume.isProcessed = true;
         await this.resumeRepository.save(resume);
+        if (this.gateway) {
+          this.gateway.emitError(resumeId, '简历内容为空');
+        }
         return;
       }
 
-      // 阶段1: 文本提取完成
+      emitProgress(1, '正在提取文本内容...');
       const parsedData = await this.parserService.parseResumeContent(resume.content);
       resume.parsedData = parsedData;
       resume.analysisStage = 1;
       await this.resumeRepository.save(resume);
       this.logger.log(`[Process] Stage 1 completed - Text extraction done - ResumeId: ${resumeId}`);
 
-      // 阶段2: 结构解析完成
+      emitProgress(2, '正在解析简历结构...');
       resume.analysisStage = 2;
       await this.resumeRepository.save(resume);
       this.logger.log(`[Process] Stage 2 completed - Structure parsing done - ResumeId: ${resumeId}`);
 
-      // 阶段3: 评分分析完成
+      emitProgress(3, '正在进行评分分析...');
       const analysisResult = await this.analyzerService.analyzeResume(
         resume.content,
         parsedData,
         resume.jobDescription,
-        resume.title
+        resume.jobTitle
       );
       resume.analysisStage = 3;
       await this.resumeRepository.save(resume);
       this.logger.log(`[Process] Stage 3 completed - Scoring analysis done - ResumeId: ${resumeId}`);
 
-      // 阶段4: 详细报告生成完成
+      emitProgress(4, '正在生成详细报告...');
       const analysis = this.analysisRepository.create({
         resumeId,
         overallScore: analysisResult.overallScore,
@@ -188,7 +203,7 @@ export class ResumeAnalysisService {
         contentAnalysis: JSON.stringify(analysisResult.contentAnalysis),
         jobMatchAnalysis: analysisResult.jobMatchAnalysis ? JSON.stringify(analysisResult.jobMatchAnalysis) : undefined,
         competencyAnalysis: analysisResult.competencyAnalysis ? JSON.stringify(analysisResult.competencyAnalysis) : undefined,
-        detailedReport: analysisResult.detailedReport, // 已经是 JSON 字符串，不需要再 stringify
+        detailedReport: analysisResult.detailedReport,
       });
 
       await this.analysisRepository.save(analysis);
@@ -196,27 +211,57 @@ export class ResumeAnalysisService {
       await this.resumeRepository.save(resume);
       this.logger.log(`[Process] Stage 4 completed - Detailed report generated - ResumeId: ${resumeId}`);
 
-      // 阶段5: 分析完全完成
       resume.isProcessed = true;
       resume.analysisStage = 5;
       await this.resumeRepository.save(resume);
+
+      emitProgress(5, '分析完成');
+      if (this.gateway) {
+        this.gateway.emitCompletion(resumeId, analysisResult.overallScore);
+      }
 
       this.logger.log(`[Process] Resume analysis completed - ResumeId: ${resumeId}, OverallScore: ${analysisResult.overallScore}`);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : 'Unknown';
       this.logger.error(`[Process] Failed to process resume ${resumeId} - Error: ${errorMsg}`, error);
+      if (this.gateway) {
+        this.gateway.emitError(resumeId, errorMsg);
+      }
     }
   }
 
   /**
-   * 获取用户的所有简历
+   * 获取用户的所有简历（包含评分信息，避免 N+1 查询）
    */
   async getResumesByUserId(userId: string): Promise<Partial<Resume>[]> {
-    return this.resumeRepository.find({
-      select: ['id', 'title', 'fileType', 'fileName', 'createdAt', 'isProcessed'],
-      where: { ownerId: userId, status: 'active' },
-      order: { createdAt: 'DESC' },
-    });
+    const results = await this.resumeRepository
+      .createQueryBuilder('resume')
+      .leftJoinAndSelect('resume.analyses', 'analysis')
+      .select([
+        'resume.id',
+        'resume.title',
+        'resume.fileType',
+        'resume.fileName',
+        'resume.createdAt',
+        'resume.isProcessed',
+        'resume.analysisStage',
+        'analysis.overallScore',
+      ])
+      .where('resume.ownerId = :userId', { userId })
+      .andWhere('resume.status = :status', { status: 'active' })
+      .orderBy('resume.createdAt', 'DESC')
+      .getMany();
+
+    return results.map(resume => ({
+      id: resume.id,
+      title: resume.title,
+      fileType: resume.fileType,
+      fileName: resume.fileName,
+      createdAt: resume.createdAt,
+      isProcessed: resume.isProcessed,
+      analysisStage: resume.analysisStage,
+      overallScore: resume.analyses?.[0]?.overallScore ?? undefined,
+    }));
   }
 
   /**

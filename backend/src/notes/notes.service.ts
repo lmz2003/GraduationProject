@@ -237,6 +237,18 @@ export class NotesService {
     return note;
   }
 
+  // Check if a note exists
+  async checkNoteExists(noteId: string, userId: string): Promise<boolean> {
+    try {
+      const note = await this.noteRepository.findOne({
+        where: { id: noteId, owner: { id: userId } },
+      });
+      return !!note;
+    } catch {
+      return false;
+    }
+  }
+
   // Update a note
   async updateNote(noteId: string, updateNoteDto: UpdateNoteDto, userId: string): Promise<Note> {
     const note = await this.getNoteById(noteId);

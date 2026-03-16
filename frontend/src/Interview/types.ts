@@ -104,12 +104,10 @@ export interface InterviewReport {
     expression: number;
     highlights: number;
   };
-  /** 视频行为评分（仅视频面试时存在） */
   videoBehaviorScores?: VideoBehaviorScores;
   strengths: string;
   weaknesses: string;
   suggestions: string;
-  /** 视频行为综合反馈文本（仅视频面试时存在） */
   videoBehaviorFeedback?: string;
   learningResources?: Array<{
     type: string;
@@ -123,6 +121,10 @@ export interface InterviewReport {
     score: number;
     feedback: string;
   }>;
+  knowledgeDocumentId?: string;
+  syncedToKnowledgeAt?: string;
+  noteId?: string;
+  syncedToNoteAt?: string;
   createdAt: Date;
 }
 

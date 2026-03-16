@@ -76,6 +76,30 @@ const VideoIcon = () => (
   </svg>
 );
 
+const DatabaseIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+    <ellipse cx="12" cy="5" rx="9" ry="3" />
+    <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3" />
+    <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5" />
+  </svg>
+);
+
+const FileTextIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+    <line x1="16" y1="13" x2="8" y2="13" />
+    <line x1="16" y1="17" x2="8" y2="17" />
+    <polyline points="10 9 9 9 8 9" />
+  </svg>
+);
+
+const CheckIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="14" height="14">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+
 interface InterviewReportProps {
   reportId: string;
   interview: Interview | null;
@@ -90,6 +114,9 @@ const InterviewReportPage: React.FC<InterviewReportProps> = ({
   const [report, setReport] = useState<InterviewReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [syncingToKnowledge, setSyncingToKnowledge] = useState(false);
+  const [syncingToNotes, setSyncingToNotes] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<string | null>(null);
 
   useEffect(() => {
     loadReport();
@@ -104,6 +131,48 @@ const InterviewReportPage: React.FC<InterviewReportProps> = ({
       setError(err instanceof Error ? err.message : '加载报告失败');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSyncToKnowledge = async () => {
+    if (!report || syncingToKnowledge) return;
+    
+    setSyncingToKnowledge(true);
+    setSyncMessage(null);
+    
+    try {
+      const result = await interviewApi.syncReportToKnowledge(reportId);
+      if (result.success) {
+        setReport({ ...report, knowledgeDocumentId: result.documentId, syncedToKnowledgeAt: new Date().toISOString() });
+        setSyncMessage('已成功同步到知识库');
+      } else {
+        setSyncMessage(result.message);
+      }
+    } catch (err) {
+      setSyncMessage(err instanceof Error ? err.message : '同步失败');
+    } finally {
+      setSyncingToKnowledge(false);
+    }
+  };
+
+  const handleSyncToNotes = async () => {
+    if (!report || syncingToNotes) return;
+    
+    setSyncingToNotes(true);
+    setSyncMessage(null);
+    
+    try {
+      const result = await interviewApi.syncReportToNotes(reportId);
+      if (result.success) {
+        setReport({ ...report, noteId: result.noteId, syncedToNoteAt: new Date().toISOString() });
+        setSyncMessage('已成功同步到笔记');
+      } else {
+        setSyncMessage(result.message);
+      }
+    } catch (err) {
+      setSyncMessage(err instanceof Error ? err.message : '同步失败');
+    } finally {
+      setSyncingToNotes(false);
     }
   };
 
@@ -155,6 +224,52 @@ const InterviewReportPage: React.FC<InterviewReportProps> = ({
             <span>{interview.sceneName}</span>
             <span>{interview.jobName || '通用岗位'}</span>
           </div>
+        )}
+      </div>
+
+      <div className="report-sync-section">
+        <div className="sync-buttons">
+          <button
+            className={`sync-btn sync-knowledge-btn ${report.knowledgeDocumentId ? 'synced' : ''}`}
+            onClick={handleSyncToKnowledge}
+            disabled={syncingToKnowledge || !!report.knowledgeDocumentId}
+          >
+            {report.knowledgeDocumentId ? (
+              <>
+                <CheckIcon /> 已同步到知识库
+              </>
+            ) : syncingToKnowledge ? (
+              <>
+                <span className="sync-spinner" /> 同步中...
+              </>
+            ) : (
+              <>
+                <DatabaseIcon /> 同步到知识库
+              </>
+            )}
+          </button>
+          <button
+            className={`sync-btn sync-notes-btn ${report.noteId ? 'synced' : ''}`}
+            onClick={handleSyncToNotes}
+            disabled={syncingToNotes || !!report.noteId}
+          >
+            {report.noteId ? (
+              <>
+                <CheckIcon /> 已同步到笔记
+              </>
+            ) : syncingToNotes ? (
+              <>
+                <span className="sync-spinner" /> 同步中...
+              </>
+            ) : (
+              <>
+                <FileTextIcon /> 同步到笔记
+              </>
+            )}
+          </button>
+        </div>
+        {syncMessage && (
+          <div className="sync-message">{syncMessage}</div>
         )}
       </div>
 

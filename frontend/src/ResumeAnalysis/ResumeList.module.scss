@@ -1,0 +1,427 @@
+// ============================================================
+// ResumeList — Design System: CareerBoost
+// Primary #6366F1 | CTA #10B981 | Text #1E1B4B
+// ============================================================
+
+// Light Mode
+$primary: #6366F1;
+$primary-hover: #4F46E5;
+$primary-soft: rgba(99, 102, 241, 0.08);
+$primary-soft-hover: rgba(99, 102, 241, 0.14);
+$cta: #10B981;
+$bg: #F7F6FF;
+$surface: #FFFFFF;
+$border: #EAE8F8;
+$text: #1E1B4B;
+$text-muted: #6B7280;
+$danger: #EF4444;
+$danger-soft: rgba(239, 68, 68, 0.08);
+$warning: #FDB022;
+$success: #10B981;
+$success-soft: rgba(16, 185, 129, 0.08);
+
+// Dark Mode
+$dark-primary: #818CF8;
+$dark-primary-hover: #6366F1;
+$dark-primary-soft: rgba(129, 140, 248, 0.1);
+$dark-primary-soft-hover: rgba(129, 140, 248, 0.16);
+$dark-bg: #0F0F1A;
+$dark-surface: #16162A;
+$dark-border: #2D2D52;
+$dark-text: #F1F0FF;
+$dark-text-muted: #A8A5C7;
+$dark-danger: #FF6B6B;
+$dark-danger-soft: rgba(255, 107, 107, 0.15);
+$dark-warning: #FDB022;
+
+$radius-sm: 6px;
+$radius-md: 10px;
+$radius-lg: 14px;
+$font: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+// ---- Layout ----
+.pageContainer {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: $bg;
+  overflow: hidden;
+  font-family: $font;
+  color: $text;
+}
+
+// ---- Header ----
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: $text;
+  letter-spacing: -0.01em;
+}
+
+// ---- Buttons ----
+.button {
+  border: none;
+  border-radius: $radius-sm;
+  font-family: $font;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.buttonPrimary {
+  background: $primary;
+  color: white;
+  padding: 8px 18px;
+  font-size: 0.875rem;
+
+  &:hover { background: $primary-hover; }
+}
+
+.buttonSecondary {
+  background: $primary-soft;
+  color: $primary;
+  padding: 7px 10px;
+  font-size: 0.8rem;
+
+  &:hover { background: $primary-soft-hover; }
+}
+
+.buttonDanger {
+  background: $danger-soft;
+  color: $danger;
+  padding: 7px 10px;
+  font-size: 0.8rem;
+
+  &:hover { background: rgba(239, 68, 68, 0.14); }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+// ---- Resume Grid ----
+.resumeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+// ---- Resume Card ----
+.resumeCard {
+  background: $surface;
+  border: 1px solid $border;
+  border-radius: $radius-lg;
+  padding: 1rem;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+
+  &:hover {
+    border-color: rgba(99, 102, 241, 0.3);
+    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.09);
+  }
+}
+
+.cardHeader {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.cardIcon {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  background: $primary-soft;
+  border-radius: $radius-sm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: $primary;
+}
+
+.cardTitleWrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+.cardTitle {
+  margin: 0 0 4px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: $text;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cardMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.75rem;
+  color: $text-muted;
+}
+
+// ---- Score Section ----
+.scoreSection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: $bg;
+  border-radius: $radius-sm;
+  margin-bottom: 12px;
+  border: 1px solid $border;
+}
+
+.scoreValue {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.scoreHigh { color: $success; }
+.scoreMedium { color: $warning; }
+.scoreLow { color: $danger; }
+
+.scoreLabel {
+  font-size: 0.8rem;
+  color: $text-muted;
+  font-weight: 500;
+}
+
+.scoreBar {
+  flex: 1;
+  height: 4px;
+  background: $border;
+  border-radius: 2px;
+  overflow: hidden;
+  margin-left: auto;
+}
+
+.scoreBarFill {
+  height: 100%;
+  border-radius: 2px;
+}
+
+.progressIndicator {
+  display: inline-flex;
+  animation: spin 1s linear infinite;
+  color: $warning;
+}
+
+.progressText {
+  font-size: 0.82rem;
+  color: $text-muted;
+  font-weight: 500;
+}
+
+// ---- Card Actions ----
+.cardActions {
+  display: flex;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid $border;
+}
+
+// ---- Batch Mode ----
+.batchBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 16px;
+  background: $primary-soft;
+  border: 1px solid rgba($primary, 0.2);
+  border-radius: $radius-md;
+  margin-bottom: 1rem;
+}
+
+.batchInfo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.batchCount {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: $primary;
+}
+
+.checkboxWrapper {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  cursor: pointer;
+  z-index: 1;
+}
+
+// ---- Empty State ----
+.emptyState {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: $text-muted;
+}
+
+.emptyIcon {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1rem;
+  color: rgba(99, 102, 241, 0.3);
+}
+
+.emptyText {
+  font-size: 0.95rem;
+  margin: 0 0 1.5rem;
+  line-height: 1.7;
+}
+
+// ---- Loading State ----
+.loadingContainer {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
+  color: $text-muted;
+  font-family: $font;
+}
+
+.loadingSpinner {
+  display: inline-flex;
+  animation: spin 1s linear infinite;
+  margin-right: 10px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+// ============================================================
+// Dark Mode Support
+// ============================================================
+:global(.dark) {
+  .pageContainer {
+    background: $dark-bg;
+    color: $dark-text;
+  }
+
+  .header {
+    color: $dark-text;
+  }
+
+  .title {
+    color: $dark-text;
+  }
+
+  .buttonPrimary {
+    background: $dark-primary;
+    color: white;
+
+    &:hover { background: $dark-primary-hover; }
+  }
+
+  .buttonSecondary {
+    background: $dark-primary-soft;
+    color: $dark-primary;
+
+    &:hover { background: $dark-primary-soft-hover; }
+  }
+
+  .buttonDanger {
+    background: $dark-danger-soft;
+    color: $dark-danger;
+
+    &:hover { background: rgba($dark-danger, 0.2); }
+  }
+
+  .resumeCard {
+    background: $dark-surface;
+    border-color: $dark-border;
+
+    &:hover {
+      border-color: rgba($dark-primary, 0.4);
+      box-shadow: 0 4px 14px rgba($dark-primary, 0.12);
+    }
+  }
+
+  .cardIcon {
+    background: $dark-primary-soft;
+    color: $dark-primary;
+  }
+
+  .cardTitle {
+    color: $dark-text;
+  }
+
+  .cardMeta {
+    color: $dark-text-muted;
+  }
+
+  .scoreSection {
+    background: $dark-bg;
+    border-color: $dark-border;
+  }
+
+  .scoreHigh { color: $success; }
+  .scoreMedium { color: $dark-warning; }
+  .scoreLow { color: $dark-danger; }
+
+  .scoreLabel {
+    color: $dark-text-muted;
+  }
+
+  .scoreBar {
+    background: $dark-border;
+  }
+
+  .progressIndicator {
+    color: $dark-warning;
+  }
+
+  .progressText {
+    color: $dark-text-muted;
+  }
+
+  .cardActions {
+    border-top-color: $dark-border;
+  }
+
+  .batchBar {
+    background: $dark-primary-soft;
+    border-color: rgba($dark-primary, 0.3);
+  }
+
+  .batchCount {
+    color: $dark-primary;
+  }
+
+  .emptyState {
+    color: $dark-text-muted;
+  }
+
+  .emptyIcon {
+    color: rgba($dark-primary, 0.4);
+  }
+
+  .loadingContainer {
+    color: $dark-text-muted;
+  }
+}

@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { NotesController } from './notes.controller';
 import { NotesService } from './notes.service';
@@ -17,5 +17,6 @@ import { KnowledgeBaseModule } from '../knowledge-base/knowledge-base.module';
   ],
   controllers: [NotesController],
   providers: [NotesService, NotesGateway],
+  exports: [NotesService],
 })
 export class NotesModule {}

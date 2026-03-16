@@ -126,10 +126,10 @@ const NoteDetailPage: React.FC = () => {
       }
     };
 
-    on('note-needs-sync', handleNeedsSync);
+    on('note-needs-sync', handleNeedsSync as (...args: any[]) => void);
 
     return () => {
-      off('note-needs-sync', handleNeedsSync);
+      off('note-needs-sync', handleNeedsSync as (...args: any[]) => void);
     };
   }, [id, isNewNote, on, off]);
 

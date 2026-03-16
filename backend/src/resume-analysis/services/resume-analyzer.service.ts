@@ -44,7 +44,7 @@ export class ResumeAnalyzerService {
 
 
    /**
-   * 主分析方法（优化：根据简历类型差异化评分）
+   * 主分析方法（优化：根据简历类型差异化评分 + LLM调用并行化）
    */
   async analyzeResume(text: string, parsedData: any, jobDescription?: string, jobTitle?: string): Promise<AnalysisResult> {
     const resumeType = this.detectResumeType(parsedData);
@@ -71,14 +71,11 @@ export class ResumeAnalyzerService {
       skillsScore,
     };
     
-    const detailedReport = await this.resumeLLMService.generateDetailedAnalysisReport(text, parsedData, basicScores, resumeType);
-
-    let jobMatchAnalysis = undefined;
-    if (jobDescription) {
-      jobMatchAnalysis = await this.generateJobMatchAnalysis(text, jobDescription);
-    }
-
-    const competencyAnalysis = await this.generateCompetencyAnalysis(text, parsedData, resumeType);
+    const [detailedReport, jobMatchResult, competencyResult] = await Promise.all([
+      this.resumeLLMService.generateDetailedAnalysisReport(text, parsedData, basicScores, resumeType),
+      jobDescription ? this.generateJobMatchAnalysis(text, jobDescription) : Promise.resolve(undefined),
+      this.generateCompetencyAnalysis(text, parsedData, resumeType)
+    ]);
 
     const contentAnalysis = this.analyzeContent(text, parsedData);
 
@@ -96,8 +93,8 @@ export class ResumeAnalyzerService {
         categoryScores: keywordScoreData.categoryScores
       },
       contentAnalysis,
-      jobMatchAnalysis,
-      competencyAnalysis,
+      jobMatchAnalysis: jobMatchResult,
+      competencyAnalysis: competencyResult,
     };
   }
   /**
@@ -117,8 +114,9 @@ export class ResumeAnalyzerService {
     let totalWorkMonths = 0;
     if (parsedData.workExperience) {
       for (const exp of parsedData.workExperience) {
-        if (exp.startDate && exp.endDate) {
-          totalWorkMonths += 12;
+        const months = this.calculateMonthsBetweenDates(exp.startDate, exp.endDate);
+        if (months > 0) {
+          totalWorkMonths += months;
         }
       }
     }
@@ -131,6 +129,62 @@ export class ResumeAnalyzerService {
       return 'experienced';
     }
     return 'freshman';
+  }
+
+  /**
+   * 计算两个日期之间的月数
+   * 支持多种日期格式：YYYY-MM、YYYY/MM、YYYY年MM月、MM/YYYY 等
+   */
+  private calculateMonthsBetweenDates(startDate: string, endDate: string): number {
+    if (!startDate || !endDate) return 0;
+
+    const parseDate = (dateStr: string): Date | null => {
+      if (!dateStr || typeof dateStr !== 'string') return null;
+      
+      const normalized = dateStr.trim().toLowerCase();
+      
+      if (normalized === '至今' || normalized === 'present' || normalized === 'now' || normalized === '至今 ') {
+        return new Date();
+      }
+
+      const patterns = [
+        /^(\d{4})[-\/年](\d{1,2})(?:月)?$/,
+        /^(\d{1,2})[-\/](\d{4})$/,
+        /^(\d{4})年(\d{1,2})月?$/,
+      ];
+
+      for (const pattern of patterns) {
+        const match = normalized.match(pattern);
+        if (match) {
+          let year: number, month: number;
+          if (pattern === patterns[1]) {
+            month = parseInt(match[1], 10);
+            year = parseInt(match[2], 10);
+          } else {
+            year = parseInt(match[1], 10);
+            month = parseInt(match[2], 10);
+          }
+          if (year >= 1990 && year <= new Date().getFullYear() + 1 && month >= 1 && month <= 12) {
+            return new Date(year, month - 1);
+          }
+        }
+      }
+
+      const parsed = new Date(dateStr);
+      if (!isNaN(parsed.getTime())) {
+        return parsed;
+      }
+
+      return null;
+    };
+
+    const start = parseDate(startDate);
+    const end = parseDate(endDate);
+
+    if (!start || !end) return 0;
+
+    const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+    return Math.max(0, months);
   }
 
   /**

@@ -566,6 +566,10 @@ export class InterviewController {
           summary: report.summary,
           questionAnalysis: report.questionAnalysis,
           createdAt: report.createdAt,
+          knowledgeDocumentId: report.knowledgeDocumentId,
+          syncedToKnowledgeAt: report.syncedToKnowledgeAt,
+          noteId: report.noteId,
+          syncedToNoteAt: report.syncedToNoteAt,
         },
       };
     } catch (error: any) {
@@ -573,6 +577,58 @@ export class InterviewController {
       return {
         success: false,
         message: error.message || '获取面试报告失败',
+      };
+    }
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('report/:reportId/sync-to-knowledge')
+  async syncReportToKnowledge(
+    @Request() req: any,
+    @Param('reportId') reportId: string,
+  ) {
+    try {
+      const userId = req.user.id;
+      const result = await this.reportService.syncToKnowledgeBase(reportId, userId);
+
+      return {
+        success: result.success,
+        message: result.message,
+        data: {
+          documentId: result.documentId,
+        },
+      };
+    } catch (error: any) {
+      this.logger.error('同步到知识库失败:', error);
+      return {
+        success: false,
+        message: error.message || '同步到知识库失败',
+      };
+    }
+  }
+
+  @UseGuards(AuthGuard('jwt'))
+  @Post('report/:reportId/sync-to-notes')
+  async syncReportToNotes(
+    @Request() req: any,
+    @Param('reportId') reportId: string,
+  ) {
+    try {
+      const userId = req.user.id;
+      const result = await this.reportService.syncToNotes(reportId, userId);
+
+      return {
+        success: result.success,
+        message: result.message,
+        data: {
+          noteId: result.noteId,
+        },
+      };
+    } catch (error: any) {
+      this.logger.error('同步到笔记失败:', error);
+      return {
+        success: false,
+        message: error.message || '同步到笔记失败',
       };
     }
   }

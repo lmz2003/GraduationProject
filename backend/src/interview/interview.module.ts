@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MulterModule } from '@nestjs/platform-express';
 import { Interview } from './entities/interview.entity';
@@ -16,6 +16,8 @@ import { SpeechRecognitionService } from './services/speech-recognition.service'
 import { SpeechSynthesisService } from './services/speech-synthesis.service';
 import { VideoAnalysisService } from './services/video-analysis.service';
 import { ResumeAnalysisModule } from '../resume-analysis/resume-analysis.module';
+import { KnowledgeBaseModule } from '../knowledge-base/knowledge-base.module';
+import { NotesModule } from '../notes/notes.module';
 
 @Module({
   imports: [
@@ -26,12 +28,13 @@ import { ResumeAnalysisModule } from '../resume-analysis/resume-analysis.module'
       InterviewReport,
     ]),
     MulterModule.register({
-      // 使用内存存储，音频文件直接处理，不保存到磁盘
       limits: {
-        fileSize: 10 * 1024 * 1024, // 最大 10MB
+        fileSize: 10 * 1024 * 1024,
       },
     }),
     ResumeAnalysisModule,
+    KnowledgeBaseModule,
+    forwardRef(() => NotesModule),
   ],
   controllers: [InterviewController],
   providers: [

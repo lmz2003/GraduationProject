@@ -1,24 +1,7 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToastModal } from '../components/ui/toast-modal';
-
-// ---- Design tokens (theme-aware) ----
-const getThemeColors = (isDark: boolean) => ({
-  primary: isDark ? '#818CF8' : '#6366F1',
-  primaryHover: isDark ? '#6366F1' : '#4F46E5',
-  primarySoft: isDark ? 'rgba(129,140,248,0.1)' : 'rgba(99,102,241,0.08)',
-  primarySoftHover: isDark ? 'rgba(129,140,248,0.16)' : 'rgba(99,102,241,0.14)',
-  bg: isDark ? '#0F0F1A' : '#F7F6FF',
-  surface: isDark ? '#16162A' : '#FFFFFF',
-  border: isDark ? '#2D2D52' : '#EAE8F8',
-  text: isDark ? '#F1F0FF' : '#1E1B4B',
-  textMuted: isDark ? '#A8A5C7' : '#6B7280',
-  danger: isDark ? '#FF6B6B' : '#EF4444',
-  dangerSoft: isDark ? 'rgba(255,107,107,0.15)' : 'rgba(239,68,68,0.08)',
-  radius: '10px',
-  radiusSm: '6px',
-  font: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-});
+import { useTheme } from '../hooks/useTheme';
 
 // ---- SVG Icons ----
 const UploadSvg = ({ color = 'currentColor' }: { color?: string }) => (
@@ -47,31 +30,17 @@ const ArrowLeftIcon = () => (
 const ResumeUpload: React.FC = () => {
   const navigate = useNavigate();
   const { error, success } = useToastModal();
+  const { colors: C } = useTheme();
   const [uploadType, setUploadType] = useState<'file' | 'text'>('file');
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [jobTitle, setJobTitle] = useState('');
   const [jobDescription, setJobDescription] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isDragActive, setIsDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Theme support - detect dark mode and respond to changes
-  const [isDarkMode, setIsDarkMode] = useState(() =>
-    typeof window !== 'undefined' && document.documentElement.classList.contains('dark')
-  );
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      setIsDarkMode(document.documentElement.classList.contains('dark'));
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
-  }, []);
-
-  // Get current theme colors
-  const C = getThemeColors(isDarkMode);
 
   const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => { e.preventDefault(); setIsDragActive(true); };
   const handleDragLeave = () => setIsDragActive(false);
@@ -95,7 +64,7 @@ const ResumeUpload: React.FC = () => {
   const handleRemoveFile = () => { setFile(null); if (fileInputRef.current) fileInputRef.current.value = ''; };
 
   const clearForm = () => {
-    setTitle(''); setContent(''); setJobDescription(''); setFile(null); setUploadType('file');
+    setTitle(''); setContent(''); setJobTitle(''); setJobDescription(''); setFile(null); setUploadType('file');
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -110,6 +79,7 @@ const ResumeUpload: React.FC = () => {
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
       const formData = new FormData();
       formData.append('title', title);
+      if (jobTitle.trim()) formData.append('jobTitle', jobTitle);
       if (jobDescription.trim()) formData.append('jobDescription', jobDescription);
       if (uploadType === 'file' && file) formData.append('file', file);
       else formData.append('content', content);
@@ -128,12 +98,12 @@ const ResumeUpload: React.FC = () => {
   };
 
   const inputStyle: React.CSSProperties = {
-    width: '100%', padding: '9px 12px', border: `1px solid ${C.border}`, borderRadius: C.radiusSm,
+    width: '100%', padding: '9px 12px', border: `1px solid ${C.border}`, borderRadius: '6px',
     fontSize: '0.875rem', fontFamily: C.font, color: C.text, background: C.surface,
     outline: 'none', transition: 'border-color 0.15s, box-shadow 0.15s', boxSizing: 'border-box',
   };
   const labelStyle: React.CSSProperties = { display: 'block', fontSize: '0.8rem', fontWeight: 600, color: C.textMuted, marginBottom: '6px' };
-  const btnBase: React.CSSProperties = { border: 'none', borderRadius: C.radiusSm, fontFamily: C.font, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s ease' };
+  const btnBase: React.CSSProperties = { border: 'none', borderRadius: '6px', fontFamily: C.font, fontWeight: 600, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', transition: 'all 0.15s ease' };
 
   return (
     <div style={{ fontFamily: C.font, color: C.text, maxWidth: '720px' }}>
@@ -185,6 +155,24 @@ const ResumeUpload: React.FC = () => {
           />
         </div>
 
+        {/* Job title */}
+        <div>
+          <label style={labelStyle}>
+            目标岗位
+            <span style={{ color: '#9CA3AF', marginLeft: '6px', fontWeight: 400 }}>(可选，用于精准匹配分析)</span>
+          </label>
+          <input
+            type="text"
+            placeholder="例如：前端开发工程师、产品经理"
+            value={jobTitle}
+            onChange={e => setJobTitle(e.target.value)}
+            disabled={loading}
+            style={inputStyle}
+            onFocus={e => { e.target.style.borderColor = C.primary; e.target.style.boxShadow = `0 0 0 3px ${C.primarySoft}`; }}
+            onBlur={e => { e.target.style.borderColor = C.border; e.target.style.boxShadow = 'none'; }}
+          />
+        </div>
+
         {/* Job description */}
         <div>
           <label style={labelStyle}>
@@ -212,7 +200,7 @@ const ResumeUpload: React.FC = () => {
               onClick={() => !loading && fileInputRef.current?.click()}
               style={{
                 border: `2px dashed ${isDragActive ? C.primary : C.border}`,
-                borderRadius: C.radius,
+                borderRadius: '10px',
                 padding: '2.5rem 2rem',
                 textAlign: 'center',
                 background: isDragActive ? C.primarySoft : C.bg,
@@ -227,7 +215,7 @@ const ResumeUpload: React.FC = () => {
             <input ref={fileInputRef} type="file" accept=".pdf,.docx,.doc,.txt" onChange={handleFileSelect} disabled={loading} style={{ display: 'none' }} />
 
             {file && (
-              <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: C.radiusSm }}>
+              <div style={{ marginTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: '6px' }}>
                 <span style={{ color: C.primary, display: 'flex' }}><FileIcon /></span>
                 <span style={{ flex: 1, fontSize: '0.875rem', fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</span>
                 <button

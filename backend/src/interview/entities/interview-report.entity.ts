@@ -73,6 +73,18 @@ export class InterviewReport {
     feedback: string;
   }>;
 
+  @Column({ nullable: true })
+  knowledgeDocumentId?: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  syncedToKnowledgeAt?: Date;
+
+  @Column({ nullable: true })
+  noteId?: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  syncedToNoteAt?: Date;
+
   @CreateDateColumn()
   createdAt!: Date;
 

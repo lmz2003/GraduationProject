@@ -24,7 +24,6 @@ const getColors = (isDark: boolean) => ({
   message:    isDark ? '#A8A5C7' : '#475569',
   closeBtn:   isDark ? '#6B7280' : '#94a3b8',
   closeBtnHover: isDark ? '#A8A5C7' : '#64748b',
-  // icon colors by type
   iconColor: (type: ToastModalType) => {
     if (isDark) {
       switch (type) {
@@ -108,7 +107,6 @@ export const ToastModalProvider: React.FC<{ children: React.ReactNode }> = ({
   const [hoveredConfirm, setHoveredConfirm] = useState(false);
   const [hoveredCancel, setHoveredCancel] = useState(false);
 
-  // Dark mode detection
   const [isDark, setIsDark] = useState(() =>
     typeof window !== 'undefined' && document.documentElement.classList.contains('dark')
   );
@@ -277,6 +275,7 @@ export const ToastModalProvider: React.FC<{ children: React.ReactNode }> = ({
             {/* Close Button */}
             {modalState.options.type !== 'loading' && (
               <button
+                title="关闭"
                 onClick={handleClose}
                 onMouseEnter={() => setHoveredClose(true)}
                 onMouseLeave={() => setHoveredClose(false)}

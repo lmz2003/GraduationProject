@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useToastModal } from '../components/ui/toast-modal';
+import { useTheme } from '../hooks/useTheme';
 
 // ---- Design tokens ----
-// Helper function to get theme colors based on dark mode
+const font = "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+
 const getThemeColors = (isDark: boolean) => {
   return {
     primary: isDark ? '#818CF8' : '#6366F1',
@@ -26,8 +28,6 @@ const getThemeColors = (isDark: boolean) => {
     shadow: isDark ? '0 1px 4px rgba(0,0,0,0.2)' : '0 1px 4px rgba(30,27,75,0.07)',
   };
 };
-
-const font = "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 
 // ---- SVG Icons (use currentColor or props to stay theme-aware) ----
 const ChartIcon = ({ color = 'currentColor' }: { color?: string }) => (
@@ -187,21 +187,8 @@ const KnowledgeBase: React.FC = () => {
   const [isBatchDeleteMode, setIsBatchDeleteMode] = useState(false);
   const [query, setQuery] = useState('');
 
-  // Theme support - detect dark mode and respond to changes
-  const [isDarkMode, setIsDarkMode] = useState(() => 
-    typeof window !== 'undefined' && document.documentElement.classList.contains('dark')
-  );
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      setIsDarkMode(document.documentElement.classList.contains('dark'));
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
-  }, []);
-
-  // Get current theme colors (computed from current dark mode state)
-  const C = getThemeColors(isDarkMode);
+  const { isDark } = useTheme();
+  const C = getThemeColors(isDark);
 
   const token = localStorage.getItem('token');
   const API_BASE = import.meta.env.VITE_API_BASE_URL + '/knowledge-base';
@@ -296,9 +283,7 @@ const KnowledgeBase: React.FC = () => {
     finally { setLoadingBatchDelete(false); }
   };
 
-  const getFileIcon = (fileName: string): React.ReactNode => {
-    const ext = fileName.split('.').pop()?.toLowerCase() || '';
-    // Return simple SVG icon instead of emoji
+  const getFileIcon = (_fileName: string): React.ReactNode => {
     return <FileTextIcon />;
   };
 

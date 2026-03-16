@@ -62,6 +62,7 @@ export class KnowledgeBaseService {
         // 4. 更新文档状态
         savedDocument.isProcessed = true;
         savedDocument.vectorId = savedDocument.id;
+        savedDocument.status = 'processed';
         await this.documentRepository.save(savedDocument);
 
         this.logger.log(`文档处理完成: ${savedDocument.id} (${chunks.length} 个向量)`);
@@ -72,6 +73,8 @@ export class KnowledgeBaseService {
         // 记录详细的错误信息但继续保存文档
         // 用户可以稍后重新处理该文档
         savedDocument.isProcessed = false;
+        savedDocument.status = 'failed';
+        savedDocument.processingError = errorMsg;
         await this.documentRepository.save(savedDocument);
         
         this.logger.warn(`文档已保存但未处理向量: ${savedDocument.id}。错误: ${errorMsg}`);
@@ -287,6 +290,24 @@ export class KnowledgeBaseService {
     } catch (error) {
       this.logger.error('获取文档失败:', error);
       throw error;
+    }
+  }
+
+  /**
+   * 检查文档是否存在
+   */
+  async checkDocumentExists(documentId: string, userId: string): Promise<boolean> {
+    try {
+      const document = await this.documentRepository.findOne({
+        where: {
+          id: documentId,
+          ownerId: userId,
+        },
+      });
+      return !!document;
+    } catch (error) {
+      this.logger.error('检查文档存在失败:', error);
+      return false;
     }
   }
 

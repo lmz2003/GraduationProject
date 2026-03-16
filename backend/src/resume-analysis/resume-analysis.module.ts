@@ -5,6 +5,7 @@ import { ResumeAnalysisService } from './services/resume-analysis.service';
 import { ResumeParserService } from './services/resume-parser.service';
 import { ResumeAnalyzerService } from './services/resume-analyzer.service';
 import { ResumeLLMService } from './services/resume-llm.service';
+import { ResumeAnalysisGateway } from './resume-analysis.gateway';
 import { Resume } from './entities/resume.entity';
 import { ResumeAnalysis } from './entities/resume-analysis.entity';
 
@@ -16,6 +17,7 @@ import { ResumeAnalysis } from './entities/resume-analysis.entity';
     ResumeParserService,
     ResumeAnalyzerService,
     ResumeLLMService,
+    ResumeAnalysisGateway,
   ],
   exports: [ResumeAnalysisService],
 })

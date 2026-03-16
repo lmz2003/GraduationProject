@@ -1,22 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToastModal } from '../components/ui/toast-modal';
+import { useResumeAnalysisWebSocket } from '../hooks/useResumeAnalysisWebSocket';
+import { useTheme } from '../hooks/useTheme';
+import { useAbortController } from '../hooks/useAbortController';
 import PDFViewer from './components/PDFViewer';
 import AnalysisPanel from './components/AnalysisPanel';
 import LoadingModal from './components/LoadingModal';
-
-// ---- Design tokens (theme-aware) ----
-const getThemeColors = (isDark: boolean) => ({
-  primary: isDark ? '#818CF8' : '#6366F1',
-  primarySoft: isDark ? 'rgba(129,140,248,0.1)' : 'rgba(99,102,241,0.08)',
-  bg: isDark ? '#0F0F1A' : '#F7F6FF',
-  surface: isDark ? '#16162A' : '#FFFFFF',
-  border: isDark ? '#2D2D52' : '#EAE8F8',
-  text: isDark ? '#F1F0FF' : '#1E1B4B',
-  textMuted: isDark ? '#A8A5C7' : '#6B7280',
-  divider: isDark ? '#2D2D52' : '#e2e8f0',
-  font: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-});
 
 // ---- SVG Icons ----
 const ArrowLeftIcon = () => (
@@ -38,32 +28,55 @@ const ResumeDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { error } = useToastModal();
+  const { colors: C } = useTheme();
+  const { getSignal, abort } = useAbortController();
 
   const [resume, setResume] = useState<Resume | null>(null);
   const [analysis, setAnalysis] = useState<any>(null);
   const [analysisStage, setAnalysisStage] = useState(0);
+  const [stageMessage, setStageMessage] = useState('');
   const [loading, setLoading] = useState(true);
-  const [retryCount, setRetryCount] = useState(0);
 
-  // Theme support - detect dark mode and respond to changes
-  const [isDarkMode, setIsDarkMode] = useState(() =>
-    typeof window !== 'undefined' && document.documentElement.classList.contains('dark')
-  );
+  const fetchAnalysisOnly = useCallback(async () => {
+    if (!id) return;
+    try {
+      const token = localStorage.getItem('token');
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+      const response = await fetch(`${apiBaseUrl}/resume-analysis/${id}/analysis`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+        signal: getSignal(),
+      });
+      if (response.ok) {
+        const analysisData = await response.json();
+        setAnalysis(analysisData.data);
+      }
+    } catch (e) {
+      if ((e as Error).name !== 'AbortError') {
+        console.error('Error fetching analysis:', e);
+      }
+    }
+  }, [id, getSignal]);
 
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      setIsDarkMode(document.documentElement.classList.contains('dark'));
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
-  }, []);
-
-  // Get current theme colors
-  const C = getThemeColors(isDarkMode);
+  useResumeAnalysisWebSocket({
+    resumeId: id,
+    userId: localStorage.getItem('userId') || undefined,
+    onProgress: (data) => {
+      setAnalysisStage(data.stage);
+      setStageMessage(data.message);
+    },
+    onComplete: (_data) => {
+      setAnalysisStage(5);
+      fetchAnalysisOnly();
+    },
+    onError: (data) => {
+      error(data.error, '分析失败');
+    },
+  });
 
   useEffect(() => {
     if (!id) return;
     fetchData();
+    return () => { abort(); };
   }, [id]);
 
   const fetchData = async () => {
@@ -72,13 +85,16 @@ const ResumeDetail: React.FC = () => {
       setLoading(true);
       const token = localStorage.getItem('token');
       const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+      const signal = getSignal();
 
       const [resumeRes, analysisRes] = await Promise.all([
         fetch(`${apiBaseUrl}/resume-analysis/${id}`, {
           headers: { 'Authorization': `Bearer ${token}` },
+          signal,
         }),
         fetch(`${apiBaseUrl}/resume-analysis/${id}/analysis`, {
           headers: { 'Authorization': `Bearer ${token}` },
+          signal,
         }).catch(() => ({ ok: false }) as any),
       ]);
 
@@ -93,43 +109,15 @@ const ResumeDetail: React.FC = () => {
         if (analysisData.data?.analysisStage !== undefined) {
           setAnalysisStage(analysisData.data.analysisStage);
         }
-      } else {
-        setTimeout(() => setRetryCount(prev => prev + 1), 10000);
       }
     } catch (err) {
+      if ((err as Error).name === 'AbortError') {
+        return;
+      }
       const errorMsg = err instanceof Error ? err.message : 'Failed to fetch data';
       error(errorMsg, '加载失败');
     } finally {
       setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (retryCount > 0 && !analysis) {
-      const timer = setTimeout(() => { fetchAnalysisOnly(); }, 10000);
-      return () => clearTimeout(timer);
-    }
-  }, [retryCount]);
-
-  const fetchAnalysisOnly = async () => {
-    if (!id) return;
-    try {
-      const token = localStorage.getItem('token');
-      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
-      const response = await fetch(`${apiBaseUrl}/resume-analysis/${id}/analysis`, {
-        headers: { 'Authorization': `Bearer ${token}` },
-      });
-      if (response.ok) {
-        const analysisData = await response.json();
-        setAnalysis(analysisData.data);
-        if (analysisData.data?.analysisStage !== undefined) {
-          setAnalysisStage(analysisData.data.analysisStage);
-        }
-      } else {
-        setRetryCount(prev => prev + 1);
-      }
-    } catch (e) {
-      console.error('Error fetching analysis:', e);
     }
   };
 
@@ -217,7 +205,7 @@ const ResumeDetail: React.FC = () => {
         <LoadingModal
           isOpen={true}
           title={getAnalysisStageInfo(analysisStage).title}
-          description={getAnalysisStageInfo(analysisStage).description}
+          description={stageMessage || getAnalysisStageInfo(analysisStage).description}
           showProgress={true}
           progress={analysisStage}
           maxProgress={5}

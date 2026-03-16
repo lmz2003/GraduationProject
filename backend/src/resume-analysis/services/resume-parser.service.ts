@@ -1,8 +1,6 @@
 import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import PDFParser from 'pdf-parse';
 import * as mammoth from 'mammoth';
-import * as fs from 'fs';
-import * as path from 'path';
 import { ConfigService } from '@nestjs/config';
 import { ChatOpenAI } from '@langchain/openai';
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
@@ -207,48 +205,6 @@ export class ResumeParserService {
     }
   }
 
-  async parsePDF(filePath: string): Promise<string> {
-    try {
-      const fileBuffer = fs.readFileSync(filePath);
-      const pdfData = await PDFParser(fileBuffer);
-      const text = pdfData.text || '';
-
-      this.logger.log(`[PDF] Parsed - Pages: ${pdfData.numpages}, Chars: ${text.length}`);
-      return text;
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`[PDF] Parsing failed: ${errorMsg}`);
-      throw new BadRequestException(`PDF parsing failed: ${errorMsg}`);
-    }
-  }
-
-  async parseDocx(filePath: string): Promise<string> {
-    try {
-      const fileBuffer = fs.readFileSync(filePath);
-      const result = await mammoth.extractRawText({ buffer: fileBuffer });
-      const text = result.value;
-
-      this.logger.log(`[DOCX] Parsed - Chars: ${text.length}`);
-      return text;
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`[DOCX] Parsing failed: ${errorMsg}`);
-      throw new BadRequestException(`DOCX parsing failed: ${errorMsg}`);
-    }
-  }
-
-  async parseTextFile(filePath: string): Promise<string> {
-    try {
-      const content = fs.readFileSync(filePath, 'utf-8');
-      this.logger.log(`[TXT] Parsed - Chars: ${content.length}`);
-      return content;
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`[TXT] Parsing failed: ${errorMsg}`);
-      throw new BadRequestException(`Text file parsing failed: ${errorMsg}`);
-    }
-  }
-
   /**
    * 解析 Buffer 格式的简历（内存模式）
    */
@@ -337,31 +293,6 @@ export class ResumeParserService {
       const errorMsg = error instanceof Error ? error.message : 'Unknown error';
       this.logger.error(`[TXT] Buffer parsing failed: ${errorMsg}`);
       throw new BadRequestException(`Text parsing failed: ${errorMsg}`);
-    }
-  }
-
-  /**
-   * 根据文件类型解析简历
-   */
-  async parseResumeFile(filePath: string, fileType: string): Promise<string> {
-    const ext = path.extname(filePath).toLowerCase();
-
-    switch (fileType.toLowerCase()) {
-      case 'pdf':
-      case '.pdf':
-        return this.parsePDF(filePath);
-      case 'docx':
-      case '.docx':
-        return this.parseDocx(filePath);
-      case 'doc':
-      case '.doc':
-        // Word 格式统一使用 mammoth 解析
-        return this.parseDocx(filePath);
-      case 'txt':
-      case '.txt':
-        return this.parseTextFile(filePath);
-      default:
-        throw new BadRequestException(`Unsupported file type: ${fileType}`);
     }
   }
 

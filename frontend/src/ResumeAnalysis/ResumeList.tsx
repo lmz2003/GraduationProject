@@ -2,38 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useToastModal } from '../components/ui/toast-modal';
 import LoadingModal from './components/LoadingModal';
+import styles from './ResumeList.module.scss';
 
-// ---- Design tokens (theme-aware) ----
-const getThemeColors = (isDark: boolean) => ({
-  primary: isDark ? '#818CF8' : '#6366F1',
-  primaryHover: isDark ? '#6366F1' : '#4F46E5',
-  primarySoft: isDark ? 'rgba(129,140,248,0.1)' : 'rgba(99,102,241,0.08)',
-  cta: '#10B981',
-  bg: isDark ? '#0F0F1A' : '#F7F6FF',
-  surface: isDark ? '#16162A' : '#FFFFFF',
-  border: isDark ? '#2D2D52' : '#EAE8F8',
-  text: isDark ? '#F1F0FF' : '#1E1B4B',
-  textMuted: isDark ? '#A8A5C7' : '#6B7280',
-  danger: isDark ? '#FF6B6B' : '#EF4444',
-  dangerSoft: isDark ? 'rgba(255,107,107,0.15)' : 'rgba(239,68,68,0.08)',
-  warning: '#FDB022',
-  success: '#10B981',
-  successSoft: isDark ? 'rgba(16,185,129,0.15)' : 'rgba(16,185,129,0.08)',
-  radius: '10px',
-  radiusSm: '6px',
-  font: "'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-});
-
-// ---- SVG Icons ----
-const FileIcon = ({ color = 'currentColor' }: { color?: string }) => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-    <polyline points="14 2 14 8 20 8"/>
-    <line x1="16" y1="13" x2="8" y2="13"/>
-    <line x1="16" y1="17" x2="8" y2="17"/>
-    <polyline points="10 9 9 9 8 9"/>
-  </svg>
-);
 const PlusIcon = () => (
   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
 );
@@ -66,6 +36,21 @@ const EmptyResumeIcon = () => (
     <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/>
   </svg>
 );
+const FileIcon = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14 2 14 8 20 8"/>
+    <line x1="16" y1="13" x2="8" y2="13"/>
+    <line x1="16" y1="17" x2="8" y2="17"/>
+    <polyline points="10 9 9 9 8 9"/>
+  </svg>
+);
+const CheckboxIcon = ({ checked }: { checked: boolean }) => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill={checked ? '#6366F1' : 'none'} stroke={checked ? '#6366F1' : '#6B7280'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="3" width="18" height="18" rx="2"/>
+    {checked && <polyline points="9 11 12 14 22 4" stroke="#fff" strokeWidth="2.5"/>}
+  </svg>
+);
 
 interface Resume {
   id: string;
@@ -74,6 +59,7 @@ interface Resume {
   fileName?: string;
   createdAt: string;
   isProcessed: boolean;
+  analysisStage?: number;
   overallScore?: number;
 }
 
@@ -83,28 +69,8 @@ const ResumeList: React.FC = () => {
   const [resumes, setResumes] = useState<Resume[]>([]);
   const [loading, setLoading] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  // Theme support - detect dark mode and respond to changes
-  const [isDarkMode, setIsDarkMode] = useState(() =>
-    typeof window !== 'undefined' && document.documentElement.classList.contains('dark')
-  );
-
-  useEffect(() => {
-    const observer = new MutationObserver(() => {
-      setIsDarkMode(document.documentElement.classList.contains('dark'));
-    });
-    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
-    return () => observer.disconnect();
-  }, []);
-
-  // Get current theme colors
-  const C = getThemeColors(isDarkMode);
-
-  const getScoreColor = (score: number) => {
-    if (score >= 75) return C.success;
-    if (score >= 60) return C.warning;
-    return C.danger;
-  };
+  const [batchMode, setBatchMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   useEffect(() => { fetchResumes(); }, []);
 
@@ -116,17 +82,7 @@ const ResumeList: React.FC = () => {
       const response = await fetch(`${apiBaseUrl}/resume-analysis`, { headers: { 'Authorization': `Bearer ${token}` } });
       if (!response.ok) throw new Error('Failed to fetch resumes');
       const data = await response.json();
-      const resumesList = data.data || [];
-      const resumesWithAnalysis = await Promise.all(
-        resumesList.map(async (resume: Resume) => {
-          try {
-            const r = await fetch(`${apiBaseUrl}/resume-analysis/${resume.id}/analysis`, { headers: { 'Authorization': `Bearer ${token}` } });
-            if (r.ok) { const d = await r.json(); return { ...resume, overallScore: d.data?.overallScore }; }
-          } catch { console.warn(`Failed to fetch analysis for resume ${resume.id}`); }
-          return resume;
-        })
-      );
-      setResumes(resumesWithAnalysis);
+      setResumes(data.data || []);
     } catch (err) {
       error(err instanceof Error ? err.message : 'Failed to fetch resumes', '获取简历失败');
     } finally { setLoading(false); }
@@ -150,96 +106,156 @@ const ResumeList: React.FC = () => {
     } finally { setDeletingId(null); }
   };
 
+  const toggleSelect = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const handleToggleSelectAll = () => {
+    if (selectedIds.size === resumes.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(resumes.map(r => r.id)));
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (selectedIds.size === 0) return;
+    if (!window.confirm(`确定要删除选中的 ${selectedIds.size} 份简历吗？此操作不可撤销。`)) return;
+    
+    try {
+      const token = localStorage.getItem('token');
+      const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+      
+      const deletePromises = Array.from(selectedIds).map(id =>
+        fetch(`${apiBaseUrl}/resume-analysis/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } })
+      );
+      
+      await Promise.all(deletePromises);
+      setResumes(resumes.filter(r => !selectedIds.has(r.id)));
+      setSelectedIds(new Set());
+      setBatchMode(false);
+      success(`已删除 ${selectedIds.size} 份简历`, '批量删除成功');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Failed to batch delete resumes', '批量删除失败');
+    }
+  };
+
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString('zh-CN', { year: 'numeric', month: 'short', day: 'numeric' });
 
-  const btnBase: React.CSSProperties = {
-    border: 'none', borderRadius: C.radiusSm, fontFamily: C.font, fontWeight: 600,
-    cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '5px',
-    transition: 'all 0.15s ease', whiteSpace: 'nowrap',
+  const getScoreColorClass = (score: number) => {
+    if (score >= 75) return styles.scoreHigh;
+    if (score >= 60) return styles.scoreMedium;
+    return styles.scoreLow;
   };
 
   if (loading) {
     return (
       <>
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '200px', color: C.textMuted, fontFamily: C.font }}>
-          <span style={{ display: 'inline-flex', animation: 'spin 1s linear infinite', marginRight: '10px' }}><SpinIcon /></span>
+        <div className={styles.loadingContainer}>
+          <span className={styles.loadingSpinner}><SpinIcon /></span>
           加载中...
         </div>
         <LoadingModal isOpen={loading} title="加载简历列表" description="正在获取您的简历..." />
-        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
       </>
     );
   }
 
   return (
-    <div style={{ fontFamily: C.font, color: C.text }}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h2 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: C.text, letterSpacing: '-0.01em' }}>我的简历</h2>
-        <button
-          onClick={() => navigate('/dashboard/resume/upload')}
-          style={{ ...btnBase, background: C.primary, color: 'white', padding: '8px 18px', fontSize: '0.875rem' }}
-          onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = C.primaryHover}
-          onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = C.primary}
-        >
-          <PlusIcon /> 上传简历
-        </button>
-      </div>
-
-      {resumes.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: '4rem 2rem', color: C.textMuted }}>
-          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', color: 'rgba(99,102,241,0.3)' }}>
-            <EmptyResumeIcon />
-          </div>
-          <p style={{ fontSize: '0.95rem', margin: '0 0 1.5rem', lineHeight: 1.7 }}>暂无简历，上传你的第一份简历开始分析</p>
+    <div className={styles.pageContainer}>
+      <div className={styles.header}>
+        <h2 className={styles.title}>我的简历</h2>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {resumes.length > 0 && (
+            <button
+              onClick={() => { setBatchMode(!batchMode); setSelectedIds(new Set()); }}
+              className={`${styles.button} ${styles.buttonSecondary}`}
+              style={{ padding: '8px 14px', fontSize: '0.8rem' }}
+            >
+              {batchMode ? '取消' : '批量管理'}
+            </button>
+          )}
           <button
             onClick={() => navigate('/dashboard/resume/upload')}
-            style={{ ...btnBase, background: C.primary, color: 'white', padding: '10px 24px', fontSize: '0.9rem' }}
-            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = C.primaryHover}
-            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = C.primary}
+            className={`${styles.button} ${styles.buttonPrimary}`}
+          >
+            <PlusIcon /> 上传简历
+          </button>
+        </div>
+      </div>
+
+      {batchMode && selectedIds.size > 0 && (
+        <div className={styles.batchBar}>
+          <div className={styles.batchInfo}>
+            <button
+              onClick={handleToggleSelectAll}
+              className={`${styles.button} ${styles.buttonSecondary}`}
+              style={{ padding: '4px 10px', fontSize: '0.75rem', marginRight: '12px' }}
+            >
+              {selectedIds.size === resumes.length ? '取消全选' : '全选'}
+            </button>
+            <span className={styles.batchCount}>已选择 {selectedIds.size} 项</span>
+          </div>
+          <button
+            onClick={handleBatchDelete}
+            className={`${styles.button} ${styles.buttonDanger}`}
+            style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+          >
+            <TrashIcon /> 批量删除
+          </button>
+        </div>
+      )}
+
+      {resumes.length === 0 ? (
+        <div className={styles.emptyState}>
+          <div className={styles.emptyIcon}>
+            <EmptyResumeIcon />
+          </div>
+          <p className={styles.emptyText}>暂无简历，上传你的第一份简历开始分析</p>
+          <button
+            onClick={() => navigate('/dashboard/resume/upload')}
+            className={`${styles.button} ${styles.buttonPrimary}`}
+            style={{ padding: '10px 24px', fontSize: '0.9rem' }}
           >
             <PlusIcon /> 上传简历
           </button>
         </div>
       ) : (
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-          gap: '1rem',
-        }}>
+        <div className={styles.resumeGrid}>
           {resumes.map(resume => (
             <div
               key={resume.id}
-              onClick={() => handleViewResume(resume.id)}
+              onClick={() => batchMode ? toggleSelect(resume.id) : handleViewResume(resume.id)}
+              className={styles.resumeCard}
               style={{
-                background: C.surface,
-                border: `1px solid ${C.border}`,
-                borderRadius: '14px',
-                padding: '1.25rem',
                 cursor: deletingId === resume.id ? 'not-allowed' : 'pointer',
                 opacity: deletingId === resume.id ? 0.6 : 1,
                 pointerEvents: deletingId === resume.id ? 'none' : 'auto',
-                transition: 'all 0.15s ease',
-                borderLeft: `3px solid ${C.primary}`,
+                borderLeft: selectedIds.has(resume.id) ? '3px solid #6366F1' : '3px solid transparent',
+                background: selectedIds.has(resume.id) ? 'rgba(99,102,241,0.04)' : undefined,
               }}
-              onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'translateY(-3px)'; el.style.boxShadow = '0 8px 24px rgba(99,102,241,0.12)'; }}
-              onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.transform = 'translateY(0)'; el.style.boxShadow = 'none'; }}
             >
-              {/* Icon + title */}
-              <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start', marginBottom: '10px' }}>
-                <div style={{ flexShrink: 0, width: '38px', height: '38px', background: C.primarySoft, borderRadius: C.radiusSm, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {batchMode && (
+                <div className={styles.checkboxWrapper} onClick={e => e.stopPropagation()}>
+                  <div onClick={() => toggleSelect(resume.id)}>
+                    <CheckboxIcon checked={selectedIds.has(resume.id)} />
+                  </div>
+                </div>
+              )}
+              <div className={styles.cardHeader}>
+                <div className={styles.cardIcon}>
                   <FileIcon />
                 </div>
-                <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: C.text, lineHeight: 1.4, wordBreak: 'break-word' }}>
-                  {resume.title}
-                </h3>
+                <h3 className={styles.cardTitle}>{resume.title}</h3>
               </div>
 
-              {/* Meta */}
-              <div style={{ display: 'flex', gap: '12px', fontSize: '0.78rem', color: C.textMuted, marginBottom: '12px', flexWrap: 'wrap' }}>
+              <div className={styles.cardMeta}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <CalendarIcon /> {formatDate(resume.createdAt)}
                 </span>
@@ -248,54 +264,52 @@ const ResumeList: React.FC = () => {
                 </span>
               </div>
 
-              {/* Score */}
-              <div style={{
-                display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '8px 12px',
-                background: C.bg,
-                borderRadius: C.radiusSm,
-                marginBottom: '12px',
-                border: `1px solid ${C.border}`,
-              }}>
+              <div className={styles.scoreSection}>
                 {resume.isProcessed && resume.overallScore !== undefined ? (
                   <>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 800, color: getScoreColor(resume.overallScore), lineHeight: 1 }}>
+                    <span className={`${styles.scoreValue} ${getScoreColorClass(resume.overallScore)}`}>
                       {Math.round(resume.overallScore)}
                     </span>
-                    <span style={{ fontSize: '0.8rem', color: C.textMuted, fontWeight: 500 }}>/ 100 综合评分</span>
-                    <div style={{
-                      flex: 1, height: '4px', background: C.border, borderRadius: '2px', overflow: 'hidden', marginLeft: 'auto',
-                    }}>
-                      <div style={{ height: '100%', width: `${resume.overallScore}%`, background: getScoreColor(resume.overallScore), borderRadius: '2px' }} />
+                    <span className={styles.scoreLabel}>/ 100 综合评分</span>
+                    <div className={styles.scoreBar}>
+                      <div
+                        className={styles.scoreBarFill}
+                        style={{
+                          width: `${resume.overallScore}%`,
+                          background: resume.overallScore >= 75 ? '#10B981' : resume.overallScore >= 60 ? '#FDB022' : '#EF4444'
+                        }}
+                      />
                     </div>
                   </>
                 ) : (
                   <>
-                    <span style={{ display: 'inline-flex', animation: 'spin 1s linear infinite', color: C.warning }}><SpinIcon /></span>
-                    <span style={{ fontSize: '0.82rem', color: C.textMuted, fontWeight: 500 }}>AI 分析中...</span>
+                    <span className={styles.progressIndicator}><SpinIcon /></span>
+                    <span className={styles.progressText}>
+                      AI 分析中... {resume.analysisStage !== undefined ? `(${resume.analysisStage}/5)` : ''}
+                    </span>
                   </>
                 )}
               </div>
 
-              {/* Actions */}
-              <div style={{ display: 'flex', gap: '8px', paddingTop: '10px', borderTop: `1px solid ${C.border}` }}>
-                <button
-                  onClick={e => { e.stopPropagation(); handleViewResume(resume.id); }}
-                  style={{ ...btnBase, flex: 1, background: C.primarySoft, color: C.primary, padding: '7px 10px', fontSize: '0.8rem', justifyContent: 'center' }}
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(99,102,241,0.14)'}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = C.primarySoft}
-                >
-                  <SearchIcon /> 查看分析
-                </button>
-                <button
-                  onClick={e => handleDeleteResume(e, resume.id)}
-                  style={{ ...btnBase, flex: 1, background: C.dangerSoft, color: C.danger, padding: '7px 10px', fontSize: '0.8rem', justifyContent: 'center' }}
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(239,68,68,0.14)'}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = C.dangerSoft}
-                >
-                  <TrashIcon /> 删除
-                </button>
-              </div>
+              {!batchMode && (
+                <div className={styles.cardActions}>
+                  <button
+                    onClick={e => { e.stopPropagation(); handleViewResume(resume.id); }}
+                    className={`${styles.button} ${styles.buttonSecondary}`}
+                    style={{ flex: 1, justifyContent: 'center' }}
+                  >
+                    <SearchIcon /> 查看分析
+                  </button>
+                  <button
+                    onClick={e => handleDeleteResume(e, resume.id)}
+                    className={`${styles.button} ${styles.buttonDanger}`}
+                    style={{ flex: 1, justifyContent: 'center' }}
+                    disabled={deletingId === resume.id}
+                  >
+                    <TrashIcon /> 删除
+                  </button>
+                </div>
+              )}
             </div>
           ))}
         </div>

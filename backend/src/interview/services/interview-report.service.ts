@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Interview, VideoAnalysisSummary } from '../entities/interview.entity';
@@ -8,6 +8,10 @@ import { InterviewReport, DimensionScores, VideoBehaviorScores, LearningResource
 import { InterviewEvaluatorService } from './interview-evaluator.service';
 import { InterviewLLMService } from './interview-llm.service';
 import { SceneService } from './scene.service';
+import { KnowledgeBaseService } from '../../knowledge-base/services/knowledge-base.service';
+import { NotesService } from '../../notes/notes.service';
+import { CreateDocumentDto } from '../../knowledge-base/dto/create-document.dto';
+import { CreateNoteDto } from '../../notes/dto/create-note.dto';
 
 @Injectable()
 export class InterviewReportService {
@@ -19,6 +23,8 @@ export class InterviewReportService {
     private evaluatorService: InterviewEvaluatorService,
     private llmService: InterviewLLMService,
     private sceneService: SceneService,
+    private knowledgeBaseService: KnowledgeBaseService,
+    private notesService: NotesService,
   ) {}
 
   async generateReport(
@@ -362,43 +368,480 @@ export class InterviewReportService {
     if (dimensionScores.depth < 7) {
       resources.push({
         type: 'course',
-        title: '技术面试深度提升课程',
-        url: 'https://example.com/course/tech-interview',
+        title: '技术面试核心知识点精讲 - 极客时间',
+        url: 'https://time.geekbang.org/column/intro/100020801',
+      });
+      resources.push({
+        type: 'course',
+        title: '数据结构与算法 - 慕课网',
+        url: 'https://www.imooc.com/learn/1170',
       });
     }
 
     if (dimensionScores.clarity < 7) {
       resources.push({
         type: 'article',
-        title: '如何清晰表达技术方案',
-        url: 'https://example.com/article/clear-expression',
+        title: '如何清晰表达技术方案 - 掘金',
+        url: 'https://juejin.cn/post/6844904195802632206',
       });
     }
 
     if (dimensionScores.expression < 7) {
       resources.push({
         type: 'video',
-        title: '面试表达技巧视频教程',
-        url: 'https://example.com/video/interview-expression',
+        title: '面试表达技巧 - B站',
+        url: 'https://www.bilibili.com/video/BV1aV411k7yD',
       });
     }
 
     if (interview.sceneType === 'technical') {
       resources.push({
         type: 'practice',
-        title: 'LeetCode算法练习',
+        title: 'LeetCode 力扣 - 算法练习平台',
         url: 'https://leetcode.cn',
+      });
+      resources.push({
+        type: 'practice',
+        title: '牛客网 - 面试题库',
+        url: 'https://www.nowcoder.com/exam/interview',
       });
     }
 
     if (interview.sceneType === 'behavioral') {
       resources.push({
         type: 'article',
-        title: 'STAR法则详解与应用',
-        url: 'https://example.com/article/star-method',
+        title: 'STAR法则详解与应用 - 知乎',
+        url: 'https://zhuanlan.zhihu.com/p/266525867',
+      });
+      resources.push({
+        type: 'article',
+        title: '行为面试常见问题及回答技巧',
+        url: 'https://zhuanlan.zhihu.com/p/139532699',
+      });
+    }
+
+    if (dimensionScores.completeness < 7) {
+      resources.push({
+        type: 'article',
+        title: '面试回答如何更完整 - 掘金',
+        url: 'https://juejin.cn/post/6844904065863610376',
+      });
+    }
+
+    if (dimensionScores.highlights < 7) {
+      resources.push({
+        type: 'article',
+        title: '如何在面试中展现个人亮点 - 知乎',
+        url: 'https://zhuanlan.zhihu.com/p/137837636',
       });
     }
 
     return resources.slice(0, 5);
+  }
+
+  async syncToKnowledgeBase(reportId: string, userId: string): Promise<{ success: boolean; message: string; documentId?: string }> {
+    try {
+      const report = await this.getReportById(reportId);
+      if (!report) {
+        throw new BadRequestException('面试报告不存在');
+      }
+
+      if (report.knowledgeDocumentId) {
+        const existingDoc = await this.knowledgeBaseService.checkDocumentExists(report.knowledgeDocumentId, userId);
+        if (existingDoc) {
+          return {
+            success: false,
+            message: '该面试报告已同步到知识库，如需重新同步请先在知识库中删除对应文档',
+          };
+        }
+        this.logger.log(`知识库文档已不存在，清除旧的同步记录: ${report.knowledgeDocumentId}`);
+        report.knowledgeDocumentId = undefined;
+        report.syncedToKnowledgeAt = undefined;
+        await this.reportRepository.save(report);
+      }
+
+      const interview = report.interview;
+      const sceneName = interview ? this.sceneService.getSceneName(interview.sceneType) : '面试';
+      const jobName = interview?.jobType ? this.sceneService.getJobTypeName(interview.jobType) : '';
+
+      const content = this.formatReportForKnowledge(report, interview);
+
+      const createDocumentDto: CreateDocumentDto = {
+        title: `${sceneName}面试报告${jobName ? ` - ${jobName}` : ''} - ${report.overallScore.toFixed(1)}分`,
+        content,
+        source: `面试报告: ${report.id}`,
+        documentType: 'text',
+        metadata: {
+          reportId: report.id,
+          interviewId: report.interviewId,
+          overallScore: report.overallScore,
+          sceneType: interview?.sceneType,
+          jobType: interview?.jobType,
+          createdAt: report.createdAt,
+        },
+        uploadType: 'input',
+      };
+
+      const document = await this.knowledgeBaseService.addDocument(createDocumentDto, userId);
+
+      report.knowledgeDocumentId = document.id;
+      report.syncedToKnowledgeAt = new Date();
+      await this.reportRepository.save(report);
+
+      this.logger.log(`面试报告已同步到知识库 - 报告ID: ${reportId}, 文档ID: ${document.id}`);
+
+      return {
+        success: true,
+        message: '面试报告已成功同步到知识库',
+        documentId: document.id,
+      };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+      this.logger.error(`同步到知识库失败: ${errorMsg}`);
+      throw new BadRequestException(`同步到知识库失败: ${errorMsg}`);
+    }
+  }
+
+  async syncToNotes(reportId: string, userId: string): Promise<{ success: boolean; message: string; noteId?: string }> {
+    try {
+      const report = await this.getReportById(reportId);
+      if (!report) {
+        throw new BadRequestException('面试报告不存在');
+      }
+
+      if (report.noteId) {
+        const existingNote = await this.notesService.checkNoteExists(report.noteId, userId);
+        if (existingNote) {
+          return {
+            success: false,
+            message: '该面试报告已同步到笔记，如需重新同步请先删除对应笔记',
+          };
+        }
+        this.logger.log(`笔记已不存在，清除旧的同步记录: ${report.noteId}`);
+        report.noteId = undefined;
+        report.syncedToNoteAt = undefined;
+        await this.reportRepository.save(report);
+      }
+
+      const interview = report.interview;
+      const sceneName = interview ? this.sceneService.getSceneName(interview.sceneType) : '面试';
+      const jobName = interview?.jobType ? this.sceneService.getJobTypeName(interview.jobType) : '';
+
+      const content = this.formatReportForNotes(report, interview);
+
+      const createNoteDto: CreateNoteDto = {
+        title: `${sceneName}面试报告${jobName ? ` - ${jobName}` : ''} - ${report.overallScore.toFixed(1)}分`,
+        content,
+        summary: report.summary || `面试综合评分: ${report.overallScore.toFixed(1)}分`,
+        tags: ['面试报告', sceneName, ...(jobName ? [jobName] : [])],
+        status: 'published',
+      };
+
+      const note = await this.notesService.createNote(createNoteDto, userId);
+
+      report.noteId = note.id;
+      report.syncedToNoteAt = new Date();
+      await this.reportRepository.save(report);
+
+      this.logger.log(`面试报告已同步到笔记 - 报告ID: ${reportId}, 笔记ID: ${note.id}`);
+
+      return {
+        success: true,
+        message: '面试报告已成功同步到笔记',
+        noteId: note.id,
+      };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : JSON.stringify(error);
+      this.logger.error(`同步到笔记失败: ${errorMsg}`);
+      throw new BadRequestException(`同步到笔记失败: ${errorMsg}`);
+    }
+  }
+
+  private formatReportForKnowledge(report: InterviewReport, interview?: Interview): string {
+    const sections: string[] = [];
+
+    sections.push(`# 面试报告概览`);
+    sections.push(`综合评分: ${report.overallScore.toFixed(1)}/10`);
+    sections.push(`生成时间: ${new Date(report.createdAt).toLocaleString('zh-CN')}`);
+    sections.push('');
+
+    if (report.summary) {
+      sections.push(`## 报告摘要`);
+      sections.push(report.summary);
+      sections.push('');
+    }
+
+    sections.push(`## 维度评分`);
+    const dimensions = [
+      { key: 'completeness', name: '完整性' },
+      { key: 'clarity', name: '清晰度' },
+      { key: 'depth', name: '专业深度' },
+      { key: 'expression', name: '表达能力' },
+      { key: 'highlights', name: '亮点突出' },
+    ];
+    for (const dim of dimensions) {
+      const score = report.dimensionScores[dim.key as keyof DimensionScores];
+      sections.push(`- ${dim.name}: ${score.toFixed(1)}/10`);
+    }
+    sections.push('');
+
+    if (report.videoBehaviorScores) {
+      sections.push(`## 视频表现评分`);
+      sections.push(`- 眼神交流: ${report.videoBehaviorScores.eyeContactScore}/100`);
+      sections.push(`- 情绪稳定: ${report.videoBehaviorScores.emotionStabilityScore}/100`);
+      sections.push(`- 视线稳定: ${report.videoBehaviorScores.gazeStabilityScore}/100`);
+      sections.push(`- 面部可见度: ${report.videoBehaviorScores.faceVisibilityScore}/100`);
+      sections.push(`- 综合视频评分: ${report.videoBehaviorScores.overallVideoScore}/100`);
+      sections.push('');
+    }
+
+    sections.push(`## 优势分析`);
+    sections.push(report.strengths);
+    sections.push('');
+
+    sections.push(`## 待改进项`);
+    sections.push(report.weaknesses);
+    sections.push('');
+
+    sections.push(`## 改进建议`);
+    sections.push(report.suggestions);
+    sections.push('');
+
+    if (report.videoBehaviorFeedback) {
+      sections.push(`## 视频表现反馈`);
+      sections.push(report.videoBehaviorFeedback);
+      sections.push('');
+    }
+
+    if (report.questionAnalysis && report.questionAnalysis.length > 0) {
+      sections.push(`## 问题回顾`);
+      for (let i = 0; i < report.questionAnalysis.length; i++) {
+        const qa = report.questionAnalysis[i];
+        sections.push(`### 问题 ${i + 1}`);
+        sections.push(`**问题**: ${qa.question}`);
+        sections.push(`**回答**: ${qa.answer}`);
+        sections.push(`**评分**: ${qa.score.toFixed(1)}/10`);
+        if (qa.feedback) {
+          sections.push(`**反馈**: ${qa.feedback}`);
+        }
+        sections.push('');
+      }
+    }
+
+    if (report.learningResources && report.learningResources.length > 0) {
+      sections.push(`## 学习资源推荐`);
+      for (const resource of report.learningResources) {
+        sections.push(`- [${resource.title}](${resource.url}) (${resource.type})`);
+      }
+    }
+
+    return sections.join('\n');
+  }
+
+  private formatReportForNotes(report: InterviewReport, interview?: Interview): string {
+    const children: any[] = [];
+
+    children.push({
+      id: '1',
+      type: 'h1',
+      children: [{ text: '面试报告' }],
+    });
+
+    children.push({
+      id: '2',
+      type: 'blockquote',
+      children: [{ text: `综合评分: ${report.overallScore.toFixed(1)}/10` }],
+    });
+
+    children.push({
+      id: '3',
+      type: 'p',
+      children: [{ text: `生成时间: ${new Date(report.createdAt).toLocaleString('zh-CN')}` }],
+    });
+
+    if (report.summary) {
+      children.push({
+        id: '4',
+        type: 'h2',
+        children: [{ text: '📋 报告摘要' }],
+      });
+      children.push({
+        id: '5',
+        type: 'p',
+        children: [{ text: report.summary }],
+      });
+    }
+
+    children.push({
+      id: '6',
+      type: 'h2',
+      children: [{ text: '📊 维度评分' }],
+    });
+
+    const dimensions = [
+      { key: 'completeness', name: '完整性', desc: '回答是否完整覆盖问题要点' },
+      { key: 'clarity', name: '清晰度', desc: '表达是否清晰有条理' },
+      { key: 'depth', name: '专业深度', desc: '回答的专业程度' },
+      { key: 'expression', name: '表达能力', desc: '语言组织和表达' },
+      { key: 'highlights', name: '亮点突出', desc: '是否有亮点或独特见解' },
+    ];
+
+    let idCounter = 10;
+    for (const dim of dimensions) {
+      const score = report.dimensionScores[dim.key as keyof DimensionScores];
+      children.push({
+        id: String(idCounter++),
+        type: 'h3',
+        children: [{ text: dim.name }],
+      });
+      children.push({
+        id: String(idCounter++),
+        type: 'p',
+        children: [{ text: `评分: ${score.toFixed(1)}/10  —  ${dim.desc}` }],
+      });
+    }
+
+    if (report.videoBehaviorScores) {
+      children.push({
+        id: String(idCounter++),
+        type: 'h2',
+        children: [{ text: '🎥 视频表现评分' }],
+      });
+
+      const videoDims = [
+        { key: 'eyeContactScore', name: '眼神交流' },
+        { key: 'emotionStabilityScore', name: '情绪稳定' },
+        { key: 'gazeStabilityScore', name: '视线稳定' },
+        { key: 'faceVisibilityScore', name: '面部可见度' },
+      ];
+
+      for (const dim of videoDims) {
+        const score = report.videoBehaviorScores![dim.key as keyof VideoBehaviorScores];
+        children.push({
+          id: String(idCounter++),
+          type: 'p',
+          children: [{ text: `${dim.name}: ${score}/100` }],
+        });
+      }
+      children.push({
+        id: String(idCounter++),
+        type: 'p',
+        children: [
+          { text: '综合视频评分: ', bold: false },
+          { text: `${report.videoBehaviorScores.overallVideoScore}/100`, bold: true },
+        ],
+      });
+    }
+
+    children.push({
+      id: String(idCounter++),
+      type: 'h2',
+      children: [{ text: '✅ 优势分析' }],
+    });
+    children.push({
+      id: String(idCounter++),
+      type: 'p',
+      children: [{ text: report.strengths }],
+    });
+
+    children.push({
+      id: String(idCounter++),
+      type: 'h2',
+      children: [{ text: '⚠️ 待改进项' }],
+    });
+    children.push({
+      id: String(idCounter++),
+      type: 'p',
+      children: [{ text: report.weaknesses }],
+    });
+
+    children.push({
+      id: String(idCounter++),
+      type: 'h2',
+      children: [{ text: '💡 改进建议' }],
+    });
+    children.push({
+      id: String(idCounter++),
+      type: 'p',
+      children: [{ text: report.suggestions }],
+    });
+
+    if (report.videoBehaviorFeedback) {
+      children.push({
+        id: String(idCounter++),
+        type: 'h2',
+        children: [{ text: '📹 视频表现反馈' }],
+      });
+      children.push({
+        id: String(idCounter++),
+        type: 'p',
+        children: [{ text: report.videoBehaviorFeedback }],
+      });
+    }
+
+    if (report.questionAnalysis && report.questionAnalysis.length > 0) {
+      children.push({
+        id: String(idCounter++),
+        type: 'h2',
+        children: [{ text: '❓ 问题回顾' }],
+      });
+
+      for (let i = 0; i < report.questionAnalysis.length; i++) {
+        const qa = report.questionAnalysis[i];
+        children.push({
+          id: String(idCounter++),
+          type: 'h3',
+          children: [{ text: `Q${i + 1}: ${qa.question}` }],
+        });
+        children.push({
+          id: String(idCounter++),
+          type: 'p',
+          children: [{ text: '我的回答:', bold: true }],
+        });
+        children.push({
+          id: String(idCounter++),
+          type: 'blockquote',
+          children: [{ text: qa.answer }],
+        });
+        children.push({
+          id: String(idCounter++),
+          type: 'p',
+          children: [{ text: `评分: ${qa.score.toFixed(1)}/10` }],
+        });
+        if (qa.feedback) {
+          children.push({
+            id: String(idCounter++),
+            type: 'p',
+            children: [{ text: `反馈: ${qa.feedback}` }],
+          });
+        }
+        children.push({
+          id: String(idCounter++),
+          type: 'hr',
+          children: [{ text: '' }],
+        });
+      }
+    }
+
+    if (report.learningResources && report.learningResources.length > 0) {
+      children.push({
+        id: String(idCounter++),
+        type: 'h2',
+        children: [{ text: '📚 学习资源推荐' }],
+      });
+
+      for (const resource of report.learningResources) {
+        children.push({
+          id: String(idCounter++),
+          type: 'p',
+          children: [
+            { text: resource.title, url: resource.url },
+            { text: ` (${resource.type})` },
+          ],
+        });
+      }
+    }
+
+    return JSON.stringify(children);
   }
 }
