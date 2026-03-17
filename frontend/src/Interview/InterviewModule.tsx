@@ -42,6 +42,20 @@ const ChevronLeftIcon = () => (
   </svg>
 );
 
+const SearchIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="16" height="16">
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.35-4.35" />
+  </svg>
+);
+
+const ClearIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" width="14" height="14">
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </svg>
+);
+
 const BotIcon = () => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="28" height="28">
     <rect x="3" y="11" width="18" height="10" rx="2" />
@@ -536,6 +550,14 @@ const InterviewModule: React.FC = () => {
   const [currentSessionElapsedTime, setCurrentSessionElapsedTime] = useState<number>(0);
   const [currentReportId, setCurrentReportId] = useState<string | null>(null);
 
+  // 搜索和筛选状态
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [filterStatus, setFilterStatus] = useState<string>('all');
+  const [filterScene, setFilterScene] = useState<string>('all');
+  const [filterMode, setFilterMode] = useState<string>('all');
+  const [filterJobType, setFilterJobType] = useState<string>('all');
+  const [filterDifficulty, setFilterDifficulty] = useState<string>('all');
+
   const loadInitialData = useCallback(async () => {
     try {
       setLoading(true);
@@ -779,6 +801,46 @@ const InterviewModule: React.FC = () => {
     );
   };
 
+  // 过滤和搜索函数
+  const filteredInterviews = interviews.filter((interview) => {
+    // 按状态筛选
+    if (filterStatus !== 'all' && interview.status !== filterStatus) {
+      return false;
+    }
+
+    // 按场景筛选
+    if (filterScene !== 'all' && interview.sceneType !== filterScene) {
+      return false;
+    }
+
+    // 按面试形式筛选
+    if (filterMode !== 'all' && interview.mode !== filterMode) {
+      return false;
+    }
+
+    // 按岗位类型筛选
+    if (filterJobType !== 'all' && (interview.jobType || '') !== filterJobType) {
+      return false;
+    }
+
+    // 按难度筛选
+    if (filterDifficulty !== 'all' && interview.difficulty !== filterDifficulty) {
+      return false;
+    }
+
+    // 按搜索查询筛选
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      const title = (interview.title || interview.sceneName || '').toLowerCase();
+      const jobName = (interview.jobName || '').toLowerCase();
+      const sceneName = (interview.sceneName || '').toLowerCase();
+
+      return title.includes(query) || jobName.includes(query) || sceneName.includes(query);
+    }
+
+    return true;
+  });
+
   if (viewMode === 'chat' && currentInterview) {
     return (
       <InterviewChat
@@ -1006,72 +1068,213 @@ const InterviewModule: React.FC = () => {
           </button>
         </div>
       ) : (
-        <div className="interview-list">
-          {interviews.map((interview) => (
-            <div key={interview.id} className="interview-card">
-              <div className="card-header">
-                <div className="card-title">
-                  <span className="scene-icon">
-                    {getSceneSvgIcon(interview.sceneType)}
-                  </span>
-                  <h3>{interview.title || interview.sceneName}</h3>
-                </div>
-                {getStatusBadge(interview.status)}
+        <>
+          {/* 搜索和筛选面板 */}
+          <div className="interview-search-panel">
+            <div className="search-bar">
+              <SearchIcon />
+              <input
+                type="text"
+                placeholder="搜索面试标题、岗位..."
+                className="search-input"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <button 
+                  className="clear-btn"
+                  onClick={() => setSearchQuery('')}
+                  title="清除搜索"
+                >
+                  <ClearIcon />
+                </button>
+              )}
+            </div>
+
+            <div className="filter-group">
+              <div className="filter-item">
+                <label>面试状态</label>
+                <select 
+                  value={filterStatus}
+                  onChange={(e) => setFilterStatus(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">全部</option>
+                  <option value="pending">待开始</option>
+                  <option value="in_progress">进行中</option>
+                  <option value="completed">已完成</option>
+                  <option value="interrupted">已中断</option>
+                  <option value="abandoned">已放弃</option>
+                </select>
               </div>
 
-              <div className="card-body">
-                <div className="card-info">
-                  <span className="info-item">
-                    <label>岗位：</label>
-                    {interview.jobName || '通用岗位'}
-                  </span>
-                  <span className="info-item">
-                    <label>难度：</label>
-                    {interview.difficultyName}
-                  </span>
-                </div>
-                <div className="card-stats">
-                  {interview.totalScore !== undefined && interview.totalScore !== null && (
-                    <span className="score">
-                      得分：<strong>{interview.totalScore.toFixed(1)}</strong>
-                    </span>
-                  )}
-                  {interview.duration && (
-                    <span className="duration">时长：{formatDuration(interview.duration)}</span>
-                  )}
-                </div>
+              <div className="filter-item">
+                <label>面试场景</label>
+                <select 
+                  value={filterScene}
+                  onChange={(e) => setFilterScene(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">全部</option>
+                  {scenes.map((scene) => (
+                    <option key={scene.code} value={scene.code}>
+                      {scene.name}
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              <div className="card-footer">
-                <span className="create-time">{formatDate(interview.createdAt)}</span>
-                <div className="card-actions">
-                  {interview.status === 'in_progress' && (
-                    <button
-                      className="action-btn resume"
-                      onClick={() => handleResumeInterview(interview)}
-                    >
-                      继续面试
-                    </button>
-                  )}
-                  {interview.status === 'completed' && (
-                    <button
-                      className="action-btn report"
-                      onClick={() => handleViewReport(interview)}
-                    >
-                      查看报告
-                    </button>
-                  )}
-                  <button
-                    className="action-btn delete"
-                    onClick={() => handleDeleteInterview(interview.id)}
-                  >
-                    删除
-                  </button>
-                </div>
+              <div className="filter-item">
+                <label>面试形式</label>
+                <select 
+                  value={filterMode}
+                  onChange={(e) => setFilterMode(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">全部</option>
+                  <option value="text">文本面试</option>
+                  <option value="voice">语音面试</option>
+                  <option value="video">视频面试</option>
+                </select>
+              </div>
+
+              <div className="filter-item">
+                <label>岗位类型</label>
+                <select 
+                  value={filterJobType}
+                  onChange={(e) => setFilterJobType(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">全部</option>
+                  {jobTypes.map((jobType) => (
+                    <option key={jobType.code} value={jobType.code}>
+                      {jobType.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="filter-item">
+                <label>难度等级</label>
+                <select 
+                  value={filterDifficulty}
+                  onChange={(e) => setFilterDifficulty(e.target.value)}
+                  className="filter-select"
+                >
+                  <option value="all">全部</option>
+                  {difficultyLevels.map((level) => (
+                    <option key={level.code} value={level.code}>
+                      {level.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
-          ))}
-        </div>
+          </div>
+
+          {/* 搜索结果统计 */}
+          {(searchQuery || filterStatus !== 'all' || filterScene !== 'all' || filterMode !== 'all' || filterJobType !== 'all' || filterDifficulty !== 'all') && (
+            <div className="search-results-info">
+              找到 <strong>{filteredInterviews.length}</strong> 条结果
+              {(searchQuery || filterStatus !== 'all' || filterScene !== 'all' || filterMode !== 'all' || filterJobType !== 'all' || filterDifficulty !== 'all') && (
+                <button 
+                  className="clear-filters-btn"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setFilterStatus('all');
+                    setFilterScene('all');
+                    setFilterMode('all');
+                    setFilterJobType('all');
+                    setFilterDifficulty('all');
+                  }}
+                >
+                  清除全部筛选
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* 面试列表 */}
+          {filteredInterviews.length === 0 ? (
+            <div className="empty-search-state">
+              <div className="empty-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="40" height="40">
+                  <circle cx="11" cy="11" r="8" />
+                  <path d="m21 21-4.35-4.35" />
+                </svg>
+              </div>
+              <h3>没有找到匹配的面试</h3>
+              <p>试试调整搜索条件或筛选条件</p>
+            </div>
+          ) : (
+            <div className="interview-list">
+              {filteredInterviews.map((interview) => (
+                <div key={interview.id} className="interview-card">
+                  <div className="card-header">
+                    <div className="card-title">
+                      <span className="scene-icon">
+                        {getSceneSvgIcon(interview.sceneType)}
+                      </span>
+                      <h3>{interview.title || interview.sceneName}</h3>
+                    </div>
+                    {getStatusBadge(interview.status)}
+                  </div>
+
+                  <div className="card-body">
+                    <div className="card-info">
+                      <span className="info-item">
+                        <label>岗位：</label>
+                        {interview.jobName || '通用岗位'}
+                      </span>
+                      <span className="info-item">
+                        <label>难度：</label>
+                        {interview.difficultyName}
+                      </span>
+                    </div>
+                    <div className="card-stats">
+                      {interview.totalScore !== undefined && interview.totalScore !== null && (
+                        <span className="score">
+                          得分：<strong>{interview.totalScore.toFixed(1)}</strong>
+                        </span>
+                      )}
+                      {interview.duration && (
+                        <span className="duration">时长：{formatDuration(interview.duration)}</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="card-footer">
+                    <span className="create-time">{formatDate(interview.createdAt)}</span>
+                    <div className="card-actions">
+                      {interview.status === 'in_progress' && (
+                        <button
+                          className="action-btn resume"
+                          onClick={() => handleResumeInterview(interview)}
+                        >
+                          继续面试
+                        </button>
+                      )}
+                      {interview.status === 'completed' && (
+                        <button
+                          className="action-btn report"
+                          onClick={() => handleViewReport(interview)}
+                        >
+                          查看报告
+                        </button>
+                      )}
+                      <button
+                        className="action-btn delete"
+                        onClick={() => handleDeleteInterview(interview.id)}
+                      >
+                        删除
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );

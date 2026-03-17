@@ -3177,6 +3177,312 @@ $dark-warning-light: #3F2F0F;
 }
 
 // ==========================================
+// 搜索和筛选面板
+// ==========================================
+.interview-search-panel {
+  padding: 18px 24px;
+  background: $bg-white;
+  border-bottom: 1px solid $border;
+  transition: background-color 200ms ease-in-out, border-color 200ms ease-in-out;
+
+  .dark & {
+    background: $dark-bg-white;
+    border-bottom-color: $dark-border;
+  }
+
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    background: $bg;
+    border: 1px solid $border;
+    border-radius: 8px;
+    padding: 10px 14px;
+    transition: all 0.2s ease;
+
+    .dark & {
+      background: $dark-bg;
+      border-color: $dark-border;
+    }
+
+    &:focus-within {
+      border-color: $primary;
+      box-shadow: 0 0 0 2px rgba($primary, 0.1);
+
+      .dark & {
+        border-color: $dark-primary;
+        box-shadow: 0 0 0 2px rgba($dark-primary, 0.1);
+      }
+    }
+
+    svg {
+      color: $text-muted;
+      flex-shrink: 0;
+      width: 16px;
+      height: 16px;
+
+      .dark & {
+        color: $dark-text-muted;
+      }
+    }
+
+    .search-input {
+      flex: 1;
+      border: none;
+      background: transparent;
+      font-size: 14px;
+      line-height: 1.4;
+      color: $text-primary;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+
+      .dark & {
+        color: $dark-text-primary;
+      }
+
+      &:focus {
+        outline: none;
+      }
+
+      &::placeholder {
+        color: $text-muted;
+
+        .dark & {
+          color: $dark-text-muted;
+        }
+      }
+    }
+
+    .clear-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      background: transparent;
+      border: none;
+      color: $text-muted;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      padding: 0;
+
+      .dark & {
+        color: $dark-text-muted;
+      }
+
+      &:hover {
+        background: $primary-light;
+        color: $primary;
+
+        .dark & {
+          background: rgba($dark-primary, 0.15);
+          color: $dark-primary;
+        }
+      }
+
+      &:active {
+        transform: scale(0.95);
+      }
+
+      svg {
+        width: 16px;
+        height: 16px;
+      }
+    }
+  }
+
+  .filter-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+
+    @media (max-width: 1024px) {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    @media (max-width: 768px) {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    @media (max-width: 480px) {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+  }
+
+  .filter-item {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+
+    label {
+      font-size: 11px;
+      font-weight: 600;
+      color: $text-muted;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+
+      .dark & {
+        color: $dark-text-muted;
+      }
+    }
+
+    .filter-select {
+      width: 100%;
+      padding: 8px 12px;
+      padding-right: 24px;
+      border: 1px solid $border;
+      border-radius: 6px;
+      font-size: 13px;
+      line-height: 1.4;
+      color: $text-primary;
+      background: $bg-white;
+      cursor: pointer;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      transition: all 0.2s ease;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      background-size: 12px;
+
+      .dark & {
+        background-color: $dark-bg-white;
+        color: $dark-text-primary;
+        border-color: $dark-border;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239ca3af' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+      }
+
+      &:hover {
+        border-color: $primary;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23000' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+
+        .dark & {
+          border-color: $dark-primary;
+          background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23fff' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        }
+      }
+
+      option {
+        background: $bg-white;
+        color: $text-primary;
+
+        .dark & {
+          background: $dark-bg-white;
+          color: $dark-text-primary;
+        }
+      }
+    }
+  }
+}
+
+.search-results-info {
+  padding: 12px 24px;
+  background: $primary-light;
+  border-bottom: 1px solid $primary;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  color: $primary;
+  transition: all 0.2s ease;
+
+  .dark & {
+    background: rgba($dark-primary, 0.1);
+    border-bottom-color: rgba($dark-primary, 0.3);
+    color: $dark-primary;
+  }
+
+  strong {
+    font-weight: 600;
+  }
+
+  .clear-filters-btn {
+    padding: 4px 12px;
+    background: transparent;
+    border: 1px solid $primary;
+    border-radius: 4px;
+    font-size: 12px;
+    color: $primary;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+
+    .dark & {
+      border-color: $dark-primary;
+      color: $dark-primary;
+    }
+
+    &:hover {
+      background: $primary;
+      color: white;
+
+      .dark & {
+        background: $dark-primary;
+        color: $dark-bg;
+      }
+    }
+  }
+}
+
+.empty-search-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+
+  .empty-icon {
+    width: 64px;
+    height: 64px;
+    background: $primary-light;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 24px;
+    color: $primary;
+    transition: all 0.2s ease;
+
+    .dark & {
+      background: rgba($dark-primary, 0.1);
+      color: $dark-primary;
+    }
+
+    svg {
+      width: 100%;
+      height: 100%;
+    }
+  }
+
+  h3 {
+    margin: 0 0 8px;
+    font-size: 18px;
+    font-weight: 600;
+    color: $text-primary;
+
+    .dark & {
+      color: $dark-text-primary;
+    }
+  }
+
+  p {
+    margin: 0;
+    color: $text-secondary;
+    font-size: 14px;
+
+    .dark & {
+      color: $dark-text-secondary;
+    }
+  }
+}
+
+// ==========================================
 // 全局暗黑模式支持
 // ==========================================
 .dark {
