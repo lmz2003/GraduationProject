@@ -1095,6 +1095,8 @@ const InterviewModule: React.FC = () => {
               <div className="filter-item">
                 <label>面试状态</label>
                 <select 
+                  title="选择面试状态"
+                  aria-label="选择面试状态"
                   value={filterStatus}
                   onChange={(e) => setFilterStatus(e.target.value)}
                   className="filter-select"
@@ -1111,6 +1113,8 @@ const InterviewModule: React.FC = () => {
               <div className="filter-item">
                 <label>面试场景</label>
                 <select 
+                  title="选择面试场景"
+                  aria-label="选择面试场景"
                   value={filterScene}
                   onChange={(e) => setFilterScene(e.target.value)}
                   className="filter-select"
@@ -1127,6 +1131,8 @@ const InterviewModule: React.FC = () => {
               <div className="filter-item">
                 <label>面试形式</label>
                 <select 
+                  title="选择面试形式"
+                  aria-label="选择面试形式"
                   value={filterMode}
                   onChange={(e) => setFilterMode(e.target.value)}
                   className="filter-select"
@@ -1141,6 +1147,8 @@ const InterviewModule: React.FC = () => {
               <div className="filter-item">
                 <label>岗位类型</label>
                 <select 
+                  title="选择岗位类型"
+                  aria-label="选择岗位类型"
                   value={filterJobType}
                   onChange={(e) => setFilterJobType(e.target.value)}
                   className="filter-select"
@@ -1157,6 +1165,8 @@ const InterviewModule: React.FC = () => {
               <div className="filter-item">
                 <label>难度等级</label>
                 <select 
+                  title="选择难度等级"
+                  aria-label="选择难度等级"
                   value={filterDifficulty}
                   onChange={(e) => setFilterDifficulty(e.target.value)}
                   className="filter-select"

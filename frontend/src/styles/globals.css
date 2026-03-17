@@ -176,20 +176,6 @@ a {
   }
 }
 
-/* Input fields styling */
-input,
-textarea,
-select {
-  background-color: var(--background);
-  color: var(--foreground);
-  border-color: var(--border);
-  
-  &:focus {
-    border-color: var(--ring);
-    box-shadow: 0 0 0 2px var(--ring);
-  }
-}
-
 /* Placeholder styling */
 ::placeholder {
   color: var(--muted-foreground);
