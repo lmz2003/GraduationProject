@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useToastModal } from '../components/ui/toast-modal';
 import { useResumeAnalysisWebSocket } from '../hooks/useResumeAnalysisWebSocket';
@@ -14,6 +14,14 @@ const ArrowLeftIcon = () => (
     <polyline points="15 18 9 12 15 6"/>
   </svg>
 );
+const FileTextIcon = () => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+    <polyline points="14 2 14 8 20 8"/>
+    <line x1="16" y1="13" x2="8" y2="13"/>
+    <line x1="16" y1="17" x2="8" y2="17"/>
+  </svg>
+);
 
 interface Resume {
   id: string;
@@ -23,6 +31,44 @@ interface Resume {
   fileName?: string;
   parsedData?: any;
   createdAt: string;
+}
+
+// ---- 可拖拽分割线 Hook ----
+function useDividerDrag(initialLeft: number, minLeft: number, maxLeft: number) {
+  const [leftPercent, setLeftPercent] = useState(initialLeft);
+  const dragging = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    dragging.current = true;
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+  }, []);
+
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!dragging.current || !containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const pct = (x / rect.width) * 100;
+      setLeftPercent(Math.min(maxLeft, Math.max(minLeft, pct)));
+    };
+    const onMouseUp = () => {
+      if (!dragging.current) return;
+      dragging.current = false;
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [minLeft, maxLeft]);
+
+  return { leftPercent, containerRef, onMouseDown };
 }
 
 const ResumeDetail: React.FC = () => {
@@ -37,6 +83,8 @@ const ResumeDetail: React.FC = () => {
   const [analysisStage, setAnalysisStage] = useState(0);
   const [stageMessage, setStageMessage] = useState('');
   const [loading, setLoading] = useState(true);
+
+  const { leftPercent, containerRef, onMouseDown } = useDividerDrag(50, 25, 75);
 
   const fetchAnalysisOnly = useCallback(async () => {
     if (!id) return;
@@ -158,6 +206,8 @@ const ResumeDetail: React.FC = () => {
     );
   }
 
+  const isPdf = resume.fileType === 'pdf' && resume.fileName;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', background: C.bg, overflow: 'hidden', fontFamily: C.font }}>
       {/* Header */}
@@ -174,29 +224,88 @@ const ResumeDetail: React.FC = () => {
         <div />
       </div>
 
-      {/* Content */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden', gap: '1px', background: C.border, minHeight: 0 }}>
-        {/* Left: PDF/Text viewer */}
-        <div style={{ flex: 1, overflow: 'auto', background: C.surface, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', overflow: 'auto', minHeight: 0 }}>
-            {resume.fileType === 'pdf' && resume.fileName ? (
+      {/* Content — 可拖拽左右分栏 */}
+      <div
+        ref={containerRef}
+        style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0, position: 'relative' }}
+      >
+        {/* Left: PDF / Text viewer */}
+        <div style={{ width: `${leftPercent}%`, overflow: 'hidden', background: C.surface, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
+          {isPdf ? (
+            // PDF：撑满整个左栏
+            <div style={{ flex: 1, overflow: 'hidden', minHeight: 0 }}>
               <PDFViewer resumeId={resume.id} />
-            ) : (
-              <div style={{ padding: '20px', whiteSpace: 'pre-wrap', wordWrap: 'break-word', overflow: 'auto', fontFamily: C.font, fontSize: '0.9rem', lineHeight: 1.7, color: C.text }}>
-                {resume.content}
+            </div>
+          ) : (
+            // 文本：带标题栏 + 可滚动正文
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+              <div style={{
+                padding: '10px 16px',
+                borderBottom: `1px solid ${C.border}`,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '7px',
+                flexShrink: 0,
+                background: C.surface,
+              }}>
+                <span style={{ color: C.primary, display: 'flex' }}><FileTextIcon /></span>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: C.textMuted }}>简历原文</span>
               </div>
-            )}
-          </div>
+              <div style={{
+                flex: 1,
+                overflowY: 'auto',
+                padding: '20px 24px',
+                fontFamily: C.font,
+                fontSize: '0.875rem',
+                lineHeight: 1.8,
+                color: C.text,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                background: C.bg,
+              }}>
+                {resume.content || <span style={{ color: C.textMuted, fontStyle: 'italic' }}>暂无内容</span>}
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Right: Analysis */}
-        <div style={{ flex: 1, overflow: 'auto', background: C.surface, minHeight: 0 }}>
+        {/* 可拖拽分割线 */}
+        <div
+          onMouseDown={onMouseDown}
+          style={{
+            width: '5px',
+            flexShrink: 0,
+            cursor: 'col-resize',
+            background: C.border,
+            position: 'relative',
+            transition: 'background 0.15s',
+            zIndex: 10,
+          }}
+          onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = C.primary}
+          onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = C.border}
+        >
+          {/* 中间抓手提示点 */}
+          <div style={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '3px',
+            height: '32px',
+            borderRadius: '2px',
+            background: 'currentColor',
+            opacity: 0.4,
+          }} />
+        </div>
+
+        {/* Right: Analysis Panel */}
+        <div style={{ flex: 1, overflow: 'hidden', background: C.surface, display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0 }}>
           {!analysis ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: C.textMuted, fontFamily: C.font }}>
               <p>等待分析完成...</p>
             </div>
           ) : (
-            <AnalysisPanel analysis={analysis} parsedData={resume.parsedData} />
+            <AnalysisPanel analysis={analysis} />
           )}
         </div>
       </div>

@@ -116,10 +116,17 @@ interface Analysis {
 
 interface AnalysisPanelProps {
   analysis: Analysis | any;
-  parsedData?: any;
 }
 
 type TabId = 'overview' | 'jobMatch' | 'competency' | 'report' | 'keywords';
+
+// 关键词分类英文名 -> 中文映射
+const CATEGORY_LABEL_MAP: Record<string, string> = {
+  skills:      '技术技能',
+  experience:  '工作经验',
+  education:   '教育背景',
+  jobSpecific: '岗位匹配',
+};
 
 const TABS: { id: TabId; label: string; Icon: React.FC }[] = [
   { id: 'overview',    label: '概览',     Icon: BarChartIcon },
@@ -136,7 +143,10 @@ const scoreItems = [
   { key: 'skillsScore',       label: '技能评分' },
 ];
 
-const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, parsedData }) => {
+const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis }) => {
+  // 判断是否有岗位匹配数据（用于控制 jobMatch Tab 的显示）
+  const hasJobMatch = !!analysis.jobMatchAnalysis && analysis.jobMatchAnalysis !== 'null';
+
   const [activeTab, setActiveTab] = useState<TabId>('overview');
 
   // Theme support - detect dark mode and respond to changes
@@ -193,12 +203,19 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, parsedData }) =
     <div style={{ marginBottom: '22px' }}>{children}</div>
   );
 
+  // 有效 Tab 列表（无 JD 时隐藏「岗位匹配」）
+  const visibleTabs = hasJobMatch ? TABS : TABS.filter(t => t.id !== 'jobMatch');
+
   // ---- Tab content renderers ----
   const renderOverview = () => (
     <>
       <Section>
         <SectionTitle icon={<BarChartIcon />} label="各维度评分" />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', 
+          gap: '8px' 
+        }}>
           {scoreItems.map(({ key, label }) => {
             const val = Math.round(analysis[key] ?? 0);
             const color = getScoreColor(val);
@@ -253,16 +270,27 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, parsedData }) =
         )}
       </Section>
 
-      {keywordData.categoryScores && (
+      {keywordData.categoryScores && Object.keys(keywordData.categoryScores).length > 0 && (
         <Section>
           <SectionTitle icon={<BarChartIcon />} label="关键词分类评分" />
-          <ListBlock items={Object.entries(keywordData.categoryScores).map(([cat, score]) => `${cat}：${score}`)} />
+          <ListBlock items={Object.entries(keywordData.categoryScores).map(
+            ([cat, score]) => `${CATEGORY_LABEL_MAP[cat] ?? cat}：${score}`
+          )} />
         </Section>
       )}
     </>
   );
 
   const renderJobMatch = () => {
+    if (!hasJobMatch) {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px', padding: '3rem 1.5rem', color: C.textMuted }}>
+          <TargetIcon />
+          <p style={{ margin: 0, fontSize: '0.875rem', textAlign: 'center' }}>未提供职位描述，无法进行岗位匹配分析</p>
+          <p style={{ margin: 0, fontSize: '0.8rem', color: C.textMuted, textAlign: 'center' }}>重新上传简历时填写「职位描述」可获得此分析</p>
+        </div>
+      );
+    }
     const matchScore = jobMatchData.matchScore ?? 0;
     const matchColor = matchScore >= 8 ? C.success : matchScore >= 6 ? C.warning : C.danger;
     return (
@@ -330,11 +358,16 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, parsedData }) =
 
   const renderReport = () => (
     <>
-      {reportData.suggestions?.length > 0 && (
+      {reportData.suggestions?.length > 0 ? (
         <Section>
           <SectionTitle icon={<LightbulbIcon />} label="详细建议" />
           <SuggestionBlock items={reportData.suggestions} />
         </Section>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px', padding: '3rem 1rem', color: C.textMuted }}>
+          <LightbulbIcon />
+          <p style={{ margin: 0, fontSize: '0.875rem' }}>暂无改进建议</p>
+        </div>
       )}
     </>
   );
@@ -350,11 +383,15 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, parsedData }) =
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', fontFamily: C.font }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0, overflow: 'hidden', fontFamily: C.font }}>
       {/* Panel Header: Score Cards */}
       <div style={{ padding: '16px 20px', background: C.surface, borderBottom: `1px solid ${C.border}`, flexShrink: 0 }}>
         <h3 style={{ margin: '0 0 12px', fontSize: '0.95rem', fontWeight: 700, color: C.text }}>简历分析报告</h3>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px' }}>
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(80px, 1fr))', 
+          gap: '8px' 
+        }}>
           {[
             { label: '总体评分', key: 'overallScore' },
             { label: '完整性', key: 'completenessScore' },
@@ -376,7 +413,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, parsedData }) =
 
       {/* Tabs */}
       <div style={{ display: 'flex', gap: 0, borderBottom: `1px solid ${C.border}`, background: C.surface, flexShrink: 0, overflowX: 'auto' }}>
-        {TABS.map(({ id, label, Icon }) => (
+        {visibleTabs.map(({ id, label, Icon }) => (
           <button
             key={id}
             onClick={() => setActiveTab(id)}
@@ -398,7 +435,7 @@ const AnalysisPanel: React.FC<AnalysisPanelProps> = ({ analysis, parsedData }) =
       </div>
 
       {/* Tab content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '20px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '20px', minHeight: 0 }}>
         {renderTabContent()}
       </div>
     </div>

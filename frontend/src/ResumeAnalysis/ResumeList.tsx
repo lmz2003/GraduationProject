@@ -74,6 +74,7 @@ const ResumeList: React.FC = () => {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [batchMode, setBatchMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
   const socketRef = useRef<Socket | null>(null);
   const subscribedIdsRef = useRef<Set<string>>(new Set());
   const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -297,6 +298,11 @@ const ResumeList: React.FC = () => {
     return styles.scoreLow;
   };
 
+  const filteredResumes = resumes.filter(r =>
+    r.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    r.fileType.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (loading) {
     return (
       <>
@@ -311,49 +317,66 @@ const ResumeList: React.FC = () => {
 
   return (
     <div className={styles.pageContainer}>
-      <div className={styles.header}>
-        <h2 className={styles.title}>我的简历</h2>
-        <div style={{ display: 'flex', gap: '8px' }}>
-          {resumes.length > 0 && (
+      {/* 固定顶栏：标题 + 按钮 */}
+      <div className={styles.topBar}>
+        <div className={styles.header}>
+          <h2 className={styles.title}>我的简历</h2>
+          <div style={{ display: 'flex', gap: '8px' }}>
+            {resumes.length > 0 && (
+              <button
+                onClick={() => { setBatchMode(!batchMode); setSelectedIds(new Set()); }}
+                className={`${styles.button} ${styles.buttonSecondary}`}
+                style={{ padding: '8px 14px', fontSize: '0.8rem' }}
+              >
+                {batchMode ? '取消' : '批量管理'}
+              </button>
+            )}
             <button
-              onClick={() => { setBatchMode(!batchMode); setSelectedIds(new Set()); }}
-              className={`${styles.button} ${styles.buttonSecondary}`}
-              style={{ padding: '8px 14px', fontSize: '0.8rem' }}
+              onClick={() => navigate('/dashboard/resume/upload')}
+              className={`${styles.button} ${styles.buttonPrimary}`}
             >
-              {batchMode ? '取消' : '批量管理'}
+              <PlusIcon /> 上传简历
             </button>
-          )}
-          <button
-            onClick={() => navigate('/dashboard/resume/upload')}
-            className={`${styles.button} ${styles.buttonPrimary}`}
-          >
-            <PlusIcon /> 上传简历
-          </button>
+          </div>
         </div>
+
+        {resumes.length > 0 && (
+          <div className={styles.searchBar}>
+            <SearchIcon />
+            <input
+              type="text"
+              placeholder="搜索简历名称或文件类型..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+          </div>
+        )}
+
+        {batchMode && selectedIds.size > 0 && (
+          <div className={styles.batchBar}>
+            <div className={styles.batchInfo}>
+              <button
+                onClick={handleToggleSelectAll}
+                className={`${styles.button} ${styles.buttonSecondary}`}
+                style={{ padding: '4px 10px', fontSize: '0.75rem', marginRight: '12px' }}
+              >
+                {selectedIds.size === resumes.length ? '取消全选' : '全选'}
+              </button>
+              <span className={styles.batchCount}>已选择 {selectedIds.size} 项</span>
+            </div>
+            <button
+              onClick={handleBatchDelete}
+              className={`${styles.button} ${styles.buttonDanger}`}
+              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+            >
+              <TrashIcon /> 批量删除
+            </button>
+          </div>
+        )}
       </div>
 
-      {batchMode && selectedIds.size > 0 && (
-        <div className={styles.batchBar}>
-          <div className={styles.batchInfo}>
-            <button
-              onClick={handleToggleSelectAll}
-              className={`${styles.button} ${styles.buttonSecondary}`}
-              style={{ padding: '4px 10px', fontSize: '0.75rem', marginRight: '12px' }}
-            >
-              {selectedIds.size === resumes.length ? '取消全选' : '全选'}
-            </button>
-            <span className={styles.batchCount}>已选择 {selectedIds.size} 项</span>
-          </div>
-          <button
-            onClick={handleBatchDelete}
-            className={`${styles.button} ${styles.buttonDanger}`}
-            style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-          >
-            <TrashIcon /> 批量删除
-          </button>
-        </div>
-      )}
-
+      {/* 可滚动内容区 */}
+      <div className={styles.scrollArea}>
       {resumes.length === 0 ? (
         <div className={styles.emptyState}>
           <div className={styles.emptyIcon}>
@@ -368,9 +391,13 @@ const ResumeList: React.FC = () => {
             <PlusIcon /> 上传简历
           </button>
         </div>
+      ) : filteredResumes.length === 0 ? (
+        <div className={styles.searchEmpty}>
+          未找到与「{searchQuery}」相关的简历
+        </div>
       ) : (
         <div className={styles.resumeGrid}>
-          {resumes.map(resume => (
+          {filteredResumes.map(resume => (
             <div
               key={resume.id}
               onClick={() => {
@@ -462,6 +489,7 @@ const ResumeList: React.FC = () => {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 };
