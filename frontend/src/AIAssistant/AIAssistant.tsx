@@ -267,31 +267,35 @@ const AIAssistant: React.FC = () => {
                     chunkContent = (data.data as any).content;
                   } else if ('kwargs' in data.data && (data.data as any).kwargs) {
                     const kwargs = (data.data as any).kwargs;
-                    chunkContent = kwargs.content && typeof kwargs.content === 'string' ? kwargs.content : JSON.stringify(data.data);
+                    chunkContent = kwargs.content && typeof kwargs.content === 'string' ? kwargs.content : '';
                   } else {
-                    chunkContent = JSON.stringify(data.data);
+                    chunkContent = '';
                   }
                 } else {
-                  chunkContent = String(data.data);
+                  chunkContent = '';
                 }
-                currentContent += chunkContent;
-                setMessages(prev => {
-                  const exists = prev.some(msg => msg.id === aiMessageId);
-                  if (exists) {
-                    return prev.map(msg =>
-                      msg.id === aiMessageId ? { ...msg, content: currentContent } : msg
-                    );
-                  } else {
-                    // 第一个 chunk 到来时才创建消息气泡
-                    return [...prev, {
-                      id: aiMessageId,
-                      role: 'assistant' as const,
-                      content: currentContent,
-                      timestamp: new Date(),
-                      sources: [],
-                    }];
-                  }
-                });
+                
+                // 只有当 chunk 包含实际内容时才更新消息
+                if (chunkContent && chunkContent.trim().length > 0) {
+                  currentContent += chunkContent;
+                  setMessages(prev => {
+                    const exists = prev.some(msg => msg.id === aiMessageId);
+                    if (exists) {
+                      return prev.map(msg =>
+                        msg.id === aiMessageId ? { ...msg, content: currentContent } : msg
+                      );
+                    } else {
+                      // 第一个 chunk 到来时才创建消息气泡
+                      return [...prev, {
+                        id: aiMessageId,
+                        role: 'assistant' as const,
+                        content: currentContent,
+                        timestamp: new Date(),
+                        sources: [],
+                      }];
+                    }
+                  });
+                }
               } else if (data.type === 'done') {
                 currentSources = data.data?.sources || [];
                 const newSessionId = data.data?.sessionId;

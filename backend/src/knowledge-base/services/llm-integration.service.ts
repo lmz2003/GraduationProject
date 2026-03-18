@@ -373,20 +373,25 @@ export class LLMIntegrationService {
       return null;
     }
     
-    this.logger.debug('[extractChunkContent] 收到 chunk 类型:', typeof chunk, '内容:', JSON.stringify(chunk).substring(0, 200));
-    
     try {
       const chunkObj = chunk as Record<string, unknown>;
+      
+      // 判断这是否是一个只包含 metadata 的数据块（无实际内容）
+      const isMetadataOnlyChunk = this.isMetadataOnlyChunk(chunkObj);
+      if (isMetadataOnlyChunk) {
+        this.logger.debug('[extractChunkContent] 跳过纯 metadata 数据块');
+        return null;
+      }
       
       // 尝试从 content 属性提取
       if ('content' in chunkObj) {
         const content = chunkObj.content;
-        if (typeof content === 'string') {
+        if (typeof content === 'string' && content.length > 0) {
           return content;
         }
         if (Array.isArray(content)) {
           // 如果 content 是数组，提取所有文本内容
-          return content
+          const extractedContent = content
             .map((item: unknown) => {
               if (typeof item === 'string') {
                 return item;
@@ -403,26 +408,26 @@ export class LLMIntegrationService {
               return '';
             })
             .join('');
+          
+          if (extractedContent.length > 0) {
+            return extractedContent;
+          }
         }
       }
       
       // 尝试从 kwargs 中提取
       if ('kwargs' in chunkObj && chunkObj.kwargs && typeof chunkObj.kwargs === 'object') {
         const kwargs = chunkObj.kwargs as Record<string, unknown>;
-        if ('response_metadata' in kwargs && kwargs.response_metadata && typeof kwargs.response_metadata === 'object') {
-          const metadata = kwargs.response_metadata as Record<string, unknown>;
-          if('usage' in metadata)
-             delete metadata.usage;
+        
+        // 检查这是否是纯 metadata 的 kwargs 对象
+        if (this.isMetadataOnlyKwargs(kwargs)) {
+          this.logger.debug('[extractChunkContent] 跳过纯 metadata kwargs 数据块');
+          return null;
         }
-        if ('content' in kwargs && typeof kwargs.content === 'string') {
+        
+        if ('content' in kwargs && typeof kwargs.content === 'string' && kwargs.content.length > 0) {
           return kwargs.content;
         }
-      }
-      
-      // 尝试直接转换为字符串（作为最后的备选方案）
-      const stringContent = String(chunk);
-      if (stringContent !== '[object Object]' && stringContent !== '[object]') {
-        return stringContent;
       }
       
       return null;
@@ -430,5 +435,36 @@ export class LLMIntegrationService {
       this.logger.warn('[extractChunkContent] 提取内容失败:', error);
       return null;
     }
+  }
+
+  /**
+   * 判断是否是纯 metadata 的数据块（不包含实际文本内容）
+   */
+  private isMetadataOnlyChunk(chunk: Record<string, unknown>): boolean {
+    // 如果只有 kwargs 且 kwargs 只包含 metadata 信息，则是纯 metadata 块
+    if ('kwargs' in chunk && Object.keys(chunk).length === 1) {
+      const kwargs = chunk.kwargs;
+      if (kwargs && typeof kwargs === 'object') {
+        return this.isMetadataOnlyKwargs(kwargs as Record<string, unknown>);
+      }
+    }
+    return false;
+  }
+
+  /**
+   * 判断 kwargs 是否只包含 metadata 信息
+   */
+  private isMetadataOnlyKwargs(kwargs: Record<string, unknown>): boolean {
+    // 检查是否只有 response_metadata 这个字段，或者只有 response_metadata 和其他非内容字段
+    const contentFields = ['content', 'text'];
+    const hasContent = Object.keys(kwargs).some(key => {
+      const value = kwargs[key];
+      if (contentFields.includes(key) && typeof value === 'string' && value.length > 0) {
+        return true;
+      }
+      return false;
+    });
+    
+    return !hasContent;
   }
 }

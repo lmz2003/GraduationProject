@@ -476,9 +476,14 @@ ${historyText.substring(0, 1000)}...
     try {
       const chunkObj = chunk as Record<string, unknown>;
 
+      // 判断这是否是一个只包含 metadata 的数据块（无实际内容）
+      if (this.isMetadataOnlyChunk(chunkObj)) {
+        return null;
+      }
+
       if ('content' in chunkObj) {
         const content = chunkObj.content;
-        if (typeof content === 'string') {
+        if (typeof content === 'string' && content.length > 0) {
           return content;
         }
         if (Array.isArray(content)) {
@@ -494,13 +499,21 @@ ${historyText.substring(0, 1000)}...
               return '';
             })
             .join('');
-          return rawContent;
+          if (rawContent.length > 0) {
+            return rawContent;
+          }
         }
       }
 
       if ('kwargs' in chunkObj && chunkObj.kwargs && typeof chunkObj.kwargs === 'object') {
         const kwargs = chunkObj.kwargs as Record<string, unknown>;
-        if ('content' in kwargs && typeof kwargs.content === 'string') {
+        
+        // 检查这是否是纯 metadata 的 kwargs 对象
+        if (this.isMetadataOnlyKwargs(kwargs)) {
+          return null;
+        }
+        
+        if ('content' in kwargs && typeof kwargs.content === 'string' && kwargs.content.length > 0) {
           return kwargs.content;
         }
       }
@@ -509,6 +522,37 @@ ${historyText.substring(0, 1000)}...
     } catch {
       return null;
     }
+  }
+
+  /**
+   * 判断是否是纯 metadata 的数据块（不包含实际文本内容）
+   */
+  private isMetadataOnlyChunk(chunk: Record<string, unknown>): boolean {
+    // 如果只有 kwargs 且 kwargs 只包含 metadata 信息，则是纯 metadata 块
+    if ('kwargs' in chunk && Object.keys(chunk).length === 1) {
+      const kwargs = chunk.kwargs;
+      if (kwargs && typeof kwargs === 'object') {
+        return this.isMetadataOnlyKwargs(kwargs as Record<string, unknown>);
+      }
+    }
+    return false;
+  }
+
+  /**
+   * 判断 kwargs 是否只包含 metadata 信息
+   */
+  private isMetadataOnlyKwargs(kwargs: Record<string, unknown>): boolean {
+    // 检查是否只有 response_metadata 这个字段，或者只有 response_metadata 和其他非内容字段
+    const contentFields = ['content', 'text'];
+    const hasContent = Object.keys(kwargs).some(key => {
+      const value = kwargs[key];
+      if (contentFields.includes(key) && typeof value === 'string' && value.length > 0) {
+        return true;
+      }
+      return false;
+    });
+    
+    return !hasContent;
   }
 
   private formatHistory(history: InterviewMessage[]): string {
