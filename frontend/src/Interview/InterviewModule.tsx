@@ -412,7 +412,8 @@ const VideoInterviewLoader: React.FC<VideoInterviewLoaderProps> = ({
   const [startError, setStartError] = useState<string | null>(null);
   const [openingText, setOpeningText] = useState('');
   // session 就绪且文本收完后才渲染 VideoInterview
-  const [sessionReady, setSessionReady] = useState(!!initialSessionId);
+  // 注意：即使有 initialSessionId，也需要等待 SSE 流完成（包括 history 事件）
+  const [sessionReady, setSessionReady] = useState(false);
   // 继续面试时从后端恢复的历史对话记录
   const [historyConversations, setHistoryConversations] = useState<Array<{ role: 'user' | 'assistant'; text: string; timestamp: Date }>>([]);
 

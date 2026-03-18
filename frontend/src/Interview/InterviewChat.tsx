@@ -68,6 +68,8 @@ const InterviewChat: React.FC<InterviewChatProps> = ({
   const [sessionId, setSessionId] = useState<string | null>(initialSessionId);
   const [error, setError] = useState<string | null>(null);
   const [elapsedTime, setElapsedTime] = useState(initialElapsedTime);
+  const [isConnecting, setIsConnecting] = useState(!initialSessionId);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<{ abort: () => void } | null>(null);
@@ -158,6 +160,7 @@ const InterviewChat: React.FC<InterviewChatProps> = ({
 
   const startInterview = () => {
     setIsTyping(true);
+    setIsConnecting(true);
     setError(null);
 
     let tempSessionId: string | null = null;
@@ -169,6 +172,7 @@ const InterviewChat: React.FC<InterviewChatProps> = ({
         if (event.type === 'session') {
           tempSessionId = event.data.sessionId as string;
           setSessionId(event.data.sessionId as string);
+          setIsConnecting(false);
         } else if (event.type === 'chunk') {
           if (tempSessionId) {
             const content = event.data as unknown as string;
@@ -200,11 +204,13 @@ const InterviewChat: React.FC<InterviewChatProps> = ({
         } else if (event.type === 'error') {
           setError((event.data.message as string) || '发生错误');
           setIsTyping(false);
+          setIsConnecting(false);
         }
       },
       (err) => {
         setError(err.message);
         setIsTyping(false);
+        setIsConnecting(false);
       },
     );
   };
@@ -213,13 +219,13 @@ const InterviewChat: React.FC<InterviewChatProps> = ({
     if (!sessionIdRef.current) return;
 
     try {
-      setIsTyping(true);
+      setIsGeneratingReport(true);
       await saveProgress();
       const result = await interviewApi.endInterview(sessionIdRef.current);
       onEnd(result.reportId);
     } catch (err) {
       setError(err instanceof Error ? err.message : '结束面试失败');
-      setIsTyping(false);
+      setIsGeneratingReport(false);
     }
   }, [onEnd, saveProgress]);
 
@@ -307,6 +313,43 @@ const InterviewChat: React.FC<InterviewChatProps> = ({
 
   return (
     <div className="interview-chat-page">
+      {isConnecting && (
+        <div className="interview-modal-overlay">
+          <div className="interview-modal connecting-modal">
+            <div className="modal-icon spinning">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="32" height="32">
+                <circle cx="12" cy="12" r="10" />
+                <path d="M12 6v6l4 2" />
+              </svg>
+            </div>
+            <h3>正在连接面试官...</h3>
+            <p>请稍候，AI面试官正在准备面试问题</p>
+          </div>
+        </div>
+      )}
+
+      {isGeneratingReport && (
+        <div className="interview-modal-overlay">
+          <div className="interview-modal report-modal">
+            <div className="modal-icon spinning">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="32" height="32">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+              </svg>
+            </div>
+            <h3>正在生成面试报告...</h3>
+            <p>AI正在分析您的面试表现，请稍候</p>
+            <div className="modal-progress">
+              <div className="progress-bar">
+                <div className="progress-fill" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="chat-header">
         <button className="back-btn" onClick={handleBack}>
           <ChevronLeftIcon /> 返回

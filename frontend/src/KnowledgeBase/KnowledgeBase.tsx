@@ -405,12 +405,40 @@ const KnowledgeBase: React.FC = () => {
     boxSizing: 'border-box',
   };
 
+  const scrollbarStyles = `
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .kb-scroll-container::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .kb-scroll-container::-webkit-scrollbar-track {
+      background: transparent;
+      border-radius: 3px;
+    }
+    
+    .kb-scroll-container::-webkit-scrollbar-thumb {
+      background: ${isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(99, 102, 241, 0.2)'};
+      border-radius: 3px;
+      transition: background 0.2s ease;
+    }
+    
+    .kb-scroll-container::-webkit-scrollbar-thumb:hover {
+      background: ${isDark ? 'rgba(255, 255, 255, 0.25)' : 'rgba(99, 102, 241, 0.35)'};
+    }
+    
+    .kb-scroll-container {
+      scrollbar-width: thin;
+      scrollbar-color: ${isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(99, 102, 241, 0.2)'} transparent;
+    }
+  `;
+
   return (
-    <div style={{ fontFamily: font, color: C.text }}>
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    <div style={{ fontFamily: font, color: C.text, display: 'flex', flexDirection: 'column', height: 'calc(100vh - 120px)' }}>
+      <style>{scrollbarStyles}</style>
 
       {/* Stats */}
-      <div style={sectionStyle}>
+      <div style={{ ...sectionStyle, flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem' }}>
           <ChartIcon color={C.primary} />
           <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: C.text }}>知识库统计</h3>
@@ -429,296 +457,305 @@ const KnowledgeBase: React.FC = () => {
         </div>
       </div>
 
-      {/* Add Document */}
-      <div style={sectionStyle}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem' }}>
-          <PlusIcon />
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: C.text }}>添加新文档</h3>
-        </div>
-
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: 0, marginBottom: '1.25rem', borderBottom: `1px solid ${C.border}` }}>
-          {(['text', 'file'] as const).map(tab => (
-            <button key={tab} onClick={() => setActiveTab(tab)} style={{
-              background: 'none', border: 'none',
-              borderBottom: `2px solid ${activeTab === tab ? C.primary : 'transparent'}`,
-              padding: '8px 16px',
-              color: activeTab === tab ? C.primary : C.textMuted,
-              fontWeight: activeTab === tab ? 700 : 500,
-              fontSize: '0.875rem',
-              cursor: 'pointer',
-              fontFamily: font,
-              transition: 'all 0.15s ease',
-              marginBottom: '-1px',
-            }}>
-              {tab === 'text' ? '文本输入' : '文件上传'}
-            </button>
-          ))}
-        </div>
-
-        {activeTab === 'text' ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: C.textMuted, marginBottom: '6px' }}>文档标题</label>
-              <input
-                type="text"
-                placeholder="输入文档标题"
-                value={newDoc.title}
-                onChange={e => setNewDoc({ ...newDoc, title: e.target.value })}
-                style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = C.primary; e.target.style.boxShadow = `0 0 0 3px ${C.primarySoft}`; }}
-                onBlur={e => { e.target.style.borderColor = C.border; e.target.style.boxShadow = 'none'; }}
-              />
+      {/* Two-column layout with independent scrolling */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem', flex: 1, minHeight: 0 }}>
+        {/* Left column: Query + Add Document */}
+        <div className="kb-scroll-container" style={{ overflowY: 'auto', overflowX: 'hidden', paddingRight: '8px' }}>
+          {/* Query */}
+          <div style={sectionStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem' }}>
+              <SearchIcon />
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: C.text }}>查询知识库</h3>
             </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: C.textMuted, marginBottom: '6px' }}>文档内容</label>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               <textarea
-                placeholder="输入文档内容"
-                value={newDoc.content}
-                onChange={e => setNewDoc({ ...newDoc, content: e.target.value })}
-                style={{ ...inputStyle, minHeight: '120px', resize: 'vertical' }}
+                placeholder="输入您的问题或查询内容..."
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }}
                 onFocus={e => { e.target.style.borderColor = C.primary; e.target.style.boxShadow = `0 0 0 3px ${C.primarySoft}`; }}
                 onBlur={e => { e.target.style.borderColor = C.border; e.target.style.boxShadow = 'none'; }}
               />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: C.textMuted, marginBottom: '6px' }}>来源（可选）</label>
-              <input
-                type="text"
-                placeholder="输入文档来源 URL 或路径"
-                value={newDoc.source}
-                onChange={e => setNewDoc({ ...newDoc, source: e.target.value })}
-                style={inputStyle}
-                onFocus={e => { e.target.style.borderColor = C.primary; e.target.style.boxShadow = `0 0 0 3px ${C.primarySoft}`; }}
-                onBlur={e => { e.target.style.borderColor = C.border; e.target.style.boxShadow = 'none'; }}
-              />
-            </div>
-            <BtnPrimary colors={C} onClick={handleAddDocument} disabled={loadingAdd} style={{ alignSelf: 'flex-start', opacity: loadingAdd ? 0.7 : 1, cursor: loadingAdd ? 'not-allowed' : 'pointer' }}>
-              {loadingAdd ? <><span style={{ animation: 'spin 1s linear infinite', display: 'inline-flex' }}><SpinIcon /></span> 处理中...</> : '添加文档'}
-            </BtnPrimary>
-          </div>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {/* Drop zone */}
-            <div
-              ref={dropZoneRef}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                border: `2px dashed ${isDragging ? C.primary : C.border}`,
-                borderRadius: C.radius,
-                padding: '2rem',
-                textAlign: 'center',
-                background: isDragging ? C.primarySoft : C.bg,
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-                <UploadIcon color={C.primary} />
-              </div>
-              <p style={{ margin: '0 0 4px', color: C.text, fontSize: '0.9rem', fontWeight: 600 }}>拖拽文件到此处，或点击选择</p>
-              <p style={{ margin: 0, color: C.textMuted, fontSize: '0.8rem' }}>支持 PDF、Word、Excel、Markdown、JSON、CSV、TXT</p>
-            </div>
-            <input ref={fileInputRef} type="file" multiple accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.md,.txt,.json" onChange={e => handleFileSelect(e.target.files!)} style={{ display: 'none' }} />
+              <BtnPrimary colors={C} onClick={handleQuery} disabled={loadingQuery} style={{ alignSelf: 'flex-start', opacity: loadingQuery ? 0.7 : 1, cursor: loadingQuery ? 'not-allowed' : 'pointer' }}>
+                {loadingQuery ? <><span style={{ animation: 'spin 1s linear infinite', display: 'inline-flex' }}><SpinIcon /></span> 查询中...</> : <><SearchIcon /> 搜索</>}
+              </BtnPrimary>
 
-            {selectedFiles.length > 0 && (
-              <>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: C.textMuted, fontWeight: 600 }}>已选择 {selectedFiles.length} 个文件</p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {selectedFiles.map((file, index) => (
-                    <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: C.radiusSm }}>
-                      <span style={{ color: C.primary, display: 'flex', flexShrink: 0 }}>{getFileIcon(file.name)}</span>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</div>
-                        <div style={{ fontSize: '0.75rem', color: C.textMuted }}>{formatFileSize(file.size)}</div>
+              {queryResults.length > 0 && (
+                <div style={{ marginTop: '0.5rem' }}>
+                  <h4 style={{ margin: '0 0 12px', fontSize: '0.9rem', fontWeight: 700, color: C.text }}>
+                    查询结果 ({queryResults.length})
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {queryResults.map(result => (
+                      <div key={result.id} style={{ padding: '14px 16px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: C.radiusSm }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+                          <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: C.text }}>{result.title}</h4>
+                          <span style={{ background: C.primarySoft, color: C.primary, padding: '2px 10px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0 }}>
+                            {(result.score * 100).toFixed(1)}%
+                          </span>
+                        </div>
+                        <p style={{ margin: 0, color: C.textMuted, fontSize: '0.85rem', lineHeight: 1.6 }}>
+                          {result.content.substring(0, 200)}...
+                        </p>
                       </div>
-                      <button onClick={() => handleRemoveFile(index)} style={{ ...getBtnBase(C), background: C.dangerSoft, color: C.danger, padding: '4px 8px', fontSize: '0.75rem' }}>
-                        <XIcon /> 移除
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                {uploadProgress > 0 && uploadProgress < 100 && (
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '0.8rem', color: C.textMuted, fontWeight: 600 }}>上传进度</span>
-                      <span style={{ fontSize: '0.8rem', color: C.primary, fontWeight: 700 }}>{uploadProgress}%</span>
-                    </div>
-                    <div style={{ height: '6px', background: C.border, borderRadius: '3px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: `${uploadProgress}%`, background: C.primary, transition: 'width 0.3s ease', borderRadius: '3px' }} />
-                    </div>
+                    ))}
                   </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Add Document */}
+          <div style={sectionStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem' }}>
+              <PlusIcon />
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: C.text }}>添加新文档</h3>
+            </div>
+
+            {/* Tabs */}
+            <div style={{ display: 'flex', gap: 0, marginBottom: '1.25rem', borderBottom: `1px solid ${C.border}` }}>
+              {(['text', 'file'] as const).map(tab => (
+                <button key={tab} onClick={() => setActiveTab(tab)} style={{
+                  background: 'none', border: 'none',
+                  borderBottom: `2px solid ${activeTab === tab ? C.primary : 'transparent'}`,
+                  padding: '8px 16px',
+                  color: activeTab === tab ? C.primary : C.textMuted,
+                  fontWeight: activeTab === tab ? 700 : 500,
+                  fontSize: '0.875rem',
+                  cursor: 'pointer',
+                  fontFamily: font,
+                  transition: 'all 0.15s ease',
+                  marginBottom: '-1px',
+                }}>
+                  {tab === 'text' ? '文本输入' : '文件上传'}
+                </button>
+              ))}
+            </div>
+
+            {activeTab === 'text' ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: C.textMuted, marginBottom: '6px' }}>文档标题</label>
+                  <input
+                    type="text"
+                    placeholder="输入文档标题"
+                    value={newDoc.title}
+                    onChange={e => setNewDoc({ ...newDoc, title: e.target.value })}
+                    style={inputStyle}
+                    onFocus={e => { e.target.style.borderColor = C.primary; e.target.style.boxShadow = `0 0 0 3px ${C.primarySoft}`; }}
+                    onBlur={e => { e.target.style.borderColor = C.border; e.target.style.boxShadow = 'none'; }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: C.textMuted, marginBottom: '6px' }}>文档内容</label>
+                  <textarea
+                    placeholder="输入文档内容"
+                    value={newDoc.content}
+                    onChange={e => setNewDoc({ ...newDoc, content: e.target.value })}
+                    style={{ ...inputStyle, minHeight: '120px', resize: 'vertical' }}
+                    onFocus={e => { e.target.style.borderColor = C.primary; e.target.style.boxShadow = `0 0 0 3px ${C.primarySoft}`; }}
+                    onBlur={e => { e.target.style.borderColor = C.border; e.target.style.boxShadow = 'none'; }}
+                  />
+                </div>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, color: C.textMuted, marginBottom: '6px' }}>来源（可选）</label>
+                  <input
+                    type="text"
+                    placeholder="输入文档来源 URL 或路径"
+                    value={newDoc.source}
+                    onChange={e => setNewDoc({ ...newDoc, source: e.target.value })}
+                    style={inputStyle}
+                    onFocus={e => { e.target.style.borderColor = C.primary; e.target.style.boxShadow = `0 0 0 3px ${C.primarySoft}`; }}
+                    onBlur={e => { e.target.style.borderColor = C.border; e.target.style.boxShadow = 'none'; }}
+                  />
+                </div>
+                <BtnPrimary colors={C} onClick={handleAddDocument} disabled={loadingAdd} style={{ alignSelf: 'flex-start', opacity: loadingAdd ? 0.7 : 1, cursor: loadingAdd ? 'not-allowed' : 'pointer' }}>
+                  {loadingAdd ? <><span style={{ animation: 'spin 1s linear infinite', display: 'inline-flex' }}><SpinIcon /></span> 处理中...</> : '添加文档'}
+                </BtnPrimary>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {/* Drop zone */}
+                <div
+                  ref={dropZoneRef}
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  onClick={() => fileInputRef.current?.click()}
+                  style={{
+                    border: `2px dashed ${isDragging ? C.primary : C.border}`,
+                    borderRadius: C.radius,
+                    padding: '2rem',
+                    textAlign: 'center',
+                    background: isDragging ? C.primarySoft : C.bg,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                    <UploadIcon color={C.primary} />
+                  </div>
+                  <p style={{ margin: '0 0 4px', color: C.text, fontSize: '0.9rem', fontWeight: 600 }}>拖拽文件到此处，或点击选择</p>
+                  <p style={{ margin: 0, color: C.textMuted, fontSize: '0.8rem' }}>支持 PDF、Word、Excel、Markdown、JSON、CSV、TXT</p>
+                </div>
+                <input ref={fileInputRef} type="file" multiple accept=".pdf,.docx,.doc,.xlsx,.xls,.csv,.md,.txt,.json" onChange={e => handleFileSelect(e.target.files!)} style={{ display: 'none' }} />
+
+                {selectedFiles.length > 0 && (
+                  <>
+                    <p style={{ margin: 0, fontSize: '0.8rem', color: C.textMuted, fontWeight: 600 }}>已选择 {selectedFiles.length} 个文件</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {selectedFiles.map((file, index) => (
+                        <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: C.radiusSm }}>
+                          <span style={{ color: C.primary, display: 'flex', flexShrink: 0 }}>{getFileIcon(file.name)}</span>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '0.875rem', fontWeight: 600, color: C.text, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{file.name}</div>
+                            <div style={{ fontSize: '0.75rem', color: C.textMuted }}>{formatFileSize(file.size)}</div>
+                          </div>
+                          <button onClick={() => handleRemoveFile(index)} style={{ ...getBtnBase(C), background: C.dangerSoft, color: C.danger, padding: '4px 8px', fontSize: '0.75rem' }}>
+                            <XIcon /> 移除
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+
+                    {uploadProgress > 0 && uploadProgress < 100 && (
+                      <div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                          <span style={{ fontSize: '0.8rem', color: C.textMuted, fontWeight: 600 }}>上传进度</span>
+                          <span style={{ fontSize: '0.8rem', color: C.primary, fontWeight: 700 }}>{uploadProgress}%</span>
+                        </div>
+                        <div style={{ height: '6px', background: C.border, borderRadius: '3px', overflow: 'hidden' }}>
+                          <div style={{ height: '100%', width: `${uploadProgress}%`, background: C.primary, transition: 'width 0.3s ease', borderRadius: '3px' }} />
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <BtnPrimary colors={C} onClick={handleUploadFiles} disabled={loadingUpload} style={{ opacity: loadingUpload ? 0.7 : 1, cursor: loadingUpload ? 'not-allowed' : 'pointer' }}>
+                        {loadingUpload ? <><span style={{ animation: 'spin 1s linear infinite', display: 'inline-flex' }}><SpinIcon /></span> 上传中...</> : <><UploadIcon color="white" />上传文件</>}
+                      </BtnPrimary>
+                      <BtnSecondary colors={C} onClick={() => setSelectedFiles([])} disabled={loadingUpload}>
+                        清空列表
+                      </BtnSecondary>
+                    </div>
+                  </>
                 )}
 
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <BtnPrimary colors={C} onClick={handleUploadFiles} disabled={loadingUpload} style={{ opacity: loadingUpload ? 0.7 : 1, cursor: loadingUpload ? 'not-allowed' : 'pointer' }}>
-                    {loadingUpload ? <><span style={{ animation: 'spin 1s linear infinite', display: 'inline-flex' }}><SpinIcon /></span> 上传中...</> : <><UploadIcon color="white" />上传文件</>}
-                  </BtnPrimary>
-                  <BtnSecondary colors={C} onClick={() => setSelectedFiles([])} disabled={loadingUpload}>
-                    清空列表
-                  </BtnSecondary>
+                <div style={{ padding: '10px 14px', background: C.primarySoft, borderRadius: C.radiusSm, fontSize: '0.8rem', color: C.textMuted, lineHeight: 1.6 }}>
+                  支持格式: PDF, Word (docx/doc), Excel (xlsx/xls), CSV, Markdown, JSON, 纯文本 &nbsp;·&nbsp; 最大单个文件 50 MB
                 </div>
-              </>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Right column: Document list */}
+        <div className="kb-scroll-container" style={{ overflowY: 'auto', overflowX: 'hidden', paddingLeft: '8px' }}>
+          {/* Document list */}
+          <div style={{ ...sectionStyle, marginBottom: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <BookIcon color={C.primary} />
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: C.text }}>我的文档</h3>
+              </div>
+              {documents.length > 0 && (
+                <BtnSecondary colors={C} onClick={() => { setIsBatchDeleteMode(!isBatchDeleteMode); if (isBatchDeleteMode) setSelectedDocuments(new Set()); }}
+                  style={{ background: isBatchDeleteMode ? C.primarySoftHover : C.primarySoft }}>
+                  {isBatchDeleteMode ? '退出选择' : '批量删除'}
+                </BtnSecondary>
+              )}
+            </div>
+
+            {processingDocuments.size > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: C.warningSoft, border: `1px solid rgba(245,158,11,0.2)`, borderRadius: C.radiusSm, marginBottom: '12px', fontSize: '0.85rem', color: '#92400E' }}>
+                <span style={{ display: 'inline-flex', animation: 'spin 1s linear infinite' }}><SpinIcon /></span>
+                {processingDocuments.size} 个文档处理中...
+              </div>
             )}
 
-            <div style={{ padding: '10px 14px', background: C.primarySoft, borderRadius: C.radiusSm, fontSize: '0.8rem', color: C.textMuted, lineHeight: 1.6 }}>
-              支持格式: PDF, Word (docx/doc), Excel (xlsx/xls), CSV, Markdown, JSON, 纯文本 &nbsp;·&nbsp; 最大单个文件 50 MB
-            </div>
-          </div>
-        )}
-      </div>
+            {isBatchDeleteMode && selectedDocuments.size > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: C.primarySoft, border: `1px solid rgba(99,102,241,0.2)`, borderRadius: C.radiusSm, marginBottom: '12px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.85rem', color: C.textMuted, fontWeight: 600 }}>已选择 {selectedDocuments.size} 个文档</span>
+                <BtnSecondary colors={C} onClick={handleSelectAll} style={{ fontSize: '0.8rem', padding: '5px 12px' }}>
+                  {selectedDocuments.size === documents.length ? '取消全选' : '全选'}
+                </BtnSecondary>
+                <BtnDanger colors={C} onClick={handleBatchDelete} disabled={loadingBatchDelete} style={{ opacity: loadingBatchDelete ? 0.7 : 1, cursor: loadingBatchDelete ? 'not-allowed' : 'pointer' }}>
+                  {loadingBatchDelete ? '删除中...' : <><TrashIcon /> 删除 {selectedDocuments.size} 个</>}
+                </BtnDanger>
+              </div>
+            )}
 
-      {/* Query */}
-      <div style={sectionStyle}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '1.25rem' }}>
-          <SearchIcon />
-          <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: C.text }}>查询知识库</h3>
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          <textarea
-            placeholder="输入您的问题或查询内容..."
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }}
-            onFocus={e => { e.target.style.borderColor = C.primary; e.target.style.boxShadow = `0 0 0 3px ${C.primarySoft}`; }}
-            onBlur={e => { e.target.style.borderColor = C.border; e.target.style.boxShadow = 'none'; }}
-          />
-          <BtnPrimary colors={C} onClick={handleQuery} disabled={loadingQuery} style={{ alignSelf: 'flex-start', opacity: loadingQuery ? 0.7 : 1, cursor: loadingQuery ? 'not-allowed' : 'pointer' }}>
-            {loadingQuery ? <><span style={{ animation: 'spin 1s linear infinite', display: 'inline-flex' }}><SpinIcon /></span> 查询中...</> : <><SearchIcon /> 搜索</>}
-          </BtnPrimary>
-
-          {queryResults.length > 0 && (
-            <div style={{ marginTop: '0.5rem' }}>
-              <h4 style={{ margin: '0 0 12px', fontSize: '0.9rem', fontWeight: 700, color: C.text }}>
-                查询结果 ({queryResults.length})
-              </h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {queryResults.map(result => (
-                  <div key={result.id} style={{ padding: '14px 16px', background: C.bg, border: `1px solid ${C.border}`, borderRadius: C.radiusSm }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: C.text }}>{result.title}</h4>
-                      <span style={{ background: C.primarySoft, color: C.primary, padding: '2px 10px', borderRadius: '100px', fontSize: '0.75rem', fontWeight: 700, flexShrink: 0 }}>
-                        {(result.score * 100).toFixed(1)}%
-                      </span>
+            {documents.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {documents.map(doc => (
+                  <div
+                    key={doc.id}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '12px',
+                      padding: '14px 16px',
+                      background: selectedDocuments.has(doc.id) ? C.primarySoft : C.bg,
+                      border: `1px solid ${selectedDocuments.has(doc.id) ? 'rgba(99,102,241,0.25)' : C.border}`,
+                      borderRadius: C.radiusSm,
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {isBatchDeleteMode && (
+                      <input
+                        type="checkbox"
+                        checked={selectedDocuments.has(doc.id)}
+                        onChange={() => handleDocumentSelect(doc.id)}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: C.primary, flexShrink: 0 }}
+                      />
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '0.9rem', fontWeight: 600, color: C.text, marginBottom: '5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {doc.title}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <StatusBadge status={doc.status} colors={C} />
+                        <span style={{ fontSize: '0.75rem', color: C.textMuted }}>
+                          {new Date(doc.createdAt).toLocaleDateString('zh-CN')}
+                        </span>
+                        {doc.status === 'failed' && doc.processingError && (
+                          <span style={{ fontSize: '0.72rem', color: C.danger }}>
+                            {doc.processingError.substring(0, 80)}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <p style={{ margin: 0, color: C.textMuted, fontSize: '0.85rem', lineHeight: 1.6 }}>
-                      {result.content.substring(0, 200)}...
-                    </p>
+                    {!isBatchDeleteMode && (
+                      <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
+                        {(doc.status === 'uploaded' || doc.status === 'failed') && (
+                          <BtnSecondary
+                            colors={C}
+                            onClick={() => handleReprocessDocument(doc.id)}
+                            disabled={loadingReprocess === doc.id}
+                            style={{ fontSize: '0.8rem', padding: '5px 10px', opacity: loadingReprocess === doc.id ? 0.7 : 1 }}
+                            title={doc.status === 'failed' ? '重新处理此文档' : '手动处理此文档'}
+                          >
+                            <RefreshIcon />
+                            {loadingReprocess === doc.id ? '处理中...' : '重新处理'}
+                          </BtnSecondary>
+                        )}
+                        <BtnDanger
+                          colors={C}
+                          onClick={() => handleDeleteDocument(doc.id)}
+                          style={{ fontSize: '0.8rem', padding: '5px 10px' }}
+                        >
+                          <TrashIcon /> 删除
+                        </BtnDanger>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Document list */}
-      <div style={sectionStyle}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <BookIcon color={C.primary} />
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: C.text }}>我的文档</h3>
-          </div>
-          {documents.length > 0 && (
-            <BtnSecondary colors={C} onClick={() => { setIsBatchDeleteMode(!isBatchDeleteMode); if (isBatchDeleteMode) setSelectedDocuments(new Set()); }}
-              style={{ background: isBatchDeleteMode ? C.primarySoftHover : C.primarySoft }}>
-              {isBatchDeleteMode ? '退出选择' : '批量删除'}
-            </BtnSecondary>
-          )}
-        </div>
-
-        {processingDocuments.size > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 14px', background: C.warningSoft, border: `1px solid rgba(245,158,11,0.2)`, borderRadius: C.radiusSm, marginBottom: '12px', fontSize: '0.85rem', color: '#92400E' }}>
-            <span style={{ display: 'inline-flex', animation: 'spin 1s linear infinite' }}><SpinIcon /></span>
-            {processingDocuments.size} 个文档处理中...
-          </div>
-        )}
-
-        {isBatchDeleteMode && selectedDocuments.size > 0 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 14px', background: C.primarySoft, border: `1px solid rgba(99,102,241,0.2)`, borderRadius: C.radiusSm, marginBottom: '12px', flexWrap: 'wrap' }}>
-            <span style={{ fontSize: '0.85rem', color: C.textMuted, fontWeight: 600 }}>已选择 {selectedDocuments.size} 个文档</span>
-            <BtnSecondary colors={C} onClick={handleSelectAll} style={{ fontSize: '0.8rem', padding: '5px 12px' }}>
-              {selectedDocuments.size === documents.length ? '取消全选' : '全选'}
-            </BtnSecondary>
-            <BtnDanger colors={C} onClick={handleBatchDelete} disabled={loadingBatchDelete} style={{ opacity: loadingBatchDelete ? 0.7 : 1, cursor: loadingBatchDelete ? 'not-allowed' : 'pointer' }}>
-              {loadingBatchDelete ? '删除中...' : <><TrashIcon /> 删除 {selectedDocuments.size} 个</>}
-            </BtnDanger>
-          </div>
-        )}
-
-        {documents.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {documents.map(doc => (
-              <div
-                key={doc.id}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: '12px',
-                  padding: '14px 16px',
-                  background: selectedDocuments.has(doc.id) ? C.primarySoft : C.bg,
-                  border: `1px solid ${selectedDocuments.has(doc.id) ? 'rgba(99,102,241,0.25)' : C.border}`,
-                  borderRadius: C.radiusSm,
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                {isBatchDeleteMode && (
-                  <input
-                    type="checkbox"
-                    checked={selectedDocuments.has(doc.id)}
-                    onChange={() => handleDocumentSelect(doc.id)}
-                    style={{ width: '16px', height: '16px', cursor: 'pointer', accentColor: C.primary, flexShrink: 0 }}
-                  />
-                )}
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 600, color: C.text, marginBottom: '5px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {doc.title}
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <StatusBadge status={doc.status} colors={C} />
-                    <span style={{ fontSize: '0.75rem', color: C.textMuted }}>
-                      {new Date(doc.createdAt).toLocaleDateString('zh-CN')}
-                    </span>
-                    {doc.status === 'failed' && doc.processingError && (
-                      <span style={{ fontSize: '0.72rem', color: C.danger }}>
-                        {doc.processingError.substring(0, 80)}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                {!isBatchDeleteMode && (
-                  <div style={{ display: 'flex', gap: '8px', flexShrink: 0 }}>
-                    {(doc.status === 'uploaded' || doc.status === 'failed') && (
-                      <BtnSecondary
-                        colors={C}
-                        onClick={() => handleReprocessDocument(doc.id)}
-                        disabled={loadingReprocess === doc.id}
-                        style={{ fontSize: '0.8rem', padding: '5px 10px', opacity: loadingReprocess === doc.id ? 0.7 : 1 }}
-                        title={doc.status === 'failed' ? '重新处理此文档' : '手动处理此文档'}
-                      >
-                        <RefreshIcon />
-                        {loadingReprocess === doc.id ? '处理中...' : '重新处理'}
-                      </BtnSecondary>
-                    )}
-                    <BtnDanger
-                      colors={C}
-                      onClick={() => handleDeleteDocument(doc.id)}
-                      style={{ fontSize: '0.8rem', padding: '5px 10px' }}
-                    >
-                      <TrashIcon /> 删除
-                    </BtnDanger>
-                  </div>
-                )}
+            ) : (
+              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: C.textMuted, fontSize: '0.9rem' }}>
+                暂无文档，请先添加
               </div>
-            ))}
+            )}
           </div>
-        ) : (
-          <div style={{ textAlign: 'center', padding: '3rem 1rem', color: C.textMuted, fontSize: '0.9rem' }}>
-            暂无文档，请先添加
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );
