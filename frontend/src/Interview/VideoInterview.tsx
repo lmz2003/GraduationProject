@@ -57,12 +57,14 @@ const VideoOnIcon = () => (
 interface VideoInterviewProps {
   interview: Interview;
   sessionId: string;
-  /** 开场白文本，作为面试的第一轮对话显示并播放 */
+  /** 开场白文本，作为面试的第一轮对话显示并播放（新建面试时使用） */
   openingText?: string;
   onEnd: (reportId: string) => void;
   onBack: () => void;
   voice?: string;
   initialDuration?: number;
+  /** 继续面试时从后端恢复的历史对话记录 */
+  initialConversations?: ConversationMessage[];
 }
 
 interface ConversationMessage {
@@ -86,6 +88,7 @@ const VideoInterview: React.FC<VideoInterviewProps> = ({
   onBack,
   voice = 'anna',
   initialDuration = 0,
+  initialConversations,
 }) => {
   // 开场白已处于第 0 轮（AI 开场），用户第一次回答时为第 1 轮
   const [callStatus, setCallStatus] = useState<VideoCallStatus>('idle');
@@ -93,7 +96,11 @@ const VideoInterview: React.FC<VideoInterviewProps> = ({
   const [isCameraOff, setIsCameraOff] = useState(false);
   const [callDuration, setCallDuration] = useState(initialDuration);
   const [conversations, setConversations] = useState<ConversationMessage[]>(() => {
-    // 将开场白作为面试第一条消息直接写入对话记录
+    // 继续面试：优先使用历史对话记录
+    if (initialConversations && initialConversations.length > 0) {
+      return initialConversations;
+    }
+    // 新建面试：将开场白作为第一条消息
     if (openingText.trim()) {
       return [{ role: 'assistant', text: openingText, timestamp: new Date() }];
     }
@@ -123,10 +130,16 @@ const VideoInterview: React.FC<VideoInterviewProps> = ({
 
   // 帧缓冲：始终在录制（按 roundIndex 区分每轮问答的帧）
   const frameBufferRef = useRef<FrameData[]>([]);
-  /** 当前问答轮次编号：0 = 开场白阶段，每次用户发送后 +1 */
-  const currentRoundRef = useRef(0);
+  /** 当前问答轮次编号：0 = 开场白阶段，每次用户发送后 +1
+   *  继续面试时从历史用户消息数量推算，避免与历史帧的 roundIndex 冲突 */
+  const currentRoundRef = useRef(
+    initialConversations
+      ? initialConversations.filter((m) => m.role === 'user').length + 1
+      : 0,
+  );
   const frameCaptureIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  /** 开场白播放阶段是否正在截帧 */
+  /** 始终与 isCameraOff state 同步，供 interval 回调读取（避免闭包过时） */
+  const isCameraOffRef = useRef(false);
   const FRAME_CAPTURE_INTERVAL = 2000;
   const MAX_FRAMES_BUFFER = 120; // 全局最多保留 120 帧
 
@@ -207,7 +220,8 @@ const VideoInterview: React.FC<VideoInterviewProps> = ({
   // ─── 全局帧截取（始终在后台运行，不受录音状态影响）─────────────────────
 
   const captureVideoFrame = useCallback((): string | null => {
-    if (!videoPreviewRef.current || !videoCanvasRef.current || isCameraOff) return null;
+    // 使用 ref 读取摄像头状态，避免 interval 回调中的闭包过时问题
+    if (!videoPreviewRef.current || !videoCanvasRef.current || isCameraOffRef.current) return null;
     const video = videoPreviewRef.current;
     const canvas = videoCanvasRef.current;
     const ctx = canvas.getContext('2d');
@@ -216,7 +230,7 @@ const VideoInterview: React.FC<VideoInterviewProps> = ({
     canvas.height = video.videoHeight;
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     return canvas.toDataURL('image/jpeg', 0.6);
-  }, [isCameraOff]);
+  }, []);
 
   const captureFrameToBuffer = useCallback(() => {
     const base64 = captureVideoFrame();
@@ -571,8 +585,10 @@ const VideoInterview: React.FC<VideoInterviewProps> = ({
     if (videoStreamRef.current) {
       const videoTrack = videoStreamRef.current.getVideoTracks()[0];
       if (videoTrack) {
-        videoTrack.enabled = isCameraOff;
-        setIsCameraOff(!isCameraOff);
+        const nextOff = !isCameraOff;
+        videoTrack.enabled = !nextOff;
+        isCameraOffRef.current = nextOff;
+        setIsCameraOff(nextOff);
       }
     }
   }, [isCameraOff]);
@@ -648,6 +664,63 @@ const VideoInterview: React.FC<VideoInterviewProps> = ({
         <div className="video-container">
           {/* 用户视频区 */}
           <div className="user-video-section">
+            {/* 实时分析浮窗 —— 绝对定位于摄像头左侧 */}
+            {showAnalysisPanel && videoAnalysisData && (
+              <div className="analysis-panel">
+                <div className="analysis-header">
+                  <span>实时分析</span>
+                  <button onClick={() => setShowAnalysisPanel(false)}>×</button>
+                </div>
+                <div className="analysis-content">
+                  <div className="analysis-item">
+                    <span className="analysis-label">表情</span>
+                    <span className="analysis-value">
+                      {getEmotionEmoji(
+                        videoAnalysisData.dominantEmotion ||
+                        videoAnalysisData.summary?.dominantEmotion ||
+                        'neutral'
+                      )}
+                    </span>
+                  </div>
+                  <div className="analysis-item">
+                    <span className="analysis-label">眼神接触</span>
+                    <span className={`analysis-value ${
+                      (videoAnalysisData.eyeContact || (videoAnalysisData.summary?.eyeContactRatio ?? 0) > 0.5)
+                        ? 'good' : 'warn'
+                    }`}>
+                      {(videoAnalysisData.eyeContact || (videoAnalysisData.summary?.eyeContactRatio ?? 0) > 0.5)
+                        ? '良好' : '需改进'}
+                    </span>
+                  </div>
+                  <div className="analysis-item">
+                    <span className="analysis-label">视线方向</span>
+                    <span className="analysis-value">
+                      {videoAnalysisData.gazeDirection ||
+                        (videoAnalysisData.summary?.gazeDistribution
+                          ? Object.entries(videoAnalysisData.summary.gazeDistribution)
+                              .sort((a, b) => b[1] - a[1])[0]?.[0]
+                          : '—')}
+                    </span>
+                  </div>
+                  <div className="analysis-item">
+                    <span className="analysis-label">人脸检测</span>
+                    <span className={`analysis-value ${
+                      (videoAnalysisData.faceDetected || (videoAnalysisData.summary?.faceDetectionRatio ?? 0) > 0.5)
+                        ? 'good' : 'warn'
+                    }`}>
+                      {(videoAnalysisData.faceDetected || (videoAnalysisData.summary?.faceDetectionRatio ?? 0) > 0.5)
+                        ? '正常' : '未检测到'}
+                    </span>
+                  </div>
+                  {videoAnalysisData.summary?.overallScore !== undefined && (
+                    <div className="analysis-item">
+                      <span className="analysis-label">综合评分</span>
+                      <span className="analysis-value">{videoAnalysisData.summary.overallScore}/100</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
             <div className={`video-preview ${isCameraOff ? 'camera-off' : ''}`}>
               <video
                 ref={videoPreviewRef}
@@ -721,78 +794,24 @@ const VideoInterview: React.FC<VideoInterviewProps> = ({
               </div>
             )}
 
-            {currentSubtitle && (
+            {/* {currentSubtitle && (
               <div className="current-subtitle">{currentSubtitle}</div>
-            )}
+            )} */}
           </div>
 
-          {showAnalysisPanel && videoAnalysisData && (
-            <div className="analysis-panel">
-              <div className="analysis-header">
-                <span>实时分析</span>
-                <button onClick={() => setShowAnalysisPanel(false)}>×</button>
-              </div>
-              <div className="analysis-content">
-                <div className="analysis-item">
-                  <span className="analysis-label">表情</span>
-                  <span className="analysis-value">
-                    {getEmotionEmoji(
-                      videoAnalysisData.dominantEmotion ||
-                      videoAnalysisData.summary?.dominantEmotion ||
-                      'neutral'
-                    )}
-                  </span>
-                </div>
-                <div className="analysis-item">
-                  <span className="analysis-label">眼神接触</span>
-                  <span className={`analysis-value ${
-                    (videoAnalysisData.eyeContact || (videoAnalysisData.summary?.eyeContactRatio ?? 0) > 0.5)
-                      ? 'good' : 'warn'
-                  }`}>
-                    {(videoAnalysisData.eyeContact || (videoAnalysisData.summary?.eyeContactRatio ?? 0) > 0.5)
-                      ? '良好' : '需改进'}
-                  </span>
-                </div>
-                <div className="analysis-item">
-                  <span className="analysis-label">视线方向</span>
-                  <span className="analysis-value">
-                    {videoAnalysisData.gazeDirection ||
-                      (videoAnalysisData.summary?.gazeDistribution
-                        ? Object.entries(videoAnalysisData.summary.gazeDistribution)
-                            .sort((a, b) => b[1] - a[1])[0]?.[0]
-                        : '—')}
-                  </span>
-                </div>
-                <div className="analysis-item">
-                  <span className="analysis-label">人脸检测</span>
-                  <span className={`analysis-value ${
-                    (videoAnalysisData.faceDetected || (videoAnalysisData.summary?.faceDetectionRatio ?? 0) > 0.5)
-                      ? 'good' : 'warn'
-                  }`}>
-                    {(videoAnalysisData.faceDetected || (videoAnalysisData.summary?.faceDetectionRatio ?? 0) > 0.5)
-                      ? '正常' : '未检测到'}
-                  </span>
-                </div>
-                {videoAnalysisData.summary?.overallScore !== undefined && (
-                  <div className="analysis-item">
-                    <span className="analysis-label">综合评分</span>
-                    <span className="analysis-value">{videoAnalysisData.summary.overallScore}/100</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
         </div>
 
-        {callStatus === 'recording' && (
-          <div className="user-waveform">
-            {waveformData.map((height, i) => (
-              <div key={i} className="user-wave-bar" style={{ height: `${height}%` }} />
-            ))}
-          </div>
-        )}
-
-        <div className="video-status-label">{getStatusLabel()}</div>
+        <div className="video-status-label">
+          {callStatus === 'recording' ? (
+            <div className="user-waveform">
+              {waveformData.map((height, i) => (
+                <div key={i} className="user-wave-bar" style={{ height: `${height}%` }} />
+              ))}
+            </div>
+          ) : (
+            <span>{getStatusLabel()}</span>
+          )}
+        </div>
       </div>
 
       <div className="video-controls">
@@ -831,9 +850,15 @@ const VideoInterview: React.FC<VideoInterviewProps> = ({
         </button>
 
         <button
-          className={`control-btn analysis-btn ${showAnalysisPanel ? 'active' : ''}`}
-          onClick={() => setShowAnalysisPanel((prev) => !prev)}
-          title="显示分析面板"
+          className={`control-btn analysis-btn ${showAnalysisPanel ? 'active' : ''} ${!videoAnalysisData ? 'no-data' : ''}`}
+          onClick={() => {
+            if (!videoAnalysisData) {
+              toastModal.error('完成第一轮回答后即可查看实时分析数据', '暂无分析数据');
+              return;
+            }
+            setShowAnalysisPanel((prev) => !prev);
+          }}
+          title={videoAnalysisData ? '显示分析面板' : '完成一轮回答后可查看'}
         >
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" width="22" height="22">
             <line x1="18" y1="20" x2="18" y2="10" />

@@ -403,6 +403,8 @@ const VideoInterviewLoader: React.FC<VideoInterviewLoaderProps> = ({
   const [openingText, setOpeningText] = useState('');
   // session 就绪且文本收完后才渲染 VideoInterview
   const [sessionReady, setSessionReady] = useState(!!initialSessionId);
+  // 继续面试时从后端恢复的历史对话记录
+  const [historyConversations, setHistoryConversations] = useState<Array<{ role: 'user' | 'assistant'; text: string; timestamp: Date }>>([]);
 
   const initialElapsedTimeRef = useRef(initialElapsedTime);
 
@@ -426,6 +428,15 @@ const VideoInterviewLoader: React.FC<VideoInterviewLoaderProps> = ({
           tempSessionId = event.data.sessionId as string;
           setSessionId(tempSessionId);
           onSessionReady(tempSessionId);
+        } else if (event.type === 'history') {
+          // 继续面试时，后端推送历史消息列表
+          const msgs = event.data as Array<{ role: 'user' | 'assistant'; content: string; timestamp: string }>;
+          const converted = msgs.map((m) => ({
+            role: m.role,
+            text: m.content,
+            timestamp: new Date(m.timestamp),
+          }));
+          setHistoryConversations(converted);
         } else if (event.type === 'chunk') {
           tempText += event.data as string;
           setOpeningText(tempText);
@@ -483,14 +494,17 @@ const VideoInterviewLoader: React.FC<VideoInterviewLoaderProps> = ({
 
   // session 就绪后立即渲染 VideoInterview（开场白由它内部播放）
   if (sessionReady && sessionId) {
+    const isResuming = historyConversations.length > 0;
     return (
       <VideoInterview
         interview={interview}
         sessionId={sessionId}
-        openingText={openingText}
+        // 继续面试时不传 openingText，避免重播开场白
+        openingText={isResuming ? '' : openingText}
         onEnd={onEnd}
         onBack={onBack}
         initialDuration={initialElapsedTimeRef.current}
+        initialConversations={isResuming ? historyConversations : undefined}
       />
     );
   }
@@ -766,39 +780,34 @@ const InterviewModule: React.FC = () => {
     return <span className={`status-badge ${statusInfo.className}`}>{statusInfo.label}</span>;
   };
 
-  // 根据场景类型返回 SVG 图标
-  const getSceneSvgIcon = (sceneType: string) => {
+  // 根据面试形式返回 SVG 图标
+  const getModeIcon = (mode: string) => {
     const iconMap: Record<string, React.ReactNode> = {
-      technical: (
+      // 文字对话：对话气泡
+      text: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20">
-          <polyline points="16 18 22 12 16 6" />
-          <polyline points="8 6 2 12 8 18" />
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
         </svg>
       ),
-      behavioral: (
+      // 语音通话：麦克风
+      voice: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-          <circle cx="9" cy="7" r="4" />
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-          <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+          <line x1="12" y1="19" x2="12" y2="23" />
+          <line x1="8" y1="23" x2="16" y2="23" />
         </svg>
       ),
-      system_design: (
+      // 视频面试：摄像头
+      video: (
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20">
-          <rect x="2" y="3" width="20" height="14" rx="2" />
-          <line x1="8" y1="21" x2="16" y2="21" />
-          <line x1="12" y1="17" x2="12" y2="21" />
+          <polygon points="23 7 16 12 23 17 23 7" />
+          <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
         </svg>
       ),
     };
-    return iconMap[sceneType] || (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" width="20" height="20">
-        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-        <line x1="12" y1="19" x2="12" y2="23" />
-        <line x1="8" y1="23" x2="16" y2="23" />
-      </svg>
-    );
+    // 默认：对话气泡
+    return iconMap[mode] || iconMap.text;
   };
 
   // 过滤和搜索函数
@@ -1223,7 +1232,7 @@ const InterviewModule: React.FC = () => {
                   <div className="card-header">
                     <div className="card-title">
                       <span className="scene-icon">
-                        {getSceneSvgIcon(interview.sceneType)}
+                        {getModeIcon(interview.mode)}
                       </span>
                       <h3>{interview.title || interview.sceneName}</h3>
                     </div>

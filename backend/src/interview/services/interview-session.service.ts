@@ -13,6 +13,8 @@ export interface StartSessionResult {
   sessionId: string;
   interview: Interview;
   firstMessage: string;
+  /** 继续面试时返回的历史消息，新建面试时为空 */
+  historyMessages?: InterviewMessage[];
 }
 
 export interface EndInterviewResult {
@@ -102,11 +104,13 @@ export class InterviewSessionService {
       const activeSession = await this.getActiveSession(interviewId);
       if (activeSession) {
         const messages = await this.getSessionMessages(activeSession.id);
-        const lastMessage = messages[messages.length - 1];
+        const lastAssistantMessage = [...messages].reverse().find((m) => m.role === 'assistant');
+        this.logger.log(`继续面试 - 会话ID: ${activeSession.id}, 历史消息数: ${messages.length}`);
         return {
           sessionId: activeSession.id,
           interview,
-          firstMessage: lastMessage?.content || '',
+          firstMessage: lastAssistantMessage?.content || '',
+          historyMessages: messages,
         };
       }
     }

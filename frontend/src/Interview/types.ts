@@ -144,7 +144,7 @@ export interface StartSessionResult {
 }
 
 export interface SSEEvent {
-  type: 'request-id' | 'session' | 'chunk' | 'done' | 'error';
+  type: 'request-id' | 'session' | 'chunk' | 'done' | 'error' | 'history';
   data: any;
 }
 

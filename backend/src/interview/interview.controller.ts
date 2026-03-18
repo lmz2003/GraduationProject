@@ -209,6 +209,21 @@ export class InterviewController {
         })}\n\n`,
       );
 
+      // 继续面试时，推送历史消息列表供前端恢复对话记录
+      if (result.historyMessages && result.historyMessages.length > 0) {
+        res.write(
+          `data: ${JSON.stringify({
+            type: 'history',
+            data: result.historyMessages.map((msg) => ({
+              id: msg.id,
+              role: msg.role,
+              content: msg.content,
+              timestamp: msg.timestamp,
+            })),
+          })}\n\n`,
+        );
+      }
+
       res.write(
         `data: ${JSON.stringify({
           type: 'chunk',
